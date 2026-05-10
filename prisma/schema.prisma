@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @default("Utente")
+  createdAt DateTime @default(now())
+
+  targetCalories Int @default(2000)
+  targetProtein  Int @default(150)
+  targetCarbs    Int @default(220)
+  targetFat      Int @default(65)
+  weight         Float?
+  height         Float?
+  goal           String @default("maintain")
+
+  foodDiaryEntries FoodDiaryEntry[]
+  foodPlans        FoodPlan[]
+  recipes          Recipe[]
+  customFoods      Food[]
+  workoutDiaries   WorkoutDiary[]
+  workoutPlans     WorkoutPlan[]
+  customExercises  Exercise[]
+}
+
+model Food {
+  id       String  @id @default(cuid())
+  name     String
+  brand    String?
+  calories Float
+  protein  Float
+  carbs    Float
+  fat      Float
+  per100g  Boolean @default(true)
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+
+  diaryEntries      FoodDiaryEntry[]
+  recipeIngredients RecipeIngredient[]
+  planMealItems     FoodPlanMealItem[]
+}
+
+model FoodDiaryEntry {
+  id       String   @id @default(cuid())
+  date     String
+  meal     String
+  quantity Float
+  userId   String
+  foodId   String
+  user     User     @relation(fields: [userId], references: [id])
+  food     Food     @relation(fields: [foodId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  servings    Int      @default(1)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  ingredients RecipeIngredient[]
+  createdAt   DateTime @default(now())
+}
+
+model RecipeIngredient {
+  id       String @id @default(cuid())
+  quantity Float
+  recipeId String
+  foodId   String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  food     Food   @relation(fields: [foodId], references: [id])
+}
+
+model FoodPlan {
+  id        String        @id @default(cuid())
+  name      String
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  days      FoodPlanDay[]
+  createdAt DateTime      @default(now())
+}
+
+model FoodPlanDay {
+  id       String         @id @default(cuid())
+  dayName  String
+  planId   String
+  plan     FoodPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  meals    FoodPlanMeal[]
+}
+
+model FoodPlanMeal {
+  id    String             @id @default(cuid())
+  name  String
+  dayId String
+  day   FoodPlanDay        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  items FoodPlanMealItem[]
+}
+
+model FoodPlanMealItem {
+  id       String       @id @default(cuid())
+  quantity Float
+  mealId   String
+  foodId   String
+  meal     FoodPlanMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  food     Food         @relation(fields: [foodId], references: [id])
+}
+
+model Exercise {
+  id           String  @id @default(cuid())
+  name         String
+  muscleGroup  String
+  equipment    String?
+  instructions String?
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id])
+
+  workoutSets          WorkoutSet[]
+  workoutPlanExercises WorkoutPlanExercise[]
+}
+
+model WorkoutDiary {
+  id        String       @id @default(cuid())
+  date      String
+  name      String?
+  notes     String?
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  sets      WorkoutSet[]
+  createdAt DateTime     @default(now())
+}
+
+model WorkoutSet {
+  id             String       @id @default(cuid())
+  setNumber      Int
+  reps           Int?
+  weight         Float?
+  duration       Int?
+  notes          String?
+  exerciseId     String
+  workoutDiaryId String
+  exercise       Exercise     @relation(fields: [exerciseId], references: [id])
+  workoutDiary   WorkoutDiary @relation(fields: [workoutDiaryId], references: [id], onDelete: Cascade)
+}
+
+model WorkoutPlan {
+  id        String            @id @default(cuid())
+  name      String
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  days      WorkoutPlanDay[]
+  createdAt DateTime          @default(now())
+}
+
+model WorkoutPlanDay {
+  id        String                @id @default(cuid())
+  dayName   String
+  planId    String
+  plan      WorkoutPlan           @relation(fields: [planId], references: [id], onDelete: Cascade)
+  exercises WorkoutPlanExercise[]
+}
+
+model WorkoutPlanExercise {
+  id         String         @id @default(cuid())
+  sets       Int            @default(3)
+  reps       String?
+  weight     Float?
+  notes      String?
+  order      Int            @default(0)
+  dayId      String
+  exerciseId String
+  day        WorkoutPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercise   Exercise       @relation(fields: [exerciseId], references: [id])
+}
