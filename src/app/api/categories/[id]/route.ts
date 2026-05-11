@@ -3,17 +3,16 @@ import { pool } from '@/lib/db'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { name, calories, protein, carbs, fat, categoryId } = await req.json()
+  const { name } = await req.json()
   const { rows } = await pool.query(
-    `UPDATE "Food" SET name=$1, calories=$2, protein=$3, carbs=$4, fat=$5, "categoryId"=$6 WHERE id=$7 RETURNING *`,
-    [name, calories, protein, carbs, fat, categoryId || null, id]
+    `UPDATE "FoodCategory" SET name=$1 WHERE id=$2 RETURNING *`, [name, id]
   )
   return NextResponse.json(rows[0])
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await pool.query(`DELETE FROM "FoodFavorite" WHERE "foodId"=$1`, [id])
-  await pool.query(`DELETE FROM "Food" WHERE id=$1`, [id])
+  await pool.query(`UPDATE "Food" SET "categoryId"=NULL WHERE "categoryId"=$1`, [id])
+  await pool.query(`DELETE FROM "FoodCategory" WHERE id=$1`, [id])
   return NextResponse.json({ ok: true })
 }
