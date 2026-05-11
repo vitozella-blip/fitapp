@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
-    await pool.query(`DELETE FROM "WorkoutSet" WHERE id = $1`, [params.id])
+    await pool.query(`DELETE FROM "WorkoutSet" WHERE id = $1`, [id])
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error(e)
