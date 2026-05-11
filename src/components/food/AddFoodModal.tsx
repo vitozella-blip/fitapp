@@ -20,7 +20,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
   const [selected, setSelected] = useState<Food | null>(null)
   const [qty, setQty] = useState('100')
   const [adding, setAdding] = useState(false)
-  const timer = useRef<NodeJS.Timeout>()
+  const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     clearTimeout(timer.current)

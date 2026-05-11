@@ -14,7 +14,7 @@ export default function FoodDatabasePage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' })
   const [saving, setSaving] = useState(false)
-  const timer = useRef<NodeJS.Timeout>()
+  const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   function search(query: string) {
     clearTimeout(timer.current)

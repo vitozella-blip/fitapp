@@ -17,7 +17,7 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
   const [reps, setReps] = useState('10')
   const [weight, setWeight] = useState('')
   const [adding, setAdding] = useState(false)
-  const timer = useRef<NodeJS.Timeout>()
+  const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     clearTimeout(timer.current)
