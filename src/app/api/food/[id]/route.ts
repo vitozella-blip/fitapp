@@ -3,10 +3,11 @@ import { pool } from '@/lib/db'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { name, calories, protein, carbs, fat, categoryId } = await req.json()
+  const { name, brand, calories, protein, carbs, fat, saturatedFat, sugars, salt, categoryId } = await req.json()
   const { rows } = await pool.query(
-    `UPDATE "Food" SET name=$1, calories=$2, protein=$3, carbs=$4, fat=$5, "categoryId"=$6 WHERE id=$7 RETURNING *`,
-    [name, calories, protein, carbs, fat, categoryId || null, id]
+    `UPDATE "Food" SET name=$1, brand=$2, calories=$3, protein=$4, carbs=$5, fat=$6,
+     "saturatedFat"=$7, sugars=$8, salt=$9, "categoryId"=$10 WHERE id=$11 RETURNING *`,
+    [name, brand || null, calories, protein, carbs, fat, saturatedFat || 0, sugars || 0, salt || 0, categoryId || null, id]
   )
   return NextResponse.json(rows[0])
 }
