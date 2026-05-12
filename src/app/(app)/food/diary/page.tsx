@@ -171,7 +171,7 @@ export default function FoodDiaryPage() {
 
             {isFree ? (
               <div className="px-4 py-3 flex items-center gap-2">
-                <span className="text-lg">🍣🍟🎉</span>
+                <span className="text-lg">🍣🍟</span>
                 <p className="text-sm text-orange-400 font-medium">Pasto libero — escluso dal conteggio</p>
               </div>
             ) : mealEntries.length === 0 ? (
