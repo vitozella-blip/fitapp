@@ -5,12 +5,12 @@ import { Dumbbell, History, ClipboardList, ChevronRight } from 'lucide-react'
 const SECTIONS = [
   { label: 'Diario Allenamento', desc: 'Registra il workout di oggi', href: '/training/diary', icon: Dumbbell, color: 'bg-blue-50 dark:bg-blue-950 text-blue-500' },
   { label: 'Storico', desc: 'I tuoi allenamenti passati', href: '/training/history', icon: History, color: 'bg-indigo-50 dark:bg-indigo-950 text-indigo-500' },
-  { label: 'Piano Allenamento', desc: 'Organizza la tua settimana', href: '/training/plan', icon: ClipboardList, color: 'bg-violet-50 dark:bg-violet-950 text-violet-500' },
+  { label: 'Piano Allenamento', desc: 'Gestisci i tuoi workout', href: '/training/plan', icon: ClipboardList, color: 'bg-violet-50 dark:bg-violet-950 text-violet-500' },
 ]
 
 export default function TrainingHubPage() {
   return (
-    <div className="space-y-4 max-w-2xl mx-auto md:max-w-none">
+    <div className="max-w-2xl mx-auto md:max-w-none">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Allenamento</h1>
         <p className="text-sm text-gray-400 mt-1">Gestisci i tuoi workout</p>
