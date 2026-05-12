@@ -131,7 +131,7 @@ function FoodFormFields({ form, setForm, categories }: { form: FoodForm; setForm
   )
 }
 
-export default function FoodDatabasePage() {
+function FoodDatabasePage() {
   const userId = useAppStore((s) => s.userId)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -325,3 +325,19 @@ export default function FoodDatabasePage() {
     </div>
   )
 }
+
+import { Suspense } from 'react'
+
+function FoodDatabaseWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-48">
+        <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <FoodDatabasePage />
+    </Suspense>
+  )
+}
+
+export default FoodDatabaseWrapper
