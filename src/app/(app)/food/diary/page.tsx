@@ -111,7 +111,7 @@ export default function FoodDiaryPage() {
         <div className="flex items-baseline gap-1.5">
           <span className="text-3xl font-bold" style={{ color: '#6c5ce7' }}>{totals.calories}</span>
           <span className="text-sm text-gray-400">/ {userProfile.targetCalories} kcal</span>
-          {freeMeals.size > 0 && <span className="text-xs text-orange-400 font-medium ml-1">({freeMeals.size} pasto libero escluso)</span>}
+          {freeMeals.size > 0 && <span className="text-xs text-orange-400 font-medium ml-1">({freeMeals.size} pasto libero)</span>}
         </div>
         <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
           <div className="h-full rounded-full transition-all"
