@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils'
 
 const MEALS = [
   { name: 'Colazione', emoji: '🥐' },
-  { name: 'Spuntino mattina', emoji: '🍌' },
+  { name: 'Spuntino mattina', emoji: '🍦' },
   { name: 'Pranzo', emoji: '🍝' },
-  { name: 'Spuntino pomeriggio', emoji: '🍦' },
+  { name: 'Spuntino pomeriggio', emoji: '🍌' },
   { name: 'Cena', emoji: '🥩' },
 ]
 
