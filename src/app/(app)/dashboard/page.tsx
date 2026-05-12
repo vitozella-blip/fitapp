@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
@@ -7,7 +8,7 @@ import { cn } from '@/lib/utils'
 // Minimal SVG meal icons
 const MealIcon = ({ type, size = 16 }: { type: string; size?: number }) => {
   const s = size
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.ReactElement> = {
     colazione: (
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 11c0-4 2-7 9-7s9 3 9 7"/>
