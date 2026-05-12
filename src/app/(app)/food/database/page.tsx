@@ -1,12 +1,11 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Settings, ChevronUp } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Apple } from 'lucide-react'
+import { Apple, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Check } from 'lucide-react'
 
 type Food = {
   id: string; name: string; brand?: string; calories: number
@@ -19,12 +18,22 @@ type FoodForm = { name: string; brand: string; calories: string; protein: string
 
 const emptyForm = (): FoodForm => ({ name: '', brand: '', calories: '', protein: '', carbs: '', fat: '', saturatedFat: '', sugars: '', salt: '', categoryId: '' })
 
-function FoodCard({ food, isFav, isOwn, onToggleFav, onEdit, onDelete }: {
-  food: Food; isFav: boolean; isOwn: boolean
+function NutrRow({ label, value, color, indent }: { label: string; value: string; color?: string; indent?: boolean }) {
+  return (
+    <div className={cn('flex justify-between py-1', indent && 'pl-4')}>
+      <span className={cn('text-xs', indent ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400')}>{label}</span>
+      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300" style={color ? { color } : {}}>{value}</span>
+    </div>
+  )
+}
+
+function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete }: {
+  food: Food; isFav: boolean; categories: Category[]
   onToggleFav: () => void; onEdit: () => void; onDelete: () => void
 }) {
   const [open, setOpen] = useState(false)
   const displayName = food.brand ? `${food.name} — ${food.brand}` : food.name
+  const catName = categories.find(c => c.id === food.categoryId)?.name
 
   return (
     <div className="border-b border-gray-50 dark:border-gray-800 last:border-0">
@@ -34,98 +43,131 @@ function FoodCard({ food, isFav, isOwn, onToggleFav, onEdit, onDelete }: {
         </button>
         <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{displayName}</p>
-          <div className="flex items-center gap-2 text-xs mt-0.5">
-            <span className="text-gray-500 font-bold">{food.calories} kcal</span>
+          <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
+            <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
             <span style={{ color: '#9b59b6' }}>G {food.fat}g</span>
             <span style={{ color: '#e8813a' }}>C {food.carbs}g</span>
             <span style={{ color: '#5a9e5a' }}>P {food.protein}g</span>
           </div>
         </button>
         <div className="flex items-center gap-1 shrink-0">
-          {isOwn && <>
-            <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors"><Pencil size={13} /></button>
-            <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"><Trash2 size={13} /></button>
-          </>}
+          <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors">
+            <Pencil size={13} />
+          </button>
+          <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
+            <Trash2 size={13} />
+          </button>
           <button onClick={() => setOpen(o => !o)} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center">
             {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
       </div>
+
       {open && (
-        <div className="px-4 pb-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs bg-gray-50 dark:bg-gray-800/50 py-2 mx-2 rounded-xl mb-2">
-          <Row label="Energia" value={`${food.calories} kcal`} bold />
-          <Row label="Grassi" value={`${food.fat}g`} color="#9b59b6" />
-          <Row label="  di cui saturi" value={`${food.saturatedFat ?? 0}g`} />
-          <Row label="Carboidrati" value={`${food.carbs}g`} color="#e8813a" />
-          <Row label="  di cui zuccheri" value={`${food.sugars ?? 0}g`} />
-          <Row label="Proteine" value={`${food.protein}g`} color="#5a9e5a" />
-          <Row label="Sale" value={`${food.salt ?? 0}g`} />
-          {food.brand && <Row label="Marca" value={food.brand} />}
+        <div className="mx-3 mb-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl px-4 py-2 divide-y divide-gray-100 dark:divide-gray-700/50">
+          <NutrRow label="Energia" value={`${food.calories} kcal`} />
+          <div className="py-1">
+            <div className="flex justify-between">
+              <span className="text-xs text-gray-400">Grassi</span>
+              <span className="text-xs font-semibold" style={{ color: '#9b59b6' }}>{food.fat}g</span>
+            </div>
+            <div className="flex justify-between pl-4 mt-0.5">
+              <span className="text-xs text-gray-300 dark:text-gray-600">di cui saturi</span>
+              <span className="text-xs text-gray-500">{food.saturatedFat ?? 0}g</span>
+            </div>
+          </div>
+          <div className="py-1">
+            <div className="flex justify-between">
+              <span className="text-xs text-gray-400">Carboidrati</span>
+              <span className="text-xs font-semibold" style={{ color: '#e8813a' }}>{food.carbs}g</span>
+            </div>
+            <div className="flex justify-between pl-4 mt-0.5">
+              <span className="text-xs text-gray-300 dark:text-gray-600">di cui zuccheri</span>
+              <span className="text-xs text-gray-500">{food.sugars ?? 0}g</span>
+            </div>
+          </div>
+          <NutrRow label="Proteine" value={`${food.protein}g`} color="#5a9e5a" />
+          <NutrRow label="Sale" value={`${food.salt ?? 0}g`} />
+          {catName && (
+            <div className="pt-2 mt-1 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">Categoria</span>
+                <span className="text-xs bg-orange-50 dark:bg-orange-950 text-orange-500 px-2 py-0.5 rounded-full font-medium">{catName}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function Row({ label, value, color, bold }: { label: string; value: string; color?: string; bold?: boolean }) {
-  return (
-    <div className="flex justify-between py-0.5">
-      <span className="text-gray-400">{label}</span>
-      <span className={cn('font-semibold', bold ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')} style={color ? { color } : {}}>
-        {value}
-      </span>
-    </div>
-  )
-}
-
-function FoodFormFields({ form, setForm, categories }: { form: FoodForm; setForm: (f: FoodForm) => void; categories: Category[] }) {
+function FoodFormModal({ form, setForm, categories, onSave, onClose, editing, saving }: {
+  form: FoodForm; setForm: (f: FoodForm) => void; categories: Category[]
+  onSave: () => void; onClose: () => void; editing: boolean; saving: boolean
+}) {
   const f = (k: keyof FoodForm, v: string) => setForm({ ...form, [k]: v })
-  const inputCls = "w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+  const inp = "w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="col-span-2">
-          <label className="text-xs text-gray-400 block mb-1">Nome prodotto</label>
-          <input value={form.name} onChange={e => f('name', e.target.value)} placeholder="Es. Riso Parboiled" className={inputCls} />
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <p className="font-bold text-gray-900 dark:text-gray-100">{editing ? 'Modifica alimento' : 'Nuovo alimento'}</p>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={14} /></button>
         </div>
-        <div className="col-span-2">
-          <label className="text-xs text-gray-400 block mb-1">Marca</label>
-          <input value={form.brand} onChange={e => f('brand', e.target.value)} placeholder="Es. Lidl o GENERICO" className={inputCls} />
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Nome prodotto</label>
+            <input value={form.name} onChange={e => f('name', e.target.value)} placeholder="Es. Riso Parboiled" className={inp} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Marca</label>
+            <input value={form.brand} onChange={e => f('brand', e.target.value)} placeholder="Es. Lidl o GENERICO" className={inp} />
+          </div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide pt-1">Valori per 100g</p>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 block mb-1">Energia (kcal)</label>
+            <input type="number" value={form.calories} onChange={e => f('calories', e.target.value)} placeholder="0" className={inp} />
+          </div>
+          <div className="rounded-xl border border-purple-100 dark:border-purple-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#9b59b6' }}>Grassi (g)</label>
+            <input type="number" value={form.fat} onChange={e => f('fat', e.target.value)} placeholder="0" className={inp} />
+            <label className="text-xs text-gray-400 block">di cui saturi (g)</label>
+            <input type="number" value={form.saturatedFat} onChange={e => f('saturatedFat', e.target.value)} placeholder="0" className={inp} />
+          </div>
+          <div className="rounded-xl border border-orange-100 dark:border-orange-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#e8813a' }}>Carboidrati (g)</label>
+            <input type="number" value={form.carbs} onChange={e => f('carbs', e.target.value)} placeholder="0" className={inp} />
+            <label className="text-xs text-gray-400 block">di cui zuccheri (g)</label>
+            <input type="number" value={form.sugars} onChange={e => f('sugars', e.target.value)} placeholder="0" className={inp} />
+          </div>
+          <div className="rounded-xl border border-green-100 dark:border-green-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#5a9e5a' }}>Proteine (g)</label>
+            <input type="number" value={form.protein} onChange={e => f('protein', e.target.value)} placeholder="0" className={inp} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Sale (g)</label>
+            <input type="number" value={form.salt} onChange={e => f('salt', e.target.value)} placeholder="0" className={inp} />
+          </div>
+          <div className="pt-1 border-t border-gray-100 dark:border-gray-800">
+            <label className="text-xs text-gray-400 block mb-1">Categoria</label>
+            <div className="relative">
+              <select value={form.categoryId} onChange={e => f('categoryId', e.target.value)} className={inp + ' appearance-none pr-8'}>
+                <option value="">Nessuna categoria</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
         </div>
-      </div>
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide pt-1">Valori per 100g</p>
-      <div>
-        <label className="text-xs text-gray-400 block mb-1">Calorie (kcal)</label>
-        <input type="number" value={form.calories} onChange={e => f('calories', e.target.value)} placeholder="0" className={inputCls} />
-      </div>
-      <div className="bg-purple-50 dark:bg-purple-950/30 rounded-xl p-3 space-y-2">
-        <label className="text-xs font-semibold" style={{ color: '#9b59b6' }}>Grassi (g)</label>
-        <input type="number" value={form.fat} onChange={e => f('fat', e.target.value)} placeholder="0" className={inputCls} />
-        <label className="text-xs text-gray-400 block">di cui saturi (g)</label>
-        <input type="number" value={form.saturatedFat} onChange={e => f('saturatedFat', e.target.value)} placeholder="0" className={inputCls} />
-      </div>
-      <div className="bg-orange-50 dark:bg-orange-950/30 rounded-xl p-3 space-y-2">
-        <label className="text-xs font-semibold" style={{ color: '#e8813a' }}>Carboidrati (g)</label>
-        <input type="number" value={form.carbs} onChange={e => f('carbs', e.target.value)} placeholder="0" className={inputCls} />
-        <label className="text-xs text-gray-400 block">di cui zuccheri (g)</label>
-        <input type="number" value={form.sugars} onChange={e => f('sugars', e.target.value)} placeholder="0" className={inputCls} />
-      </div>
-      <div className="bg-green-50 dark:bg-green-950/30 rounded-xl p-3 space-y-2">
-        <label className="text-xs font-semibold" style={{ color: '#5a9e5a' }}>Proteine (g)</label>
-        <input type="number" value={form.protein} onChange={e => f('protein', e.target.value)} placeholder="0" className={inputCls} />
-      </div>
-      <div>
-        <label className="text-xs text-gray-400 block mb-1">Sale (g)</label>
-        <input type="number" value={form.salt} onChange={e => f('salt', e.target.value)} placeholder="0" className={inputCls} />
-      </div>
-      <div className="relative">
-        <select value={form.categoryId} onChange={e => f('categoryId', e.target.value)}
-          className={inputCls + ' appearance-none pr-8'}>
-          <option value="">Nessuna categoria</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
+          <button onClick={onSave} disabled={saving || !form.name.trim() || !form.calories}
+            className="w-full py-3 rounded-xl bg-orange-400 hover:bg-orange-500 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+            {editing ? 'Salva modifiche' : 'Aggiungi alimento'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -158,7 +200,9 @@ function FoodDatabasePage() {
       fetch(`/api/food?${p}`).then(r => r.json()),
       fetch(`/api/favorites?userId=${userId}`).then(r => r.json()),
     ])
-    setFoods(fr); setFavorites(new Set(favr)); setLoading(false)
+    setFoods(Array.isArray(fr) ? fr : [])
+    setFavorites(new Set(Array.isArray(favr) ? favr : []))
+    setLoading(false)
   }, [userId, q, catFilter, favOnly])
 
   const fetchCats = useCallback(async () => {
@@ -198,6 +242,7 @@ function FoodDatabasePage() {
   }
 
   async function handleDelete(id: string) {
+    if (!confirm('Eliminare questo alimento?')) return
     await fetch(`/api/food/${id}`, { method: 'DELETE' })
     setFoods(f => f.filter(x => x.id !== id))
   }
@@ -215,16 +260,21 @@ function FoodDatabasePage() {
     fetchCats()
   }
 
+  function openNew(prefill = '') {
+    setEditFood(null)
+    setForm({ ...emptyForm(), name: prefill })
+    setShowForm(true)
+  }
+
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-2">
       <PageHeader title="Alimenti" icon={Apple} accent="food"
-        action={<button onClick={() => { setEditFood(null); setForm(emptyForm()); setShowForm(true) }}
+        action={<button onClick={() => openNew()}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-400 hover:bg-orange-500 text-white text-sm font-semibold">
           <Plus size={15} /> Nuovo
         </button>}
       />
 
-      {/* Search */}
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={q} onChange={e => handleSearch(e.target.value)} placeholder="Cerca per nome o marca..."
@@ -232,11 +282,10 @@ function FoodDatabasePage() {
         {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <select value={catFilter} onChange={e => { setCatFilter(e.target.value); fetchAll(q, e.target.value, favOnly) }}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400">
+            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none">
             <option value="">Tutte le categorie</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -244,60 +293,43 @@ function FoodDatabasePage() {
         </div>
         <button onClick={() => { const n = !favOnly; setFavOnly(n); fetchAll(q, catFilter, n) }}
           className={cn('px-3 py-2 rounded-xl border text-sm font-medium flex items-center gap-1.5 transition-colors', favOnly ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-yellow-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500')}>
-          <Star size={14} fill={favOnly ? 'currentColor' : 'none'} /> Preferiti
+          <Star size={14} fill={favOnly ? 'currentColor' : 'none'} />
         </button>
         <button onClick={() => setShowCatManager(true)}
-          className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 hover:text-gray-700 transition-colors">
+          className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500">
           <Settings size={14} />
         </button>
       </div>
 
-      {/* Food list */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-        {foods.length === 0 && !loading ? (
-          <div className="p-6 text-center space-y-3">
-            <p className="text-sm text-gray-400">Nessun alimento trovato</p>
-            {q && (
-              <button onClick={() => { setForm({ ...emptyForm(), name: q }); setEditFood(null); setShowForm(true) }}
-                className="px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-950 text-orange-500 text-sm font-semibold hover:bg-orange-100 transition-colors">
-                ➕ Aggiungi "{q}" al database
-              </button>
-            )}
-          </div>
-        ) : (
-          foods.map(f => (
-            <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)} isOwn={f.userId === userId}
-              onToggleFav={() => toggleFav(f.id)}
-              onEdit={() => openEdit(f)}
-              onDelete={() => handleDelete(f.id)}
-            />
-          ))
+        {foods.map(f => (
+          <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)} categories={categories}
+            onToggleFav={() => toggleFav(f.id)}
+            onEdit={() => openEdit(f)}
+            onDelete={() => handleDelete(f.id)}
+          />
+        ))}
+        {foods.length === 0 && !loading && (
+          <p className="text-sm text-gray-400 text-center py-6">Nessun alimento trovato</p>
         )}
+        {/* Always show add button at bottom */}
+        <button onClick={() => openNew(q)}
+          className="w-full flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors">
+          <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-900 flex items-center justify-center shrink-0">
+            <Plus size={14} className="text-orange-500" />
+          </div>
+          <p className="text-sm text-orange-500 font-semibold">
+            {q ? `Aggiungi "${q}" al database` : 'Aggiungi nuovo alimento'}
+          </p>
+        </button>
       </div>
 
-      {/* Add/Edit modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={() => { setShowForm(false); setEditFood(null) }}>
-          <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[90vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-              <p className="font-bold text-gray-900 dark:text-gray-100">{editFood ? 'Modifica alimento' : 'Nuovo alimento'}</p>
-              <button onClick={() => { setShowForm(false); setEditFood(null) }} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={14} /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <FoodFormFields form={form} setForm={setForm} categories={categories} />
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
-              <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.calories}
-                className="w-full py-3 rounded-xl bg-orange-400 hover:bg-orange-500 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
-                {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                {editFood ? 'Salva modifiche' : 'Aggiungi alimento'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <FoodFormModal form={form} setForm={setForm} categories={categories}
+          onSave={handleSave} onClose={() => { setShowForm(false); setEditFood(null) }}
+          editing={!!editFood} saving={saving} />
       )}
 
-      {/* Category manager */}
       {showCatManager && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={() => setShowCatManager(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md p-5 shadow-xl space-y-3 max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
@@ -326,18 +358,10 @@ function FoodDatabasePage() {
   )
 }
 
-import { Suspense } from 'react'
-
-function FoodDatabaseWrapper() {
+export default function FoodDatabaseWrapper() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-48">
-        <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" /></div>}>
       <FoodDatabasePage />
     </Suspense>
   )
 }
-
-export default FoodDatabaseWrapper
