@@ -5,6 +5,8 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AddExerciseModal } from '@/components/training/AddExerciseModal'
 
+const C_TRAINING = '#7aafc8'
+
 type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; exercise: { name: string; muscleGroup: string } }
 type Workout = { id: string; sets: WorkoutSet[] }
 
@@ -45,60 +47,79 @@ export default function TrainingDiaryPage() {
   const totalExercises = Object.keys(grouped).length
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto md:max-w-none">
+    <div className="space-y-4 max-w-2xl mx-auto md:max-w-none">
       <PageHeader title="Diario Workout" icon={Dumbbell} accent="training"
-        action={<button onClick={() => setShowModal(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-colors">
-          <Plus size={15} /> Esercizio
-        </button>}
+        action={
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-medium transition-colors"
+            style={{ backgroundColor: C_TRAINING + 'dd' }}>
+            <Plus size={15} /> Esercizio
+          </button>
+        }
       />
 
-      <div className="flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3">
-        <button onClick={() => changeDate(-1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 transition-colors"><ChevronLeft size={18} /></button>
+      {/* Date nav */}
+      <div className="flex items-center justify-between bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-2.5">
+        <button onClick={() => changeDate(-1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 transition-colors">
+          <ChevronLeft size={17} />
+        </button>
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{dateLabel}</p>
-        <button onClick={() => changeDate(1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 transition-colors"><ChevronRight size={18} /></button>
+        <button onClick={() => changeDate(1)} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 transition-colors">
+          <ChevronRight size={17} />
+        </button>
       </div>
 
+      {/* Stats */}
       {totalSets > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-blue-50 dark:bg-blue-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalExercises}</p>
-            <p className="text-xs text-gray-400 mt-1">Esercizi</p>
-          </div>
-          <div className="bg-blue-50 dark:bg-blue-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalSets}</p>
-            <p className="text-xs text-gray-400 mt-1">Serie totali</p>
-          </div>
+          {[
+            { label: 'Esercizi',      val: totalExercises },
+            { label: 'Serie totali',  val: totalSets },
+          ].map(({ label, val }) => (
+            <div key={label} className="border border-gray-100 dark:border-gray-800 rounded-2xl p-4 text-center"
+              style={{ backgroundColor: C_TRAINING + '12' }}>
+              <p className="text-2xl font-bold" style={{ color: C_TRAINING }}>{val}</p>
+              <p className="text-xs text-gray-400 mt-1">{label}</p>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* Exercises */}
       {Object.keys(grouped).length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center">
-          <Dumbbell size={32} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">Nessun allenamento oggi</p>
-          <p className="text-sm text-gray-400 mt-1">Clicca "+ Esercizio" per iniziare</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 text-center">
+          <Dumbbell size={30} className="mx-auto mb-3" style={{ color: C_TRAINING + '80' }} />
+          <p className="text-gray-500 font-medium text-sm">Nessun allenamento oggi</p>
+          <p className="text-xs text-gray-400 mt-1">Clicca "+ Esercizio" per iniziare</p>
         </div>
       ) : (
         Object.values(grouped).map(({ name, group, sets }) => (
-          <div key={name} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+          <div key={name} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{name}</p>
-                <p className="text-xs text-gray-400">{group}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{group}</p>
               </div>
-              <span className="text-xs text-blue-500 font-medium">{sets.length} serie</span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-lg"
+                style={{ color: C_TRAINING, backgroundColor: C_TRAINING + '18' }}>
+                {sets.length} serie
+              </span>
             </div>
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {sets.map((s, i) => (
                 <div key={s.id} className="flex items-center justify-between px-4 py-2.5">
                   <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-500 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                    <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center"
+                      style={{ backgroundColor: C_TRAINING + '18', color: C_TRAINING }}>
+                      {i + 1}
+                    </span>
                     <p className="text-sm text-gray-900 dark:text-gray-100">
                       {s.reps} reps {s.weight ? `· ${s.weight} kg` : ''}
                     </p>
                   </div>
-                  <button onClick={() => deleteSet(s.id)} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
-                    <Trash2 size={14} />
+                  <button onClick={() => deleteSet(s.id)}
+                    className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 hover:text-red-400 flex items-center justify-center transition-colors">
+                    <Trash2 size={13} />
                   </button>
                 </div>
               ))}

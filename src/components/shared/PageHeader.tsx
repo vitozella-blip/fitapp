@@ -4,22 +4,23 @@ import { cn } from '@/lib/utils'
 type Props = { title: string; subtitle?: string; icon?: LucideIcon; accent?: 'primary' | 'food' | 'training'; action?: React.ReactNode }
 
 const iconStyle = {
-  primary: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400',
-  food: 'bg-orange-50 text-orange-500 dark:bg-orange-950 dark:text-orange-400',
-  training: 'bg-blue-50 text-blue-500 dark:bg-blue-950 dark:text-blue-400',
+  primary:  { bg: '#9d8fcc18', color: '#9d8fcc' },
+  food:     { bg: '#f0aa7818', color: '#f0aa78' },
+  training: { bg: '#7aafc818', color: '#7aafc8' },
 }
 
 export function PageHeader({ title, subtitle, icon: Icon, accent = 'primary', action }: Props) {
+  const s = iconStyle[accent]
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-center justify-between mb-5">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center', iconStyle[accent])}>
-            <Icon size={18} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: s.bg, color: s.color }}>
+            <Icon size={17} />
           </div>
         )}
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">{title}</h1>
           {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
         </div>
       </div>
