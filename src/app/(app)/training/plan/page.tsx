@@ -1,262 +1,259 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Pencil, Copy, ChevronUp, ChevronDown, Check, X, ClipboardList, Loader2, ChevronRight, Search } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  Plus, Trash2, Pencil, Copy, ChevronUp, ChevronDown,
+  Check, X, ClipboardList, Loader2, Search,
+  ChevronDown as Chevron, FileText,
+} from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 
-type Plan = { id: string; name: string; order: number }
+const CT = '#7aafc8'
+const DEFAULT_PLAN_NAME = '__default__'
+
 type TemplateExercise = {
   id: string; order: number; sets: number; reps: string
   restSeconds: number; noteScheda?: string; notePersonali?: string
   exercise: { id: string; name: string; muscleGroup: string }
 }
-type Template = { id: string; planId: string; name: string; order: number; exercises: TemplateExercise[] }
+type Template = {
+  id: string; planId: string; name: string; order: number
+  exercises: TemplateExercise[]
+}
 type Exercise = { id: string; name: string; muscleGroup: string }
 
-const REPS_OPTIONS = ['10', '8', '12', '6', '5', '3', '1', '15', '20', 'AMRAP', 'RM', 'WTD', '8-12', '6-10', '3-5']
+// ── Shared input style ────────────────────────────────────────────────────────
+const inp = 'w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none'
 
-// ── Exercise row inside workout ──
-function ExerciseRow({
-  ex, isFirst, isLast,
-  onUpdate, onDelete, onReorder
+// ── Add/Edit exercise modal (shared) ─────────────────────────────────────────
+function ExerciseFormModal({
+  templateId, userId, mode, editRow, onClose, onSaved,
 }: {
-  ex: TemplateExercise; isFirst: boolean; isLast: boolean
-  onUpdate: (data: Partial<TemplateExercise>) => void
-  onDelete: () => void
-  onReorder: (dir: 'up' | 'down') => void
+  templateId: string; userId: string
+  mode: 'add' | 'edit'
+  editRow?: TemplateExercise | null
+  onClose: () => void
+  onSaved: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [sets, setSets] = useState(String(ex.sets))
-  const [reps, setReps] = useState(ex.reps)
-  const [rest, setRest] = useState(String(ex.restSeconds))
-  const [noteScheda, setNoteScheda] = useState(ex.noteScheda ?? '')
-  const [notePersonali, setNotePersonali] = useState(ex.notePersonali ?? '')
-  const [dirty, setDirty] = useState(false)
-
-  function mark<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setDirty(true) }
-  }
-
-  async function save() {
-    await onUpdate({ sets: Number(sets), reps, restSeconds: Number(rest), noteScheda, notePersonali })
-    setDirty(false)
-  }
-
-  return (
-    <div className={cn('border rounded-2xl overflow-hidden transition-colors', open ? 'border-blue-200 dark:border-blue-800' : 'border-gray-100 dark:border-gray-800')}>
-      {/* Header row */}
-      <div className="flex items-center gap-2 px-3 py-3 bg-white dark:bg-gray-900">
-        {/* Reorder */}
-        <div className="flex flex-col shrink-0">
-          <button onClick={() => onReorder('up')} disabled={isFirst} className={cn('w-5 h-4 flex items-center justify-center', isFirst ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:text-blue-500')}><ChevronUp size={12} /></button>
-          <button onClick={() => onReorder('down')} disabled={isLast} className={cn('w-5 h-4 flex items-center justify-center', isLast ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:text-blue-500')}><ChevronDown size={12} /></button>
-        </div>
-
-        {/* Name + summary */}
-        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{ex.exercise.name}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            <span className="text-blue-500 font-semibold">{ex.sets} × {ex.reps}</span>
-            {' · '}{ex.restSeconds}s rec
-            {ex.exercise.muscleGroup && <span className="ml-1 text-gray-300">· {ex.exercise.muscleGroup}</span>}
-          </p>
-        </button>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setOpen(o => !o)} className="text-gray-400">
-            <ChevronRight size={14} className={cn('transition-transform', open && 'rotate-90')} />
-          </button>
-          <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
-            <Trash2 size={13} />
-          </button>
-        </div>
-      </div>
-
-      {/* Expanded detail */}
-      {open && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 px-4 py-3 space-y-4">
-          {/* Sets / Reps / Rec */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-gray-400 block mb-1.5">Set</label>
-              <input type="number" min="1" value={sets} onChange={e => mark(setSets)(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-400 block mb-1.5">Reps</label>
-              <input type="text" value={reps} onChange={e => mark(setReps)(e.target.value)}
-                list="reps-options"
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-              <datalist id="reps-options">
-                {REPS_OPTIONS.map(r => <option key={r} value={r} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-400 block mb-1.5">Rec (s)</label>
-              <input type="number" min="0" value={rest} onChange={e => mark(setRest)(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-            </div>
-          </div>
-
-          {/* Note scheda */}
-          <div>
-            <label className="text-xs font-semibold text-blue-500 block mb-1.5">📋 Note scheda</label>
-            <textarea value={noteScheda} onChange={e => mark(setNoteScheda)(e.target.value)} rows={2}
-              placeholder="Note del personal trainer, indicazioni tecniche..."
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400 resize-none" />
-          </div>
-
-          {/* Note personali */}
-          <div>
-            <label className="text-xs font-semibold text-emerald-500 block mb-1.5">✏️ Note personali</label>
-            <textarea value={notePersonali} onChange={e => mark(setNotePersonali)(e.target.value)} rows={2}
-              placeholder="Le mie note, sensazioni, progressi..."
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400 resize-none" />
-          </div>
-
-          {dirty && (
-            <button onClick={save}
-              className="w-full py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
-              <Check size={15} /> Salva modifiche
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+  const [q, setQ]               = useState('')
+  const [results, setResults]   = useState<Exercise[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selected, setSelected] = useState<Exercise | null>(
+    editRow ? editRow.exercise : null
   )
-}
+  const [creating, setCreating] = useState(false)
 
-// ── Add Exercise Modal ──
-function AddExerciseModal({ templateId, userId, onClose, onAdded }: {
-  templateId: string; userId: string; onClose: () => void; onAdded: () => void
-}) {
-  const [q, setQ] = useState('')
-  const [results, setResults] = useState<Exercise[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<Exercise | null>(null)
-  const [sets, setSets] = useState('3')
-  const [reps, setReps] = useState('10')
-  const [rest, setRest] = useState('90')
-  const [noteScheda, setNoteScheda] = useState('')
-  const [notePersonali, setNotePersonali] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [sets, setSets]         = useState(editRow ? String(editRow.sets) : '3')
+  const [reps, setReps]         = useState(editRow ? editRow.reps : '')
+  const [rest, setRest]         = useState(editRow ? String(editRow.restSeconds) : '90')
+  const [noteScheda, setNoteScheda] = useState(editRow?.noteScheda ?? '')
+  const [notePerso, setNotePerso]   = useState(editRow?.notePersonali ?? '')
+  const [saving, setSaving]     = useState(false)
 
   useEffect(() => {
-    if (q.length < 2) { setResults([]); return }
+    if (mode === 'edit' || q.length < 2) { setResults([]); return }
     const t = setTimeout(async () => {
-      setLoading(true)
+      setSearching(true)
       const r = await fetch(`/api/exercises?q=${encodeURIComponent(q)}&userId=${userId}`)
       setResults(await r.json())
-      setLoading(false)
+      setSearching(false)
     }, 300)
     return () => clearTimeout(t)
-  }, [q, userId])
+  }, [q, userId, mode])
 
-  async function handleAdd() {
-    if (!selected) return
-    setSaving(true)
-    await fetch('/api/template-exercises', {
+  async function addToDb() {
+    if (!q.trim()) return
+    setCreating(true)
+    const r = await fetch('/api/exercises', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        templateId, exerciseId: selected.id,
-        sets: Number(sets), reps, restSeconds: Number(rest),
-        noteScheda: noteScheda || null, notePersonali: notePersonali || null
-      }),
+      body: JSON.stringify({ name: q.trim(), muscleGroup: '', userId }),
     })
-    setSaving(false); onAdded(); onClose()
+    const ex = await r.json()
+    setSelected(ex)
+    setResults([])
+    setCreating(false)
   }
 
+  async function handleSave() {
+    if (!selected) return
+    setSaving(true)
+    if (mode === 'add') {
+      await fetch('/api/template-exercises', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId, exerciseId: selected.id,
+          sets: Number(sets), reps, restSeconds: Number(rest),
+          noteScheda: noteScheda || null,
+          notePersonali: notePerso || null,
+        }),
+      })
+    } else if (editRow) {
+      await fetch(`/api/template-exercises/${editRow.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sets: Number(sets), reps, restSeconds: Number(rest),
+          noteScheda: noteScheda || null,
+          notePersonali: notePerso || null,
+        }),
+      })
+    }
+    setSaving(false); onSaved(); onClose()
+  }
+
+  const showAddToDb = mode === 'add' && !selected && q.length >= 2 && !searching && results.length === 0
+  const showAddToDbHint = mode === 'add' && !selected && q.length >= 2 && !searching && results.length > 0
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <p className="font-bold text-gray-900 dark:text-gray-100">Aggiungi esercizio</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={14} /></button>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50"
+      onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <p className="font-bold text-gray-900 dark:text-gray-100">
+            {mode === 'edit' ? `Modifica — ${editRow?.exercise.name}` : 'Aggiungi esercizio'}
+          </p>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center">
+            <X size={14} />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
-              placeholder="Cerca esercizio..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-            {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
-          </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
-          {!selected && results.length > 0 && (
-            <div className="space-y-0.5">
-              {results.map(ex => (
-                <button key={ex.id} onClick={() => setSelected(ex)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{ex.name}</p>
-                  <p className="text-xs text-gray-400">{ex.muscleGroup}</p>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selected && (
+          {/* Search (add mode only) */}
+          {mode === 'add' && !selected && (
             <>
-              <div className="bg-blue-50 dark:bg-blue-950 rounded-xl p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-sm text-gray-900 dark:text-gray-100">{selected.name}</p>
-                  <p className="text-xs text-gray-400">{selected.muscleGroup}</p>
-                </div>
-                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input autoFocus value={q} onChange={e => setQ(e.target.value)}
+                  placeholder="Cerca o scrivi nome esercizio..."
+                  className={inp + ' pl-9 pr-4'} />
+                {searching && (
+                  <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+                )}
               </div>
 
-              {/* Set / Reps / Rec */}
-              <div className="grid grid-cols-3 gap-2">
+              {/* Results */}
+              {results.length > 0 && (
+                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+                  {results.map(ex => (
+                    <button key={ex.id} onClick={() => setSelected(ex)}
+                      className="w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{ex.name}</p>
+                    </button>
+                  ))}
+                  {/* Add to DB hint when results exist but user wants different */}
+                  {showAddToDbHint && (
+                    <button onClick={addToDb} disabled={creating}
+                      className="w-full flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: CT + '20', color: CT }}>
+                        {creating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      </div>
+                      <p className="text-sm font-semibold" style={{ color: CT }}>
+                        Aggiungi &ldquo;{q}&rdquo; al database
+                      </p>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* No results: add to DB */}
+              {showAddToDb && (
+                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+                  <p className="text-xs text-gray-400 text-center py-3">Nessun risultato per &ldquo;{q}&rdquo;</p>
+                  <button onClick={addToDb} disabled={creating}
+                    className="w-full flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: CT + '20', color: CT }}>
+                      {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                    </div>
+                    <p className="text-sm font-semibold" style={{ color: CT }}>
+                      Aggiungi &ldquo;{q}&rdquo; al database
+                    </p>
+                  </button>
+                </div>
+              )}
+
+              {q.length < 2 && (
+                <p className="text-sm text-gray-400 text-center py-2">Scrivi almeno 2 caratteri per cercare</p>
+              )}
+            </>
+          )}
+
+          {/* Selected exercise chip */}
+          {(mode === 'edit' || selected) && (
+            <>
+              {mode === 'add' && selected && (
+                <div className="flex items-center justify-between rounded-xl px-3 py-2.5"
+                  style={{ backgroundColor: CT + '15' }}>
+                  <p className="font-bold text-sm text-gray-900 dark:text-gray-100">{selected.name}</p>
+                  <button onClick={() => { setSelected(null); setQ('') }}
+                    className="text-gray-400 hover:text-gray-600">
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Sets / Reps / Rec */}
+              <div className="grid grid-cols-3 gap-2.5">
                 <div>
                   <label className="text-xs font-semibold text-gray-400 block mb-1.5">Set</label>
-                  <input type="number" value={sets} onChange={e => setSets(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
+                  <input type="number" min="1" value={sets} onChange={e => setSets(e.target.value)}
+                    className={inp + ' text-center font-bold'} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-400 block mb-1.5">Reps</label>
-                  <input type="text" value={reps} onChange={e => setReps(e.target.value)} list="reps-opts"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-                  <datalist id="reps-opts">{REPS_OPTIONS.map(r => <option key={r} value={r} />)}</datalist>
+                  <input type="text" value={reps} onChange={e => setReps(e.target.value)}
+                    placeholder="es. 10RM, WTD, 8+DROP"
+                    className={inp + ' text-center font-bold'} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-400 block mb-1.5">Rec (s)</label>
-                  <input type="number" value={rest} onChange={e => setRest(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
+                  <input type="number" min="0" value={rest} onChange={e => setRest(e.target.value)}
+                    className={inp + ' text-center font-bold'} />
                 </div>
               </div>
 
               {/* Note scheda */}
               <div>
-                <label className="text-xs font-semibold text-blue-500 block mb-1.5">📋 Note scheda</label>
-                <textarea value={noteScheda} onChange={e => setNoteScheda(e.target.value)} rows={2}
-                  placeholder="Note del personal trainer..."
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400 resize-none" />
+                <label className="text-xs font-bold block mb-1.5 uppercase tracking-wide"
+                  style={{ color: CT }}>
+                  Note scheda
+                </label>
+                <textarea value={noteScheda} onChange={e => setNoteScheda(e.target.value)}
+                  rows={2} placeholder="Indicazioni tecniche, progressioni..."
+                  className={inp + ' resize-none'} />
               </div>
 
               {/* Note personali */}
               <div>
-                <label className="text-xs font-semibold text-emerald-500 block mb-1.5">✏️ Note personali</label>
-                <textarea value={notePersonali} onChange={e => setNotePersonali(e.target.value)} rows={2}
-                  placeholder="Le mie note..."
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400 resize-none" />
+                <label className="text-xs font-bold block mb-1.5 uppercase tracking-wide"
+                  style={{ color: '#7dbf7d' }}>
+                  Note personali
+                </label>
+                <textarea value={notePerso} onChange={e => setNotePerso(e.target.value)}
+                  rows={2} placeholder="Le mie sensazioni, carichi, progressi..."
+                  className={inp + ' resize-none'} />
               </div>
             </>
           )}
-
-          {!selected && q.length < 2 && (
-            <p className="text-sm text-gray-400 text-center py-2">Scrivi almeno 2 caratteri per cercare</p>
-          )}
         </div>
 
-        {selected && (
-          <div className="p-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
-            <button onClick={handleAdd} disabled={saving}
-              className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
-              {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-              Aggiungi esercizio
+        {/* Footer CTA */}
+        {(mode === 'edit' || selected) && (
+          <div className="px-4 pb-6 pt-3 border-t border-gray-100 dark:border-gray-800 shrink-0">
+            <button onClick={handleSave} disabled={saving || !reps.trim()}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
+              style={{ backgroundColor: CT }}>
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+              {mode === 'edit' ? 'Salva modifiche' : 'Aggiungi esercizio'}
             </button>
           </div>
         )}
@@ -265,284 +262,375 @@ function AddExerciseModal({ templateId, userId, onClose, onAdded }: {
   )
 }
 
-// ── Workout card ──
-function WorkoutCard({ tmpl, planId, idx, total, plans, onRefresh }: {
-  tmpl: Template; planId: string; idx: number; total: number
-  plans: Plan[]; onRefresh: (planId: string) => void
+// ── Exercise row (read-only, edit via pencil) ─────────────────────────────────
+function ExRow({
+  ex, isFirst, isLast, templateId, userId,
+  onDelete, onReorder, onRefresh,
+}: {
+  ex: TemplateExercise; isFirst: boolean; isLast: boolean
+  templateId: string; userId: string
+  onDelete: () => void
+  onReorder: (dir: 'up' | 'down') => void
+  onRefresh: () => void
 }) {
-  const userId = useAppStore((s) => s.userId)
-  const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [name, setName] = useState(tmpl.name)
-  const [addExercise, setAddExercise] = useState(false)
+  const hasNotes = !!(ex.noteScheda || ex.notePersonali)
+
+  return (
+    <>
+      <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 group">
+        {/* Reorder handles */}
+        <div className="flex flex-col shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => onReorder('up')} disabled={isFirst}
+            className={cn('w-4 h-4 flex items-center justify-center', isFirst ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}>
+            <ChevronUp size={10} />
+          </button>
+          <button onClick={() => onReorder('down')} disabled={isLast}
+            className={cn('w-4 h-4 flex items-center justify-center', isLast ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}>
+            <ChevronDown size={10} />
+          </button>
+        </div>
+
+        {/* Name */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-tight">
+            {ex.exercise.name}
+          </p>
+          {hasNotes && (
+            <p className="text-[10px] text-gray-400 truncate mt-0.5 leading-tight">
+              {ex.noteScheda || ex.notePersonali}
+            </p>
+          )}
+        </div>
+
+        {/* Summary pill */}
+        <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg"
+          style={{ backgroundColor: CT + '15', color: CT }}>
+          {ex.sets} × {ex.reps}
+        </span>
+        <span className="shrink-0 text-xs text-gray-400">
+          {ex.restSeconds}s
+        </span>
+
+        {/* Notes indicator */}
+        {hasNotes && (
+          <FileText size={11} className="shrink-0 text-gray-300 dark:text-gray-600" />
+        )}
+
+        {/* Edit */}
+        <button onClick={() => setEditing(true)}
+          className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 flex items-center justify-center transition-colors shrink-0">
+          <Pencil size={12} />
+        </button>
+
+        {/* Delete */}
+        <button onClick={onDelete}
+          className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors shrink-0">
+          <Trash2 size={12} />
+        </button>
+      </div>
+
+      {editing && (
+        <ExerciseFormModal
+          templateId={templateId} userId={userId}
+          mode="edit"
+          editRow={ex}
+          onClose={() => setEditing(false)}
+          onSaved={() => { setEditing(false); onRefresh() }}
+        />
+      )}
+    </>
+  )
+}
+
+// ── Workout (Scheda) Card ─────────────────────────────────────────────────────
+function WorkoutCard({ tmpl, idx, total, onRefresh }: {
+  tmpl: Template; idx: number; total: number
+  onRefresh: () => void
+}) {
+  const { userId } = useAppStore()
+  const [editing, setEditing]     = useState(false)
+  const [name, setName]           = useState(tmpl.name)
+  const [addEx, setAddEx]         = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   async function reorder(dir: 'up' | 'down') {
-    await fetch(`/api/workout-templates/${tmpl.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reorder', direction: dir }) })
-    onRefresh(planId)
+    await fetch(`/api/workout-templates/${tmpl.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reorder', direction: dir }),
+    })
+    onRefresh()
   }
 
   async function saveName() {
-    await fetch(`/api/workout-templates/${tmpl.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
-    setEditing(false); onRefresh(planId)
+    await fetch(`/api/workout-templates/${tmpl.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    setEditing(false); onRefresh()
   }
 
-  async function deleteWorkout() {
-    if (!confirm('Eliminare workout?')) return
+  async function del() {
+    if (!confirm('Eliminare questa scheda?')) return
     await fetch(`/api/workout-templates/${tmpl.id}`, { method: 'DELETE' })
-    onRefresh(planId)
+    onRefresh()
   }
 
-  async function duplicateWorkout() {
+  async function dup() {
     await fetch(`/api/workout-templates/${tmpl.id}/duplicate`, { method: 'POST' })
-    onRefresh(planId)
-  }
-
-  async function updateExercise(exId: string, data: Partial<TemplateExercise>) {
-    await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-    onRefresh(planId)
+    onRefresh()
   }
 
   async function deleteExercise(exId: string) {
     if (!confirm('Rimuovere esercizio?')) return
     await fetch(`/api/template-exercises/${exId}`, { method: 'DELETE' })
-    onRefresh(planId)
+    onRefresh()
   }
 
   async function reorderExercise(exId: string, dir: 'up' | 'down') {
-    await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reorder', direction: dir }) })
-    onRefresh(planId)
+    await fetch(`/api/template-exercises/${exId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reorder', direction: dir }),
+    })
+    onRefresh()
   }
 
+  const exCount = tmpl.exercises?.length ?? 0
+
   return (
-    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors', open ? 'border-blue-200 dark:border-blue-700' : 'border-gray-200 dark:border-gray-800')}>
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3.5">
-        <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center shrink-0">
-          <span className="text-sm font-bold text-blue-500">{idx + 1}</span>
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+
+      {/* Card header */}
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white text-xs font-bold"
+          style={{ backgroundColor: CT + 'cc' }}>
+          {String(idx + 1).padStart(2, '0')}
         </div>
 
         {editing ? (
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
-            className="flex-1 px-3 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none" />
+            className="flex-1 px-2.5 py-1.5 rounded-xl border text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 outline-none"
+            style={{ borderColor: CT }} />
         ) : (
-          <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{tmpl.name}</p>
-            <p className="text-xs text-gray-400">{tmpl.exercises?.length ?? 0} esercizi</p>
+          <button onClick={() => setCollapsed(o => !o)} className="flex-1 min-w-0 text-left">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate leading-tight">{tmpl.name}</p>
+            <p className="text-[10px] text-gray-400">{exCount} {exCount === 1 ? 'esercizio' : 'esercizi'}</p>
           </button>
         )}
 
         <div className="flex items-center gap-0.5 shrink-0">
           {editing ? (
             <>
-              <button onClick={saveName} className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-500 flex items-center justify-center"><Check size={13} /></button>
-              <button onClick={() => setEditing(false)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={13} /></button>
+              <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: CT }}>
+                <Check size={12} />
+              </button>
+              <button onClick={() => setEditing(false)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center">
+                <X size={12} />
+              </button>
             </>
           ) : (
             <>
-              <button onClick={() => reorder('up')} disabled={idx === 0} className={cn('w-7 h-7 rounded-lg flex items-center justify-center', idx === 0 ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}><ChevronUp size={13} /></button>
-              <button onClick={() => reorder('down')} disabled={idx === total - 1} className={cn('w-7 h-7 rounded-lg flex items-center justify-center', idx === total - 1 ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}><ChevronDown size={13} /></button>
-              <button onClick={() => { setEditing(true); setName(tmpl.name) }} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center"><Pencil size={12} /></button>
-              <button onClick={duplicateWorkout} className="w-7 h-7 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950 text-gray-400 hover:text-violet-500 flex items-center justify-center"><Copy size={12} /></button>
-              <button onClick={deleteWorkout} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center"><Trash2 size={12} /></button>
-              <button onClick={() => setOpen(o => !o)} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center"><ChevronRight size={13} className={cn('transition-transform', open && 'rotate-90')} /></button>
+              <button onClick={() => reorder('up')} disabled={idx === 0}
+                className={cn('w-7 h-7 rounded-lg flex items-center justify-center', idx === 0 ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}>
+                <ChevronUp size={13} />
+              </button>
+              <button onClick={() => reorder('down')} disabled={idx === total - 1}
+                className={cn('w-7 h-7 rounded-lg flex items-center justify-center', idx === total - 1 ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}>
+                <ChevronDown size={13} />
+              </button>
+              <button onClick={() => { setEditing(true); setName(tmpl.name) }}
+                className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center">
+                <Pencil size={11} />
+              </button>
+              <button onClick={dup}
+                className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center">
+                <Copy size={11} />
+              </button>
+              <button onClick={del}
+                className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 hover:text-red-400 flex items-center justify-center">
+                <Trash2 size={11} />
+              </button>
+              <button onClick={() => setCollapsed(o => !o)}
+                className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center">
+                <Chevron size={13} className={cn('transition-transform', collapsed && '-rotate-90')} />
+              </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Exercises */}
-      {open && (
-        <div className="bg-gray-50 dark:bg-gray-800/30 px-3 pb-3 pt-1 space-y-2">
-          {(tmpl.exercises ?? []).map((ex, ei) => (
-            <ExerciseRow key={ex.id} ex={ex}
-              isFirst={ei === 0} isLast={ei === (tmpl.exercises?.length ?? 0) - 1}
-              onUpdate={(data) => updateExercise(ex.id, data)}
-              onDelete={() => deleteExercise(ex.id)}
-              onReorder={(dir) => reorderExercise(ex.id, dir)}
-            />
-          ))}
+      {!collapsed && (
+        <>
+          {/* Table header */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 border-t border-gray-50 dark:border-gray-800"
+            style={{ backgroundColor: CT + '0c' }}>
+            <div className="w-4 shrink-0" />
+            <p className="flex-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Esercizio</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide shrink-0">Set × Reps</p>
+            <p className="w-8 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wide shrink-0">Rec</p>
+            <div className="w-4 shrink-0" />  {/* note icon col */}
+            <div className="w-7 shrink-0" />  {/* edit col */}
+            <div className="w-7 shrink-0" />  {/* del col */}
+          </div>
 
-          <button onClick={() => setAddExercise(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-blue-200 dark:border-blue-800 text-blue-400 text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors">
-            <Plus size={15} /> Aggiungi esercizio
-          </button>
-        </div>
+          {/* Exercise rows */}
+          <div>
+            {(tmpl.exercises ?? []).map((ex, ei) => (
+              <ExRow key={ex.id} ex={ex}
+                isFirst={ei === 0} isLast={ei === (tmpl.exercises?.length ?? 0) - 1}
+                templateId={tmpl.id} userId={userId}
+                onDelete={() => deleteExercise(ex.id)}
+                onReorder={(dir) => reorderExercise(ex.id, dir)}
+                onRefresh={onRefresh}
+              />
+            ))}
+          </div>
+
+          {/* Add exercise */}
+          <div className="px-3 pb-3 pt-2">
+            <button onClick={() => setAddEx(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-sm font-medium transition-colors"
+              style={{ borderColor: CT + '60', color: CT }}>
+              <Plus size={14} /> Aggiungi esercizio
+            </button>
+          </div>
+        </>
       )}
 
-      {addExercise && (
-        <AddExerciseModal templateId={tmpl.id} userId={userId}
-          onClose={() => setAddExercise(false)}
-          onAdded={() => { setAddExercise(false); onRefresh(planId) }} />
+      {addEx && (
+        <ExerciseFormModal
+          templateId={tmpl.id} userId={userId}
+          mode="add"
+          onClose={() => setAddEx(false)}
+          onSaved={() => { setAddEx(false); onRefresh() }}
+        />
       )}
     </div>
   )
 }
 
-// ── Main page ──
-const DEFAULT_PLANS = ['Workout 1 — Chest + Back', 'Workout 2 — Legs', 'Workout 3 — Shoulders + Secondary Session']
-
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function TrainingPlanPage() {
-  const userId = useAppStore((s) => s.userId)
-  const [plans, setPlans] = useState<Plan[]>([])
-  const [templates, setTemplates] = useState<Record<string, Template[]>>({})
-  const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-  const [newPlanName, setNewPlanName] = useState('')
-  const [showNewPlan, setShowNewPlan] = useState(false)
-  const [newTemplateName, setNewTemplateName] = useState<Record<string, string>>({})
-  const [showNewTemplate, setShowNewTemplate] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [editingPlan, setEditingPlan] = useState<string | null>(null)
-  const [editPlanName, setEditPlanName] = useState('')
+  const { userId, userProfile } = useAppStore()
+  const [planId, setPlanId]       = useState<string | null>(null)
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [newName, setNewName]     = useState('')
+  const [showNew, setShowNew]     = useState(false)
+  const [saving, setSaving]       = useState(false)
 
-  const fetchPlans = useCallback(async () => {
+  const init = useCallback(async () => {
     setLoading(true)
-    const r = await fetch(`/api/workout-plans?userId=${userId}`)
-    let data = await r.json()
-    if (!Array.isArray(data) || data.length === 0) {
-      for (const name of DEFAULT_PLANS) {
-        await fetch('/api/workout-plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name }) })
+    try {
+      const ur = await fetch('/api/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name: userProfile.name }),
+      })
+      await ur.json() // consume body — ensures user row exists before FK reference
+      const r = await fetch(`/api/workout-plans?userId=${userId}`)
+      const plans: { id: string; name: string }[] = await r.json()
+      let def = plans.find(p => p.name === DEFAULT_PLAN_NAME)
+      if (!def) {
+        const res = await fetch('/api/workout-plans', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, name: DEFAULT_PLAN_NAME }),
+        })
+        def = await res.json()
+        for (const oldPlan of plans) {
+          const tr = await fetch(`/api/workout-templates?planId=${oldPlan.id}`)
+          const oldTmpls: Template[] = await tr.json()
+          for (const t of oldTmpls) {
+            const nr = await fetch('/api/workout-templates', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ planId: def!.id, userId, name: t.name }),
+            })
+            const nt = await nr.json()
+            for (const ex of t.exercises ?? []) {
+              await fetch('/api/template-exercises', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  templateId: nt.id, exerciseId: ex.exercise.id,
+                  sets: ex.sets, reps: ex.reps, restSeconds: ex.restSeconds,
+                  noteScheda: ex.noteScheda, notePersonali: ex.notePersonali,
+                }),
+              })
+            }
+          }
+        }
       }
-      const r2 = await fetch(`/api/workout-plans?userId=${userId}`)
-      data = await r2.json()
-    }
-    setPlans(data)
+      setPlanId(def!.id)
+      const tr = await fetch(`/api/workout-templates?planId=${def!.id}`)
+      setTemplates(await tr.json())
+    } catch (e) { console.error(e) }
     setLoading(false)
-  }, [userId])
+  }, [userId, userProfile.name])
 
-  useEffect(() => { fetchPlans() }, [fetchPlans])
+  useEffect(() => { init() }, [init])
 
-  const fetchTemplates = useCallback(async (planId: string) => {
+  const refresh = useCallback(async () => {
+    if (!planId) return
     const r = await fetch(`/api/workout-templates?planId=${planId}`)
-    const data = await r.json()
-    setTemplates(prev => ({ ...prev, [planId]: data }))
-  }, [])
+    setTemplates(await r.json())
+  }, [planId])
 
-  function togglePlan(id: string) {
-    setExpandedPlans(prev => {
-      const n = new Set(prev)
-      if (n.has(id)) { n.delete(id) } else { n.add(id); fetchTemplates(id) }
-      return n
+  async function createWorkout() {
+    if (!newName.trim() || !planId) return
+    setSaving(true)
+    await fetch('/api/workout-templates', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId, userId, name: newName }),
     })
-  }
-
-  async function createPlan() {
-    if (!newPlanName.trim()) return
-    setSaving(true)
-    await fetch('/api/workout-plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: newPlanName }) })
-    setNewPlanName(''); setShowNewPlan(false); setSaving(false); fetchPlans()
-  }
-
-  async function updatePlan(id: string) {
-    await fetch(`/api/workout-plans/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: editPlanName }) })
-    setEditingPlan(null); fetchPlans()
-  }
-
-  async function deletePlan(id: string) {
-    if (!confirm('Eliminare piano?')) return
-    await fetch(`/api/workout-plans/${id}`, { method: 'DELETE' })
-    fetchPlans()
-  }
-
-  async function reorderPlan(id: string, dir: 'up' | 'down') {
-    await fetch(`/api/workout-plans/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reorder', direction: dir, userId }) })
-    fetchPlans()
-  }
-
-  async function createTemplate(planId: string) {
-    const name = newTemplateName[planId] ?? ''
-    if (!name.trim()) return
-    setSaving(true)
-    await fetch('/api/workout-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId, userId, name }) })
-    setNewTemplateName(prev => ({ ...prev, [planId]: '' }))
-    setShowNewTemplate(null); setSaving(false)
-    fetchTemplates(planId)
+    setNewName(''); setShowNew(false); setSaving(false); refresh()
   }
 
   return (
-    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-4">
+    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-6">
       <PageHeader title="Piano Allenamento" icon={ClipboardList} accent="training"
-        action={<button onClick={() => setShowNewPlan(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold">
-          <Plus size={15} /> Nuovo Piano
-        </button>}
+        action={
+          <button onClick={() => setShowNew(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold"
+            style={{ backgroundColor: CT }}>
+            <Plus size={15} /> Nuova Scheda
+          </button>
+        }
       />
 
-      {showNewPlan && (
-        <div className="bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 flex gap-2">
-          <input autoFocus value={newPlanName} onChange={e => setNewPlanName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && createPlan()} placeholder="Nome piano..."
-            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-          <button onClick={createPlan} disabled={saving || !newPlanName.trim()} className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center disabled:opacity-50">
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+      {showNew && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 flex gap-2">
+          <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && createWorkout()}
+            placeholder='Nome scheda — es. "Push A – Chest + Back"'
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none" />
+          <button onClick={createWorkout} disabled={saving || !newName.trim()}
+            className="w-9 h-9 rounded-xl text-white flex items-center justify-center disabled:opacity-50"
+            style={{ backgroundColor: CT }}>
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
           </button>
-          <button onClick={() => setShowNewPlan(false)} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={14} /></button>
+          <button onClick={() => setShowNew(false)}
+            className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center">
+            <X size={14} />
+          </button>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /></div>
-      ) : plans.map((plan, pi) => (
-        <div key={plan.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-          {/* Plan header */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            {editingPlan === plan.id ? (
-              <>
-                <input autoFocus value={editPlanName} onChange={e => setEditPlanName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') updatePlan(plan.id); if (e.key === 'Escape') setEditingPlan(null) }}
-                  className="flex-1 px-3 py-1.5 rounded-xl border border-blue-300 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none" />
-                <button onClick={() => updatePlan(plan.id)} className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-500 flex items-center justify-center"><Check size={13} /></button>
-                <button onClick={() => setEditingPlan(null)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={13} /></button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => togglePlan(plan.id)} className="flex-1 text-left">
-                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{plan.name}</p>
-                  <p className="text-xs text-gray-400">{templates[plan.id]?.length ?? '—'} workout</p>
-                </button>
-                <button onClick={() => reorderPlan(plan.id, 'up')} disabled={pi === 0} className={cn('w-7 h-7 rounded-lg flex items-center justify-center', pi === 0 ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}><ChevronUp size={13} /></button>
-                <button onClick={() => reorderPlan(plan.id, 'down')} disabled={pi === plans.length - 1} className={cn('w-7 h-7 rounded-lg flex items-center justify-center', pi === plans.length - 1 ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}><ChevronDown size={13} /></button>
-                <button onClick={() => { setEditingPlan(plan.id); setEditPlanName(plan.name) }} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center"><Pencil size={12} /></button>
-                <button onClick={() => deletePlan(plan.id)} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center"><Trash2 size={12} /></button>
-                <button onClick={() => togglePlan(plan.id)} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center"><ChevronRight size={13} className={cn('transition-transform', expandedPlans.has(plan.id) && 'rotate-90')} /></button>
-              </>
-            )}
-          </div>
-
-          {/* Workout list */}
-          {expandedPlans.has(plan.id) && (
-            <div className="p-3 space-y-2 bg-gray-50 dark:bg-gray-800/20">
-              {(templates[plan.id] ?? []).map((tmpl, ti) => (
-                <WorkoutCard key={tmpl.id} tmpl={tmpl} planId={plan.id}
-                  idx={ti} total={templates[plan.id]?.length ?? 0}
-                  plans={plans}
-                  onRefresh={(pid) => fetchTemplates(pid)} />
-              ))}
-
-              {showNewTemplate === plan.id ? (
-                <div className="flex gap-2">
-                  <input autoFocus value={newTemplateName[plan.id] ?? ''}
-                    onChange={e => setNewTemplateName(prev => ({ ...prev, [plan.id]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && createTemplate(plan.id)}
-                    placeholder="Nome workout (es. Push Day)"
-                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-                  <button onClick={() => createTemplate(plan.id)} disabled={saving}
-                    className="w-9 h-9 rounded-xl bg-blue-500 text-white flex items-center justify-center disabled:opacity-50">
-                    {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                  </button>
-                  <button onClick={() => setShowNewTemplate(null)} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={13} /></button>
-                </div>
-              ) : (
-                <button onClick={() => { setShowNewTemplate(plan.id); fetchTemplates(plan.id) }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-800 text-indigo-400 text-sm font-medium hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
-                  <Plus size={14} /> Aggiungi workout
-                </button>
-              )}
-            </div>
-          )}
+        <div className="flex items-center justify-center py-16">
+          <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+            style={{ borderColor: CT, borderTopColor: 'transparent' }} />
         </div>
-      ))}
+      ) : templates.length === 0 ? (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center">
+          <ClipboardList size={28} className="mx-auto mb-3" style={{ color: CT + '80' }} />
+          <p className="text-sm font-semibold text-gray-500">Nessuna scheda</p>
+          <p className="text-xs text-gray-400 mt-1">Clicca &ldquo;Nuova Scheda&rdquo; per iniziare</p>
+        </div>
+      ) : (
+        templates.map((tmpl, i) => (
+          <WorkoutCard key={tmpl.id} tmpl={tmpl} idx={i} total={templates.length} onRefresh={refresh} />
+        ))
+      )}
     </div>
   )
 }
