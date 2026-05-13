@@ -1,10 +1,11 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
-/* Macro colors */
+/* Macro colors — pastel palette */
 :root {
-  --macro-protein: #5a9e5a;
-  --macro-carbs: #e8813a;
-  --macro-fat: #9b59b6;
-  --macro-kcal: #6c5ce7;
+  --macro-protein: #7dbf7d;
+  --macro-carbs:   #f0aa78;
+  --macro-fat:     #c4a0d6;
+  --macro-kcal:    #9d8fcc;
+  --macro-training:#7aafc8;
 }

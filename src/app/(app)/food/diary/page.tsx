@@ -6,6 +6,13 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
 import { cn } from '@/lib/utils'
 
+const C = {
+  kcal:    '#9d8fcc',
+  protein: '#7dbf7d',
+  carbs:   '#f0aa78',
+  fat:     '#c4a0d6',
+} as const
+
 const MEALS = ['Colazione', 'Spuntino mattina', 'Pranzo', 'Spuntino pomeriggio', 'Cena']
 const FREE_MEAL_ALLOWED = ['Pranzo', 'Cena']
 
@@ -29,7 +36,7 @@ export default function FoodDiaryPage() {
   const fetchEntries = useCallback(async () => {
     const r = await fetch(`/api/diary?userId=${userId}&date=${selectedDate}`)
     setEntries(await r.json())
-    setFreeMeals(new Set()) // reset free meals on date change
+    setFreeMeals(new Set())
   }, [userId, selectedDate])
 
   useEffect(() => { fetchEntries() }, [fetchEntries])
@@ -61,32 +68,35 @@ export default function FoodDiaryPage() {
     })
   }
 
-  // Totals excluding free meals
   const activeMealEntries = entries.filter(e => !freeMeals.has(e.meal))
   const totals = activeMealEntries.reduce((acc, e) => ({
     calories: acc.calories + calc(e.food.calories, e.quantity),
-    protein: acc.protein + calc(e.food.protein, e.quantity),
-    carbs: acc.carbs + calc(e.food.carbs, e.quantity),
-    fat: acc.fat + calc(e.food.fat, e.quantity),
+    protein:  acc.protein  + calc(e.food.protein,  e.quantity),
+    carbs:    acc.carbs    + calc(e.food.carbs,    e.quantity),
+    fat:      acc.fat      + calc(e.food.fat,      e.quantity),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
   const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long'
   })
 
+  const calPct = userProfile.targetCalories > 0
+    ? Math.min(100, Math.round((totals.calories / userProfile.targetCalories) * 100))
+    : 0
+
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
       <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
 
       {/* Date nav */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-3 py-2.5 flex items-center gap-2">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-3 py-2 flex items-center gap-2">
         <button onClick={() => changeDate(-1)}
-          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 shrink-0">
-          <ChevronLeft size={18} />
+          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
+          <ChevronLeft size={17} />
         </button>
         <button onClick={() => calRef.current?.showPicker?.()}
-          className="flex-1 flex items-center justify-center gap-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
-          <Calendar size={14} className="text-orange-400 shrink-0" />
+          className="flex-1 flex items-center justify-center gap-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          <Calendar size={13} style={{ color: C.carbs }} className="shrink-0" />
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">{dateLabel}</span>
         </button>
         <input ref={calRef} type="date" value={selectedDate} max={today}
@@ -94,42 +104,53 @@ export default function FoodDiaryPage() {
           className="sr-only" />
         {!isToday && (
           <button onClick={() => setSelectedDate(today)}
-            className="shrink-0 px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950 text-orange-500 text-xs font-bold">
+            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold text-white"
+            style={{ backgroundColor: C.carbs + 'cc' }}>
             Oggi
           </button>
         )}
         <button onClick={() => changeDate(1)} disabled={isToday}
-          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 shrink-0',
+          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors',
             isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
           )}>
-          <ChevronRight size={18} />
+          <ChevronRight size={17} />
         </button>
       </div>
 
       {/* Macro summary */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-bold" style={{ color: '#6c5ce7' }}>{totals.calories}</span>
-          <span className="text-sm text-gray-400">/ {userProfile.targetCalories} kcal</span>
-          {freeMeals.size > 0 && <span className="text-xs text-orange-400 font-medium ml-1">({freeMeals.size} pasto libero)</span>}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold" style={{ color: C.kcal }}>{totals.calories}</span>
+            <span className="text-xs text-gray-400">/ {userProfile.targetCalories} kcal</span>
+            {freeMeals.size > 0 && (
+              <span className="text-[10px] font-medium ml-1" style={{ color: C.carbs }}>
+                ({freeMeals.size} libero)
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg text-white"
+            style={{ backgroundColor: C.kcal + 'bb' }}>
+            {calPct}%
+          </span>
         </div>
-        <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all"
-            style={{ width: `${Math.min(100, userProfile.targetCalories > 0 ? Math.round((totals.calories / userProfile.targetCalories) * 100) : 0)}%`, backgroundColor: '#6c5ce7' }} />
+        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: C.kcal + '20' }}>
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${calPct}%`, backgroundColor: C.kcal }} />
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-3 gap-2 text-xs pt-0.5">
           {[
-            { label: 'Proteine', val: totals.protein, tgt: userProfile.targetProtein, color: '#5a9e5a' },
-            { label: 'Carboidrati', val: totals.carbs, tgt: userProfile.targetCarbs, color: '#e8813a' },
-            { label: 'Grassi', val: totals.fat, tgt: userProfile.targetFat, color: '#9b59b6' },
+            { label: 'Proteine',    val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
+            { label: 'Carboidrati', val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
+            { label: 'Grassi',      val: totals.fat,     tgt: userProfile.targetFat,     color: C.fat },
           ].map(m => (
             <div key={m.label} className="space-y-1">
               <div className="flex justify-between">
                 <span className="font-semibold" style={{ color: m.color }}>{m.label}</span>
                 <span className="text-gray-400">{m.val}/{m.tgt}g</span>
               </div>
-              <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${Math.min(100, m.tgt > 0 ? Math.round((m.val / m.tgt) * 100) : 0)}%`, backgroundColor: m.color }} />
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '20' }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${Math.min(100, m.tgt > 0 ? Math.round((m.val / m.tgt) * 100) : 0)}%`, backgroundColor: m.color }} />
               </div>
             </div>
           ))}
@@ -144,54 +165,67 @@ export default function FoodDiaryPage() {
         const canToggleFree = FREE_MEAL_ALLOWED.includes(meal)
 
         return (
-          <div key={meal} className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
-            isFree ? 'border-orange-200 dark:border-orange-800' : 'border-gray-200 dark:border-gray-800'
+          <div key={meal} className={cn(
+            'bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
+            isFree ? 'border-amber-100 dark:border-amber-900/50' : 'border-gray-100 dark:border-gray-800'
           )}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2 min-w-0">
-                <p className={cn('font-semibold text-sm truncate', isFree ? 'text-orange-400' : 'text-gray-900 dark:text-gray-100')}>{meal}</p>
-                {isFree && <span className="text-[10px] bg-orange-50 dark:bg-orange-950 text-orange-400 px-1.5 py-0.5 rounded-full font-bold shrink-0">LIBERO</span>}
-                {!isFree && mealCal > 0 && <p className="text-xs text-gray-400 shrink-0">{mealCal} kcal</p>}
+                <p className={cn('font-semibold text-sm truncate', isFree ? '' : 'text-gray-900 dark:text-gray-100')}
+                  style={isFree ? { color: C.carbs } : {}}>
+                  {meal}
+                </p>
+                {isFree && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                    style={{ backgroundColor: C.carbs + '18', color: C.carbs }}>
+                    LIBERO
+                  </span>
+                )}
+                {!isFree && mealCal > 0 && (
+                  <p className="text-xs text-gray-400 shrink-0">{mealCal} kcal</p>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {canToggleFree && (
                   <button onClick={() => toggleFreeMeal(meal)}
                     className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                      isFree ? 'bg-orange-50 dark:bg-orange-950 text-orange-400' : 'text-gray-400 hover:bg-orange-50 dark:hover:bg-orange-950 hover:text-orange-400'
-                    )}>
-                    <PartyPopper size={14} />
+                      isFree ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'
+                    )}
+                    style={isFree ? { backgroundColor: C.carbs + '18' } : {}}>
+                    <PartyPopper size={13} />
                   </button>
                 )}
                 <button onClick={() => setModal(meal)}
-                  className="w-7 h-7 rounded-lg bg-orange-50 dark:bg-orange-950 text-orange-500 flex items-center justify-center hover:bg-orange-100 transition-colors">
-                  <Plus size={15} />
+                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white"
+                  style={{ backgroundColor: C.carbs + 'cc' }}>
+                  <Plus size={14} />
                 </button>
               </div>
             </div>
 
             {isFree ? (
-              <div className="px-4 py-3 flex items-center gap-2">
-                <span className="text-lg">🍣🍟</span>
-                <p className="text-sm text-orange-400 font-medium">Pasto libero</p>
+              <div className="px-4 py-2.5 flex items-center gap-2">
+                <span className="text-base">🍣</span>
+                <p className="text-sm font-medium" style={{ color: C.carbs }}>Pasto libero</p>
               </div>
             ) : mealEntries.length === 0 ? (
-              <p className="text-xs text-gray-400 px-4 py-3">Nessun alimento registrato</p>
+              <p className="text-xs text-gray-400 px-4 py-2.5">Nessun alimento registrato</p>
             ) : (
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
                 {mealEntries.map(e => (
                   <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{e.food.name}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         {e.quantity}g · {calc(e.food.calories, e.quantity)} kcal ·{' '}
-                        <span style={{ color: '#5a9e5a' }}>P {calc(e.food.protein, e.quantity)}g</span> ·{' '}
-                        <span style={{ color: '#e8813a' }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
-                        <span style={{ color: '#9b59b6' }}>G {calc(e.food.fat, e.quantity)}g</span>
+                        <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span> ·{' '}
+                        <span style={{ color: C.carbs }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
+                        <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span>
                       </p>
                     </div>
                     <button onClick={() => deleteEntry(e.id)}
-                      className="ml-2 w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
-                      <Trash2 size={14} />
+                      className="ml-2 w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 hover:text-red-400 flex items-center justify-center transition-colors">
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 ))}
