@@ -6,7 +6,20 @@ export async function GET(req: NextRequest) {
   if (!planId) return NextResponse.json([])
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM "WorkoutTemplate" WHERE "planId"=$1 ORDER BY "order" ASC, "createdAt" ASC`,
+      `SELECT t.*,
+        COALESCE((
+          SELECT json_agg(
+            json_build_object(
+              'id', te.id, 'order', te."order", 'sets', te.sets, 'reps', te.reps,
+              'restSeconds', te."restSeconds", 'noteScheda', te."noteScheda",
+              'notePersonali', te."notePersonali",
+              'exercise', json_build_object('id', e.id, 'name', e.name, 'muscleGroup', e."muscleGroup")
+            ) ORDER BY te."order"
+          ) FROM "WorkoutTemplateExercise" te
+          JOIN "Exercise" e ON e.id = te."exerciseId"
+          WHERE te."templateId" = t.id
+        ), '[]') as exercises
+       FROM "WorkoutTemplate" t WHERE t."planId"=$1 ORDER BY t."order" ASC`,
       [planId]
     )
     return NextResponse.json(rows)
@@ -14,16 +27,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { planId, userId, name, notes } = await req.json()
+  const { planId, userId, name } = await req.json()
   try {
-    const { rows: maxRow } = await pool.query(
+    const { rows: m } = await pool.query(
       `SELECT COALESCE(MAX("order"),0)+1 as next FROM "WorkoutTemplate" WHERE "planId"=$1`, [planId]
     )
     const id = `wt-${Date.now()}`
     const { rows } = await pool.query(
-      `INSERT INTO "WorkoutTemplate" (id,"planId",name,"userId","order",notes,"createdAt") VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`,
-      [id, planId, name, userId, maxRow[0].next, notes || null]
+      `INSERT INTO "WorkoutTemplate" (id,"planId",name,"userId","order","createdAt") VALUES ($1,$2,$3,$4,$5,NOW()) RETURNING *`,
+      [id, planId, name, userId, m[0].next]
     )
-    return NextResponse.json(rows[0])
+    return NextResponse.json({ ...rows[0], exercises: [] })
   } catch (e) { console.error(e); return NextResponse.json({ error: 'Errore' }, { status: 500 }) }
 }
