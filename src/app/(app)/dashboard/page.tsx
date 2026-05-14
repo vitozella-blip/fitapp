@@ -228,9 +228,8 @@ export default function DashboardPage() {
             <div key={m.label}>
               <p className="text-[11px] font-bold mb-1" style={{ color: m.color }}>{m.label}</p>
               <p className="text-2xl font-bold leading-none" style={{ color: m.color }}>
-                {m.val}<span className="text-sm"> g</span>
+                {m.val}<span className="text-sm font-medium text-gray-400"> / {m.tgt} g</span>
               </p>
-              <p className="text-[10px] text-gray-400 mt-1">{m.val} / {m.tgt} g</p>
               <div className="h-1.5 rounded-full overflow-hidden mt-1.5"
                 style={{ backgroundColor: m.color + '22' }}>
                 <div className="h-full rounded-full transition-all"
