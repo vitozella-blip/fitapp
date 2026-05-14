@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!userId || !date) return NextResponse.json(null)
 
   try {
-    const [userRes, entriesRes, workoutRes] = await Promise.all([
+    const [userRes, entriesRes, workoutRes, tennisRes] = await Promise.all([
       pool.query(`SELECT * FROM "User" WHERE id=$1`, [userId]),
       pool.query(
         `SELECT e.meal, e.quantity, f.calories, f.protein, f.carbs, f.fat
@@ -21,6 +21,13 @@ export async function GET(req: NextRequest) {
         `SELECT w.id, COUNT(DISTINCT s."exerciseId") as "exerciseCount", COUNT(s.id) as "setCount"
          FROM "WorkoutDiary" w LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId"=w.id
          WHERE w."userId"=$1 AND w.date=$2 GROUP BY w.id`,
+        [userId, date]
+      ),
+      pool.query(
+        `SELECT 1 FROM "WorkoutDiary" w
+         JOIN "WorkoutSet" s ON s."workoutDiaryId"=w.id
+         JOIN "Exercise" e ON e.id=s."exerciseId"
+         WHERE w."userId"=$1 AND w.date=$2 AND e.name='Tennis' LIMIT 1`,
         [userId, date]
       ),
     ])
@@ -52,7 +59,8 @@ export async function GET(req: NextRequest) {
       exists: true,
       exerciseCount: Number(workoutRes.rows[0].exerciseCount),
       setCount: Number(workoutRes.rows[0].setCount),
-    } : { exists: false }
+      hasTennis: tennisRes.rows.length > 0,
+    } : { exists: false, hasTennis: tennisRes.rows.length > 0 }
 
     return NextResponse.json({
       user,
