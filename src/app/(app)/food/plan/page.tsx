@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 
 const MEALS = ['Colazione', 'Spuntino mattina', 'Pranzo', 'Spuntino pomeriggio', 'Cena']
+const TOTALE_KEY = '__TOTALE__'
 
 type Target = { id?: string; meal: string; calories: number; protein: number; carbs: number; fat: number }
 type Plan = { id: string; name: string; startDate?: string; endDate?: string; notes?: string; isActive: boolean; targets: Target[] }
@@ -13,7 +14,7 @@ type Plan = { id: string; name: string; startDate?: string; endDate?: string; no
 type FormTargets = Record<string, { calories: string; protein: string; carbs: string; fat: string }>
 
 function emptyTargets(): FormTargets {
-  return Object.fromEntries(MEALS.map(m => [m, { calories: '', protein: '', carbs: '', fat: '' }]))
+  return Object.fromEntries([...MEALS, TOTALE_KEY].map(m => [m, { calories: '', protein: '', carbs: '', fat: '' }]))
 }
 
 function planToFormTargets(targets: Target[]): FormTargets {
@@ -22,17 +23,21 @@ function planToFormTargets(targets: Target[]): FormTargets {
   return result
 }
 
-function MealTargetRow({ meal, data, onChange, readOnly }: { meal: string; data: { calories: string; protein: string; carbs: string; fat: string }; onChange: (f: string, v: string) => void; readOnly?: boolean }) {
+function MealTargetRow({ meal, data, onChange, readOnly }: {
+  meal: string
+  data: { calories: string; protein: string; carbs: string; fat: string }
+  onChange: (f: string, v: string) => void
+  readOnly?: boolean
+}) {
   const fields = [
-    { k: 'calories', label: 'Kcal', color: 'text-gray-900 dark:text-gray-100' },
     { k: 'protein', label: 'P', color: 'text-emerald-500' },
-    { k: 'carbs', label: 'C', color: 'text-orange-400' },
-    { k: 'fat', label: 'G', color: 'text-blue-400' },
+    { k: 'carbs',   label: 'C', color: 'text-orange-400' },
+    { k: 'fat',     label: 'G', color: 'text-blue-400' },
   ]
   return (
     <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{meal}</p>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {fields.map(f => (
           <div key={f.k}>
             <p className={cn('text-[10px] font-semibold mb-1', f.color)}>{f.label}</p>
@@ -50,6 +55,38 @@ function MealTargetRow({ meal, data, onChange, readOnly }: { meal: string; data:
   )
 }
 
+function DailyTotalsRow({ data, onChange, readOnly }: {
+  data: { calories: string; protein: string; carbs: string; fat: string }
+  onChange: (f: string, v: string) => void
+  readOnly?: boolean
+}) {
+  const fields = [
+    { k: 'calories', label: 'Kcal', color: 'text-gray-700 dark:text-gray-300' },
+    { k: 'protein',  label: 'P',    color: 'text-emerald-500' },
+    { k: 'carbs',    label: 'C',    color: 'text-orange-400' },
+    { k: 'fat',      label: 'G',    color: 'text-blue-400' },
+  ]
+  return (
+    <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-800 bg-orange-50/60 dark:bg-orange-950/20">
+      <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-2">Totali giornalieri</p>
+      <div className="grid grid-cols-4 gap-2">
+        {fields.map(f => (
+          <div key={f.k}>
+            <p className={cn('text-[10px] font-semibold mb-1', f.color)}>{f.label}</p>
+            {readOnly ? (
+              <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{data[f.k as keyof typeof data] || '—'}</p>
+            ) : (
+              <input type="number" value={data[f.k as keyof typeof data]}
+                onChange={e => onChange(f.k, e.target.value)}
+                className="w-full px-2 py-1.5 rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 text-center" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function FoodPlanPage() {
   const { userId, setUserProfile, userProfile } = useAppStore()
   const [plans, setPlans] = useState<Plan[]>([])
@@ -57,7 +94,6 @@ export default function FoodPlanPage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
 
-  // Form state
   const [showNew, setShowNew] = useState(false)
   const [formName, setFormName] = useState('')
   const [formStart, setFormStart] = useState('')
@@ -147,19 +183,30 @@ export default function FoodPlanPage() {
       body: JSON.stringify({ isActive: newActive }),
     })
     setPlans(p => p.map(x => ({ ...x, isActive: x.id === plan.id ? newActive : false })))
-    // Update dashboard targets if activating
     if (newActive && plan.targets.length > 0) {
-      const totals = plan.targets.reduce((acc, t) => ({
-        calories: acc.calories + t.calories,
-        protein: acc.protein + t.protein,
-        carbs: acc.carbs + t.carbs,
-        fat: acc.fat + t.fat,
-      }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+      const totaleTarget = plan.targets.find(t => t.meal === TOTALE_KEY)
+      const mealTargets = plan.targets.filter(t => t.meal !== TOTALE_KEY)
+      const totals = totaleTarget ?? mealTargets.reduce(
+        (acc, t) => ({ calories: acc.calories + t.calories, protein: acc.protein + t.protein, carbs: acc.carbs + t.carbs, fat: acc.fat + t.fat }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      )
       setUserProfile({ targetCalories: totals.calories, targetProtein: totals.protein, targetCarbs: totals.carbs, targetFat: totals.fat })
     }
   }
 
   const formatDate = (d?: string) => d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : null
+
+  function getDailyTotal(targets: Target[]) {
+    const totale = targets.find(t => t.meal === TOTALE_KEY)
+    if (totale && (totale.calories > 0 || totale.protein > 0)) return totale
+    const mealTs = targets.filter(t => t.meal !== TOTALE_KEY)
+    if (mealTs.length === 0) return null
+    const sum = mealTs.reduce(
+      (acc, t) => ({ meal: '', calories: acc.calories + t.calories, protein: acc.protein + t.protein, carbs: acc.carbs + t.carbs, fat: acc.fat + t.fat }),
+      { meal: '', calories: 0, protein: 0, carbs: 0, fat: 0 }
+    )
+    return sum.calories > 0 || sum.protein > 0 ? sum : null
+  }
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto md:max-w-none pb-2">
@@ -172,7 +219,6 @@ export default function FoodPlanPage() {
         }
       />
 
-      {/* New plan form */}
       {showNew && (
         <div className="bg-white dark:bg-gray-900 border border-orange-200 dark:border-orange-900 rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
@@ -197,8 +243,9 @@ export default function FoodPlanPage() {
           </div>
           <div className="border-t border-gray-100 dark:border-gray-800">
             <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Target per pasto</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Target per pasto (P · C · G)</p>
             </div>
+            <DailyTotalsRow data={formTargets[TOTALE_KEY]} onChange={(f, v) => updateFormTarget(TOTALE_KEY, f, v)} />
             {MEALS.map(meal => (
               <MealTargetRow key={meal} meal={meal} data={formTargets[meal]} onChange={(f, v) => updateFormTarget(meal, f, v)} />
             ))}
@@ -219,7 +266,6 @@ export default function FoodPlanPage() {
         </div>
       )}
 
-      {/* Plans list */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
@@ -228,7 +274,7 @@ export default function FoodPlanPage() {
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center">
           <CalendarDays size={32} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium">Nessun piano alimentare</p>
-          <p className="text-sm text-gray-400 mt-1">Clicca "Nuovo" per crearne uno</p>
+          <p className="text-sm text-gray-400 mt-1">Clicca &ldquo;Nuovo&rdquo; per crearne uno</p>
         </div>
       ) : (
         plans.map(plan => {
@@ -236,6 +282,7 @@ export default function FoodPlanPage() {
           const isExpanded = expanded === plan.id
           const startLabel = formatDate(plan.startDate)
           const endLabel = formatDate(plan.endDate)
+          const dailyTotal = getDailyTotal(plan.targets)
 
           return (
             <div key={plan.id} className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
@@ -254,6 +301,16 @@ export default function FoodPlanPage() {
                     </div>
                     {(startLabel || endLabel) && (
                       <p className="text-xs text-gray-400 truncate">{startLabel && endLabel ? `${startLabel} → ${endLabel}` : startLabel || endLabel}</p>
+                    )}
+                    {dailyTotal && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        <span style={{ color: '#5a9e5a' }}>P {dailyTotal.protein}</span>
+                        {' · '}
+                        <span style={{ color: '#e8813a' }}>C {dailyTotal.carbs}</span>
+                        {' · '}
+                        <span style={{ color: '#9b59b6' }}>G {dailyTotal.fat}</span>
+                        {dailyTotal.calories > 0 && <span className="text-gray-400"> · {dailyTotal.calories} kcal</span>}
+                      </p>
                     )}
                   </div>
                 </button>
@@ -279,7 +336,6 @@ export default function FoodPlanPage() {
                 </div>
               </div>
 
-              {/* Expanded content */}
               {isExpanded && (
                 <>
                   {isEditing && (
@@ -298,8 +354,16 @@ export default function FoodPlanPage() {
                   <div className="border-t border-gray-100 dark:border-gray-800">
                     <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 flex items-center justify-between">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Target per pasto</p>
-                      <p className="text-xs text-gray-400">Kcal · P · C · G</p>
+                      <p className="text-xs text-gray-400">P · C · G</p>
                     </div>
+                    {/* Daily totals row */}
+                    {(() => {
+                      const totaleTarget = plan.targets.find(t => t.meal === TOTALE_KEY)
+                      const fd = isEditing
+                        ? formTargets[TOTALE_KEY]
+                        : { calories: String(totaleTarget?.calories ?? 0), protein: String(totaleTarget?.protein ?? 0), carbs: String(totaleTarget?.carbs ?? 0), fat: String(totaleTarget?.fat ?? 0) }
+                      return <DailyTotalsRow data={fd} onChange={(f, v) => updateFormTarget(TOTALE_KEY, f, v)} readOnly={!isEditing} />
+                    })()}
                     {MEALS.map(meal => {
                       const t = plan.targets.find(x => x.meal === meal) ?? { meal, calories: 0, protein: 0, carbs: 0, fat: 0 }
                       const fd = isEditing ? formTargets[meal] : { calories: String(t.calories), protein: String(t.protein), carbs: String(t.carbs), fat: String(t.fat) }
@@ -307,7 +371,6 @@ export default function FoodPlanPage() {
                     })}
                   </div>
 
-                  {/* Notes */}
                   <div className="p-4 border-t border-gray-100 dark:border-gray-800">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Note</p>
                     {isEditing ? (
