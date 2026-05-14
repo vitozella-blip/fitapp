@@ -253,7 +253,7 @@ export default function DashboardPage() {
               style={{ color: C.kcal }}>Pasti</p>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-2">
+          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0.5">
             {MEALS.map(({ name, label, icon, color }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
@@ -271,8 +271,8 @@ export default function DashboardPage() {
                   {/* Macro sotto la pillola */}
                   <div className="text-center mt-0.5 px-0.5">
                     {kcal > 0 ? (
-                      <p className="text-[8.5px] text-gray-500 dark:text-gray-400 leading-tight">
-                        <span style={{ color: C.kcal }}>{kcal} kcal</span>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                        <span style={{ color: C.kcal }}>{kcal}</span>
                         {' · '}
                         <span style={{ color: C.protein }}>P{m!.protein}</span>
                         {' '}
@@ -281,7 +281,7 @@ export default function DashboardPage() {
                         <span style={{ color: C.fat }}>G{m!.fat}</span>
                       </p>
                     ) : (
-                      <p className="text-[8.5px] text-gray-300 dark:text-gray-600 leading-tight">—</p>
+                      <p className="text-[10px] text-gray-300 dark:text-gray-600 leading-tight">—</p>
                     )}
                   </div>
                 </div>
