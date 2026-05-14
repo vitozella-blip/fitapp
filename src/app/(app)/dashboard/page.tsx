@@ -271,7 +271,7 @@ export default function DashboardPage() {
                   {/* Macro sotto la pillola */}
                   <div className="text-center mt-0.5 px-0.5">
                     {kcal > 0 ? (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
                         <span style={{ color: C.kcal }}>{kcal}</span>
                         {' · '}
                         <span style={{ color: C.protein }}>P{m!.protein}</span>
@@ -281,7 +281,7 @@ export default function DashboardPage() {
                         <span style={{ color: C.fat }}>G{m!.fat}</span>
                       </p>
                     ) : (
-                      <p className="text-[10px] text-gray-300 dark:text-gray-600 leading-tight">—</p>
+                      <p className="text-xs text-gray-300 dark:text-gray-600 leading-tight">—</p>
                     )}
                   </div>
                 </div>
