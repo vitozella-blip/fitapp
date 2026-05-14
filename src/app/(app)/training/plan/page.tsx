@@ -10,6 +10,14 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 
 const CT = '#7aafc8'
+const SCHEDA_COLORS = [
+  '#7aafc8', // blu (default)
+  '#9d8fcc', // viola
+  '#f0aa78', // arancio
+  '#7dbf7d', // verde
+  '#c4a0d6', // lilla
+  '#e8a5a5', // rosa
+]
 const DEFAULT_PLAN_NAME = '__default__'
 
 type TemplateExercise = {
@@ -264,11 +272,11 @@ function ExerciseFormModal({
 
 // ── Exercise row (read-only, edit via pencil) ─────────────────────────────────
 function ExRow({
-  ex, isFirst, isLast, templateId, userId,
+  ex, isFirst, isLast, templateId, userId, color,
   onDelete, onReorder, onRefresh,
 }: {
   ex: TemplateExercise; isFirst: boolean; isLast: boolean
-  templateId: string; userId: string
+  templateId: string; userId: string; color: string
   onDelete: () => void
   onReorder: (dir: 'up' | 'down') => void
   onRefresh: () => void
@@ -305,7 +313,7 @@ function ExRow({
 
         {/* Summary pill */}
         <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-lg"
-          style={{ backgroundColor: CT + '15', color: CT }}>
+          style={{ backgroundColor: color + '15', color: color }}>
           {ex.sets} × {ex.reps}
         </span>
         <span className="shrink-0 text-xs text-gray-400">
@@ -396,6 +404,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
   }
 
   const exCount = tmpl.exercises?.length ?? 0
+  const color = SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
@@ -403,7 +412,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
       {/* Card header */}
       <div className="flex items-center gap-2 px-3 py-2.5">
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white text-xs font-bold"
-          style={{ backgroundColor: CT + 'cc' }}>
+          style={{ backgroundColor: color + 'cc' }}>
           {String(idx + 1).padStart(2, '0')}
         </div>
 
@@ -411,7 +420,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
             className="flex-1 px-2.5 py-1.5 rounded-xl border text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 outline-none"
-            style={{ borderColor: CT }} />
+            style={{ borderColor: color }} />
         ) : (
           <button onClick={() => setCollapsed(o => !o)} className="flex-1 min-w-0 text-left">
             <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate leading-tight">{tmpl.name}</p>
@@ -422,7 +431,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
         <div className="flex items-center gap-0.5 shrink-0">
           {editing ? (
             <>
-              <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: CT }}>
+              <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: color }}>
                 <Check size={12} />
               </button>
               <button onClick={() => setEditing(false)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center">
@@ -464,7 +473,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
         <>
           {/* Table header */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 border-t border-gray-50 dark:border-gray-800"
-            style={{ backgroundColor: CT + '0c' }}>
+            style={{ backgroundColor: color + '0c' }}>
             <div className="w-4 shrink-0" />
             <p className="flex-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Esercizio</p>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide shrink-0">Set × Reps</p>
@@ -479,7 +488,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
             {(tmpl.exercises ?? []).map((ex, ei) => (
               <ExRow key={ex.id} ex={ex}
                 isFirst={ei === 0} isLast={ei === (tmpl.exercises?.length ?? 0) - 1}
-                templateId={tmpl.id} userId={userId}
+                templateId={tmpl.id} userId={userId} color={color}
                 onDelete={() => deleteExercise(ex.id)}
                 onReorder={(dir) => reorderExercise(ex.id, dir)}
                 onRefresh={onRefresh}
@@ -491,7 +500,7 @@ function WorkoutCard({ tmpl, idx, total, onRefresh }: {
           <div className="px-3 pb-3 pt-2">
             <button onClick={() => setAddEx(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-sm font-medium transition-colors"
-              style={{ borderColor: CT + '60', color: CT }}>
+              style={{ borderColor: color + '60', color: color }}>
               <Plus size={14} /> Aggiungi esercizio
             </button>
           </div>

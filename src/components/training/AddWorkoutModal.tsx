@@ -4,6 +4,9 @@ import { X, Plus, Loader2, ChevronLeft, ChevronRight, Trash2, Check, Flame } fro
 import { cn } from '@/lib/utils'
 
 const CT = '#7aafc8'
+const SCHEDA_COLORS = [
+  '#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#e8a5a5',
+]
 const C_WARM = '#f0aa78'
 const DEFAULT_PLAN_NAME = '__default__'
 
@@ -116,7 +119,8 @@ export function AddWorkoutModal({
               onPick={(t) => {
                 if (typeof window !== 'undefined') {
                   const order = templates.indexOf(t) + 1
-                  localStorage.setItem(`workout_scheda_${date}`, JSON.stringify({ templateId: t.id, name: t.name, order }))
+                  const color = SCHEDA_COLORS[(order - 1) % SCHEDA_COLORS.length]
+                  localStorage.setItem(`workout_scheda_${date}`, JSON.stringify({ templateId: t.id, name: t.name, order, color }))
                 }
                 setScheda(t); setStep('exercise')
               }}
@@ -163,11 +167,13 @@ function SchedeList({ templates, loading, onPick, onPickAbs }: {
           Nessuna scheda. Creala nella sezione Piano.
         </p>
       )}
-      {templates.map((t, i) => (
+      {templates.map((t, i) => {
+        const sc = SCHEDA_COLORS[i % SCHEDA_COLORS.length]
+        return (
         <button key={t.id} onClick={() => onPick(t)}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-            style={{ backgroundColor: CT + 'cc' }}>
+            style={{ backgroundColor: sc + 'cc' }}>
             {String(i + 1).padStart(2, '0')}
           </div>
           <div className="flex-1 min-w-0">
@@ -175,7 +181,8 @@ function SchedeList({ templates, loading, onPick, onPickAbs }: {
             <p className="text-[10px] text-gray-400">{t.exercises?.length ?? 0} esercizi</p>
           </div>
         </button>
-      ))}
+        )
+      })}
 
       {/* Abs shortcut */}
       <button onClick={onPickAbs}
