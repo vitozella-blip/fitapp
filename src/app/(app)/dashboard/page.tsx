@@ -68,17 +68,12 @@ const MealIcon = ({ type, size = 24 }: { type: string; size?: number }) => {
   return icons[type] ?? icons.pranzo
 }
 
-/* ── icona tennis: racchetta + pallina gialla ──────────────────────────────── */
+/* ── icona pallina da tennis ───────────────────────────────────────────────── */
 const TennisIcon = ({ size = 26 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-    {/* racchetta */}
-    <ellipse cx="14" cy="9" rx="5" ry="6" stroke="#7aaa40" strokeWidth="1.7"/>
-    <path d="M11.5 13.5L8 18" stroke="#7aaa40" strokeWidth="1.7"/>
-    <path d="M14 3v12M9.5 9h9" stroke="#7aaa40" strokeWidth="1.4"/>
-    {/* pallina gialla */}
-    <circle cx="6.5" cy="17.5" r="3" fill="#e8e050" stroke="#b0a820" strokeWidth="1.2"/>
-    <path d="M4.2 15.8C5 16.8 5 18.2 4.2 19.2" stroke="#b0a820" strokeWidth="1"/>
-    <path d="M8.8 15.8C8 16.8 8 18.2 8.8 19.2" stroke="#b0a820" strokeWidth="1"/>
+    <circle cx="12" cy="12" r="9" fill="#e8e050" stroke="#b0a820" strokeWidth="1.5"/>
+    <path d="M5.5 5.5C8.5 8.5 8.5 15.5 5.5 18.5" stroke="#b0a820" strokeWidth="1.5"/>
+    <path d="M18.5 5.5C15.5 8.5 15.5 15.5 18.5 18.5" stroke="#b0a820" strokeWidth="1.5"/>
   </svg>
 )
 
@@ -277,18 +272,15 @@ export default function DashboardPage() {
                   {/* Macro sotto la pillola */}
                   <div className="text-center mt-0.5 px-0.5">
                     {kcal > 0 ? (
-                      <>
-                        <p className="text-[10px] font-bold leading-tight" style={{ color: C.kcal }}>
-                          {kcal} kcal
-                        </p>
-                        <p className="text-[8.5px] leading-tight text-gray-500 dark:text-gray-400">
-                          <span style={{ color: C.protein }}>P{m!.protein}</span>
-                          {' '}
-                          <span style={{ color: C.carbs }}>C{m!.carbs}</span>
-                          {' '}
-                          <span style={{ color: C.fat }}>G{m!.fat}</span>
-                        </p>
-                      </>
+                      <p className="text-[8.5px] text-gray-500 dark:text-gray-400 leading-tight">
+                        <span style={{ color: C.kcal }}>{kcal} kcal</span>
+                        {' · '}
+                        <span style={{ color: C.protein }}>P{m!.protein}</span>
+                        {' '}
+                        <span style={{ color: C.carbs }}>C{m!.carbs}</span>
+                        {' '}
+                        <span style={{ color: C.fat }}>G{m!.fat}</span>
+                      </p>
                     ) : (
                       <p className="text-[8.5px] text-gray-300 dark:text-gray-600 leading-tight">—</p>
                     )}
