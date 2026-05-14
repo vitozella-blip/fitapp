@@ -57,7 +57,7 @@ type DashData = {
   totals:  { calories: number; protein: number; carbs: number; fat: number }
   targets: { calories: number; protein: number; carbs: number; fat: number }
   meals:   { name: string; calories: number; protein: number; carbs: number; fat: number }[]
-  workout: { exists: boolean; exerciseCount?: number; setCount?: number }
+  workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean }
 }
 
 export default function DashboardPage() {
@@ -65,6 +65,14 @@ export default function DashboardPage() {
   const router = useRouter()
   const [data, setData]     = useState<DashData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number } | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
+      setSchedaInfo(raw ? JSON.parse(raw) : null)
+    } catch { setSchedaInfo(null) }
+  }, [selectedDate])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -179,8 +187,8 @@ export default function DashboardPage() {
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Allenamento</p>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center p-3 gap-2.5">
-            {data?.workout.exists ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-3 gap-2">
+            {(data?.workout.exists || data?.workout.hasTennis) ? (
               <>
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
                   style={{ backgroundColor: C.training + '1a' }}>
@@ -188,10 +196,18 @@ export default function DashboardPage() {
                     <path d="M6 4v6M18 4v6M3 9h4M17 9h4M6 14v6M18 14v6M3 15h4M17 15h4M9 12h6"/>
                   </svg>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs font-bold" style={{ color: C.training }}>Workout completato</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{data.workout.exerciseCount} esercizi</p>
-                  <p className="text-[10px] text-gray-400">{data.workout.setCount} serie</p>
+                <div className="text-center space-y-0.5">
+                  {schedaInfo && (
+                    <p className="text-xs font-bold" style={{ color: C.training }}>
+                      Allenamento WO {schedaInfo.order}
+                    </p>
+                  )}
+                  {data.workout.hasTennis && (
+                    <p className="text-xs font-semibold" style={{ color: '#5a8a5a' }}>Tennis 🎾</p>
+                  )}
+                  {!schedaInfo && !data.workout.hasTennis && (
+                    <p className="text-xs font-bold" style={{ color: C.training }}>Workout completato</p>
+                  )}
                 </div>
               </>
             ) : (
