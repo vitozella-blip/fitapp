@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Settings, ChevronUp } from 'lucide-react'
+import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Settings, Check } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Apple, Check } from 'lucide-react'
+import { Apple } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -18,38 +18,26 @@ type FoodForm = { name: string; brand: string; calories: string; protein: string
 
 const emptyForm = (): FoodForm => ({ name: '', brand: '', calories: '', protein: '', carbs: '', fat: '', saturatedFat: '', sugars: '', salt: '', categoryId: '' })
 
-function NutrRow({ label, value, color, indent }: { label: string; value: string; color?: string; indent?: boolean }) {
-  return (
-    <div className={cn('flex justify-between py-1', indent && 'pl-4')}>
-      <span className={cn('text-xs', indent ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400')}>{label}</span>
-      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300" style={color ? { color } : {}}>{value}</span>
-    </div>
-  )
-}
-
-function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete }: {
-  food: Food; isFav: boolean; categories: Category[]
+function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
+  food: Food; isFav: boolean
   onToggleFav: () => void; onEdit: () => void; onDelete: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const displayName = food.brand ? `${food.name} — ${food.brand}` : food.name
-  const catName = categories.find(c => c.id === food.categoryId)?.name
-
   return (
     <div className="border-b border-gray-50 dark:border-gray-800 last:border-0">
       <div className="flex items-center gap-2 px-4 py-3">
         <button onClick={onToggleFav} className="shrink-0">
           <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
         </button>
-        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{displayName}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{food.name}</p>
+          {food.brand && <p className="text-xs text-gray-400 truncate">- {food.brand}</p>}
           <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
             <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
             <span style={{ color: '#9b59b6' }}>G {food.fat}g</span>
             <span style={{ color: '#e8813a' }}>C {food.carbs}g</span>
             <span style={{ color: '#5a9e5a' }}>P {food.protein}g</span>
           </div>
-        </button>
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors">
             <Pencil size={13} />
@@ -57,47 +45,8 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete }: {
           <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
             <Trash2 size={13} />
           </button>
-          <button onClick={() => setOpen(o => !o)} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center">
-            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
         </div>
       </div>
-
-      {open && (
-        <div className="mx-3 mb-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl px-4 py-2 divide-y divide-gray-100 dark:divide-gray-700/50">
-          <NutrRow label="Energia" value={`${food.calories} kcal`} />
-          <div className="py-1">
-            <div className="flex justify-between">
-              <span className="text-xs text-gray-400">Grassi</span>
-              <span className="text-xs font-semibold" style={{ color: '#9b59b6' }}>{food.fat}g</span>
-            </div>
-            <div className="flex justify-between pl-4 mt-0.5">
-              <span className="text-xs text-gray-300 dark:text-gray-600">di cui saturi</span>
-              <span className="text-xs text-gray-500">{food.saturatedFat ?? 0}g</span>
-            </div>
-          </div>
-          <div className="py-1">
-            <div className="flex justify-between">
-              <span className="text-xs text-gray-400">Carboidrati</span>
-              <span className="text-xs font-semibold" style={{ color: '#e8813a' }}>{food.carbs}g</span>
-            </div>
-            <div className="flex justify-between pl-4 mt-0.5">
-              <span className="text-xs text-gray-300 dark:text-gray-600">di cui zuccheri</span>
-              <span className="text-xs text-gray-500">{food.sugars ?? 0}g</span>
-            </div>
-          </div>
-          <NutrRow label="Proteine" value={`${food.protein}g`} color="#5a9e5a" />
-          <NutrRow label="Sale" value={`${food.salt ?? 0}g`} />
-          {catName && (
-            <div className="pt-2 mt-1 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Categoria</span>
-                <span className="text-xs bg-orange-50 dark:bg-orange-950 text-orange-500 px-2 py-0.5 rounded-full font-medium">{catName}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -303,7 +252,7 @@ function FoodDatabasePage() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
         {foods.map(f => (
-          <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)} categories={categories}
+          <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)}
             onToggleFav={() => toggleFav(f.id)}
             onEdit={() => openEdit(f)}
             onDelete={() => handleDelete(f.id)}
@@ -312,17 +261,17 @@ function FoodDatabasePage() {
         {foods.length === 0 && !loading && (
           <p className="text-sm text-gray-400 text-center py-6">Nessun alimento trovato</p>
         )}
-        {/* Always show add button at bottom */}
+      </div>
+
+      {q.trim() && (
         <button onClick={() => openNew(q)}
-          className="w-full flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors">
+          className="w-full flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors">
           <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-900 flex items-center justify-center shrink-0">
             <Plus size={14} className="text-orange-500" />
           </div>
-          <p className="text-sm text-orange-500 font-semibold">
-            {q ? `Aggiungi "${q}" al database` : 'Aggiungi nuovo alimento'}
-          </p>
+          <p className="text-sm text-orange-500 font-semibold">Aggiungi &ldquo;{q}&rdquo; al database</p>
         </button>
-      </div>
+      )}
 
       {showForm && (
         <FoodFormModal form={form} setForm={setForm} categories={categories}

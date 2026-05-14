@@ -1,10 +1,12 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Search, X, Plus, Loader2 } from 'lucide-react'
+import { Search, X, Plus, Loader2, Star, ChevronDown } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
+type Category = { id: string; name: string }
 type Props = { meal: string; date: string; onClose: () => void; onAdded: () => void }
 
 export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
@@ -17,18 +19,36 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
   const [selected, setSelected] = useState<Food | null>(null)
   const [qty, setQty] = useState('100')
   const [adding, setAdding] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [favFilter, setFavFilter] = useState(false)
+  const [catFilter, setCatFilter] = useState('')
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
+    Promise.all([
+      fetch(`/api/categories?userId=${userId}`).then(r => r.json()),
+      fetch(`/api/favorites?userId=${userId}`).then(r => r.json()),
+    ]).then(([cats, favs]) => {
+      setCategories(Array.isArray(cats) ? cats : [])
+      setFavorites(new Set(Array.isArray(favs) ? favs : []))
+    })
+  }, [userId])
+
+  useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 2) { setResults([]); setSearched(false); return }
+    const hasFilter = favFilter || !!catFilter
+    if (q.length < 2 && !hasFilter) { setResults([]); setSearched(false); return }
     timer.current = setTimeout(async () => {
       setLoading(true)
-      const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
+      const p = new URLSearchParams({ q: q || '', userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
+      const r = await fetch(`/api/food?${p}`)
       const data = await r.json()
-      setResults(data); setSearched(true); setLoading(false)
+      setResults(Array.isArray(data) ? data : [])
+      setSearched(true)
+      setLoading(false)
     }, 300)
-  }, [q, userId])
+  }, [q, userId, favFilter, catFilter])
 
   const calcMacro = (val: number) => Math.round((val * Number(qty)) / 100)
 
@@ -48,15 +68,20 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
     router.push(`/food/database?q=${encodeURIComponent(q)}&new=1`)
   }
 
+  const hasFilter = favFilter || !!catFilter
+  const showResults = results.length > 0
+  const showEmpty = !selected && searched && results.length === 0 && (q.length >= 2 || hasFilter)
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[85vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-900 dark:text-gray-100">Aggiungi a {meal}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={16} /></button>
         </div>
 
-        <div className="relative mb-3">
+        {/* Search */}
+        <div className="relative mb-2">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
             placeholder="Cerca alimento o marca..."
@@ -64,12 +89,49 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
           {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
         </div>
 
-        {!selected && results.length > 0 && (
+        {/* Filters + add to database */}
+        {!selected && (
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => { setFavFilter(f => !f); setSelected(null) }}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors shrink-0',
+                favFilter
+                  ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-yellow-500'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500'
+              )}>
+              <Star size={12} fill={favFilter ? 'currentColor' : 'none'} />
+              Preferiti
+            </button>
+            {categories.length > 0 && (
+              <div className="relative flex-1">
+                <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSelected(null) }}
+                  className="w-full appearance-none pl-2.5 pr-6 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none">
+                  <option value="">Tutte le categorie</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            )}
+            {q.length >= 2 && (
+              <button onClick={goToCreate}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40 text-orange-500 text-xs font-semibold shrink-0 transition-colors">
+                <Plus size={11} /> Database
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Results */}
+        {!selected && showResults && (
           <div className="flex-1 overflow-y-auto space-y-0.5 mb-3">
             {results.map(f => (
               <button key={f.id} onClick={() => setSelected(f)}
                 className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{f.brand ? `${f.name} — ${f.brand}` : f.name}</p>
+                <div className="flex items-center gap-2">
+                  {favorites.has(f.id) && <Star size={11} className="text-yellow-400 fill-yellow-400 shrink-0" />}
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{f.name}{f.brand && <span className="text-gray-400 font-normal"> — {f.brand}</span>}</p>
+                </div>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {f.calories} kcal ·{' '}
                   <span style={{ color: '#9b59b6' }}>G {f.fat}g</span> ·{' '}
@@ -82,21 +144,28 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
           </div>
         )}
 
-        {/* Not found CTA */}
-        {!selected && searched && results.length === 0 && q.length >= 2 && (
+        {/* Empty state */}
+        {!selected && showEmpty && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 mb-3">
-            <p className="text-sm text-gray-400 text-center">Nessun alimento trovato per <span className="font-semibold text-gray-700 dark:text-gray-300">"{q}"</span></p>
-            <button onClick={goToCreate}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950 text-orange-500 text-sm font-semibold hover:bg-orange-100 transition-colors">
-              <Plus size={16} /> Vuoi aggiungerlo al database?
-            </button>
+            <p className="text-sm text-gray-400 text-center">
+              {q.length >= 2
+                ? <>Nessun alimento trovato per <span className="font-semibold text-gray-700 dark:text-gray-300">&ldquo;{q}&rdquo;</span></>
+                : 'Nessun alimento trovato'}
+            </p>
+            {q.length >= 2 && (
+              <button onClick={goToCreate}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-50 dark:bg-orange-950 text-orange-500 text-sm font-semibold hover:bg-orange-100 transition-colors">
+                <Plus size={16} /> Aggiungi al database
+              </button>
+            )}
           </div>
         )}
 
-        {!selected && q.length < 2 && (
+        {!selected && !searched && q.length < 2 && !hasFilter && (
           <p className="text-sm text-gray-400 text-center py-4">Scrivi almeno 2 caratteri</p>
         )}
 
+        {/* Selected food */}
         {selected && (
           <div className="space-y-3 mt-1">
             <div className="bg-orange-50 dark:bg-orange-950 rounded-xl p-3">
