@@ -3,6 +3,7 @@ import React from 'react'
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -17,7 +18,6 @@ const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
   const s = size
   const icons: Record<string, React.ReactElement> = {
     colazione: (
-      // cornetto / croissant
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 18Q8 10 12 10Q16 10 20 18"/>
         <path d="M4 18Q8 15 12 15Q16 15 20 18"/>
@@ -26,7 +26,6 @@ const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
       </svg>
     ),
     spuntino_m: (
-      // vasetto di yogurt
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M8 8h8l-1.5 11h-5z"/>
         <path d="M8 8V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
@@ -34,7 +33,6 @@ const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
       </svg>
     ),
     pranzo: (
-      // campana cloche + sole in alto a destra
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <line x1="3" y1="18" x2="21" y2="18"/>
         <path d="M5 18a7 7 0 0 1 14 0"/>
@@ -44,7 +42,6 @@ const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
       </svg>
     ),
     spuntino_p: (
-      // banana
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 20C5 15 8 9 14 7C19 6 22 9 21 13"/>
         <path d="M5 18C6 14 9 9 14 8"/>
@@ -52,7 +49,6 @@ const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
       </svg>
     ),
     cena: (
-      // campana cloche + luna in alto a sinistra
       <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <line x1="3" y1="18" x2="21" y2="18"/>
         <path d="M5 18a7 7 0 0 1 14 0"/>
@@ -67,11 +63,11 @@ const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
 }
 
 const MEALS = [
-  { name: 'Colazione',           icon: 'colazione',  color: C.carbs },
-  { name: 'Spuntino mattina',    icon: 'spuntino_m', color: C.protein },
-  { name: 'Pranzo',              icon: 'pranzo',     color: C.kcal },
-  { name: 'Spuntino pomeriggio', icon: 'spuntino_p', color: C.carbs },
-  { name: 'Cena',                icon: 'cena',       color: C.fat },
+  { name: 'Colazione',           label: 'Colazione',     icon: 'colazione',  color: C.carbs },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',   icon: 'spuntino_m', color: C.protein },
+  { name: 'Pranzo',              label: 'Pranzo',         icon: 'pranzo',     color: C.kcal },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', icon: 'spuntino_p', color: C.carbs },
+  { name: 'Cena',                label: 'Cena',           icon: 'cena',       color: C.fat },
 ]
 
 type DashData = {
@@ -82,11 +78,24 @@ type DashData = {
 }
 
 export default function DashboardPage() {
-  const { userId, selectedDate, userProfile } = useAppStore()
+  const { userId, selectedDate, setSelectedDate, userProfile } = useAppStore()
   const router = useRouter()
   const [data, setData]       = useState<DashData | null>(null)
   const [loading, setLoading] = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number } | null>(null)
+
+  const today   = new Date().toISOString().split('T')[0]
+  const isToday = selectedDate === today
+
+  const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+  function changeDate(days: number) {
+    const d = new Date(selectedDate)
+    d.setDate(d.getDate() + days)
+    setSelectedDate(d.toISOString().split('T')[0])
+  }
 
   useEffect(() => {
     try {
@@ -113,52 +122,87 @@ export default function DashboardPage() {
   const calOver = t.calories > tg.calories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
 
-  const hasWorkout = data?.workout.exists || data?.workout.hasTennis
+  const hasWorkout   = data?.workout.exists || data?.workout.hasTennis
+  const onlyTennis   = !data?.workout.exists && data?.workout.hasTennis
+  const gymAndTennis = data?.workout.exists && data?.workout.hasTennis
 
   if (loading) return (
     <div className="flex items-center justify-center h-48">
-      <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.kcal, borderTopColor: 'transparent' }} />
+      <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+        style={{ borderColor: C.kcal, borderTopColor: 'transparent' }} />
     </div>
   )
 
   return (
-    <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:space-y-3 md:h-auto h-[calc(100dvh-7.5rem)]">
+    <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]">
 
-      {/* KCAL + MACRO — unified card */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 pt-3 pb-3 shrink-0">
-        {/* Kcal row */}
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Calorie</span>
+      {/* DATE NAV */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-3 py-2 flex items-center gap-2 shrink-0">
+        <button onClick={() => changeDate(-1)}
+          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
+          <ChevronLeft size={17} />
+        </button>
+        <p className="flex-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">
+          {dateLabel}
+        </p>
+        {!isToday && (
+          <button onClick={() => setSelectedDate(today)}
+            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold text-white"
+            style={{ backgroundColor: C.kcal + 'cc' }}>
+            Oggi
+          </button>
+        )}
+        <button onClick={() => changeDate(1)} disabled={isToday}
+          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors',
+            isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+          )}>
+          <ChevronRight size={17} />
+        </button>
+      </div>
+
+      {/* MACRO CARD */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 pt-3 pb-4 shrink-0">
+        {/* Card title */}
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Macro</p>
+
+        {/* Calories + percentage on same row */}
+        <div className="flex items-baseline justify-between mb-2">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
+              {t.calories}
+            </span>
+            <span className="text-xs text-gray-400">kcal</span>
+          </div>
           <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-lg',
             calOver ? 'bg-red-50 dark:bg-red-950/50 text-red-400' : 'text-white'
           )} style={!calOver ? { backgroundColor: C.kcal + 'cc' } : {}}>
             {calOver ? `+${t.calories - tg.calories}` : `${calPct}%`}
           </span>
         </div>
-        <div className="flex items-baseline gap-1.5 mb-2">
-          <span className="text-3xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>{t.calories}</span>
-          <span className="text-xs text-gray-400">/ {tg.calories} kcal</span>
-        </div>
-        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-3">
+
+        {/* Calorie progress bar */}
+        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-4">
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
         </div>
-        {/* Macro bars */}
+
+        {/* Macro columns — bigger font, hierarchy */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Proteine', val: t.protein, tgt: tg.protein, color: C.protein },
-            { label: 'Carbo',    val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
-            { label: 'Grassi',   val: t.fat,     tgt: tg.fat,     color: C.fat },
+            { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
+            { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
+            { label: 'Grassi',      val: t.fat,     tgt: tg.fat,     color: C.fat },
           ].map(m => (
             <div key={m.label}>
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] text-gray-400 font-medium">{m.label}</span>
-                <span className="text-[10px] font-bold" style={{ color: m.color }}>{m.val}g</span>
+              <p className="text-[11px] font-bold mb-1" style={{ color: m.color }}>{m.label}</p>
+              <p className="text-sm font-bold leading-none text-gray-800 dark:text-gray-100">
+                {m.val}
+                <span className="text-[10px] font-medium text-gray-400"> / {m.tgt}g</span>
+              </p>
+              <div className="h-1.5 rounded-full overflow-hidden mt-1.5" style={{ backgroundColor: m.color + '22' }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '22' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
-              </div>
-              <span className="text-[9px] text-gray-400 mt-0.5 block">/ {m.tgt}g</span>
             </div>
           ))}
         </div>
@@ -167,28 +211,30 @@ export default function DashboardPage() {
       {/* BOTTOM CARDS */}
       <div className="grid grid-cols-2 gap-2 min-h-0 flex-1">
 
-        {/* PASTI */}
+        {/* ── PASTI ── */}
         <button onClick={() => router.push('/food/diary')}
           className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pasti</p>
           </div>
-          <div className="flex-1 overflow-hidden flex flex-col justify-around px-2 py-2 gap-0">
-            {MEALS.map(({ name, icon, color }) => {
-              const m = data?.meals.find(x => x.name === name)
+          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-2 gap-1">
+            {MEALS.map(({ name, label, icon, color }) => {
+              const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               return (
-                <div key={name} className="flex items-center gap-2 px-1 py-0.5">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: color + '1a', color }}>
-                    <MealIcon type={icon} size={20} />
+                <div key={name}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
+                  style={{ backgroundColor: color + '12' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: color + '25', color }}>
+                    <MealIcon type={icon} size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 leading-none truncate mb-0.5">{name}</p>
+                    <p className="text-[10px] font-bold truncate leading-tight" style={{ color }}>{label}</p>
                     {kcal > 0 ? (
-                      <p className="text-[9px] text-gray-400 leading-tight truncate">
-                        <span className="font-bold text-gray-600 dark:text-gray-300">{kcal}</span>
-                        {' '}·{' '}
+                      <p className="text-[9px] leading-tight text-gray-500 dark:text-gray-400 truncate">
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">{kcal}</span>
+                        {' · '}
                         <span style={{ color: C.protein }}>P{m!.protein}</span>{' '}
                         <span style={{ color: C.carbs }}>C{m!.carbs}</span>{' '}
                         <span style={{ color: C.fat }}>G{m!.fat}</span>
@@ -203,7 +249,7 @@ export default function DashboardPage() {
           </div>
         </button>
 
-        {/* ALLENAMENTO */}
+        {/* ── ALLENAMENTO ── */}
         <button onClick={() => router.push('/training/diary')}
           className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
@@ -211,69 +257,71 @@ export default function DashboardPage() {
           </div>
 
           {hasWorkout ? (
-            <div className="flex-1 overflow-hidden flex flex-col p-3 gap-2 min-h-0">
-              {/* Icons (stacked) + scheda header */}
-              <div className="flex items-start gap-2 shrink-0">
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  {data?.workout.hasTennis && (
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: '#5a8a5a15', color: '#5a8a5a' }}>
-                      {/* tennis racket */}
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <ellipse cx="14" cy="9" rx="5" ry="6"/>
-                        <path d="M11.5 14L7 19"/>
-                        <path d="M14 3v12M9.5 9h9"/>
-                      </svg>
-                    </div>
-                  )}
-                  {data?.workout.exists && (
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                      style={{ backgroundColor: C.training + '18', color: C.training }}>
-                      {/* dumbbell */}
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6.5 12h11"/>
-                        <path d="M5.5 8.5v7M18.5 8.5v7"/>
-                        <path d="M3 10v4M21 10v4"/>
-                      </svg>
-                    </div>
-                  )}
+            <div className="flex-1 overflow-hidden flex flex-col p-2.5 gap-2 min-h-0">
+
+              {/* Tennis pill — full width */}
+              {data?.workout.hasTennis && (
+                <div className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: '#5a8a5a18' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="#5a8a5a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <ellipse cx="14" cy="9" rx="5" ry="6"/>
+                    <path d="M11.5 14L7 19"/>
+                    <path d="M14 3v12M9.5 9h9"/>
+                  </svg>
+                  <span className="text-xs font-bold" style={{ color: '#5a8a5a' }}>Tennis</span>
                 </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                  {schedaInfo ? (
-                    <>
-                      <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded text-white mb-1"
-                        style={{ backgroundColor: C.training + 'cc' }}>
-                        WO {schedaInfo.order}
-                      </span>
-                      <p className="text-sm font-bold truncate leading-tight" style={{ color: C.training }}>
-                        {schedaInfo.name}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm font-bold" style={{ color: C.training }}>
-                      {!data?.workout.exists && data?.workout.hasTennis ? 'Tennis' : 'Allenamento'}
-                    </p>
-                  )}
+              )}
+
+              {/* Gym pill — full width */}
+              {data?.workout.exists && (
+                <div className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: C.training + '18' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke={C.training} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6.5 12h11"/>
+                    <path d="M5.5 8.5v7M18.5 8.5v7"/>
+                    <path d="M3 10v4M21 10v4"/>
+                  </svg>
+                  <span className="text-xs font-bold truncate" style={{ color: C.training }}>
+                    {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
+                  </span>
                 </div>
-              </div>
+              )}
+
+              {/* Scheda name */}
+              {schedaInfo && data?.workout.exists && (
+                <p className="text-[10px] font-bold text-center truncate px-1 leading-tight"
+                  style={{ color: C.training }}>
+                  {schedaInfo.name}
+                </p>
+              )}
 
               {/* Exercise list */}
               {(data?.workout.exercises ?? []).length > 0 && (
                 <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
                   {(data?.workout.exercises ?? []).map(ex => (
                     <div key={ex} className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.training + '99' }} />
-                      <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate leading-tight">{ex}</p>
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: C.training + '99' }} />
+                      <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate leading-tight">{ex}</p>
                     </div>
                   ))}
                 </div>
               )}
+
+              {/* Only tennis: no other content needed */}
+              {onlyTennis && !schedaInfo && (data?.workout.exercises ?? []).length === 0 && (
+                <p className="text-[10px] text-center text-gray-400 mt-1">Sessione completata</p>
+              )}
+
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-3 gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center" style={{ color: '#b0b8c8' }}>
-                {/* moon / rest icon */}
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                style={{ color: '#b0b8c8' }}>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                 </svg>
               </div>
