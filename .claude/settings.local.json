@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\Programs\\\\GitHub CLI\\\\gh.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\Users\\\\vitoz\\\\AppData\\\\Local\\\\Programs\\\\GitHub CLI\\\\gh.exe\" -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH -split ';' | ForEach-Object { if \\(Test-Path \"$_\\\\gh.exe\"\\) { \"$_\\\\gh.exe\" } })",
+      "Bash(mkdir -p \"C:\\\\Users\\\\vitoz\\\\Desktop\\\\fitapp\\\\.claude\\\\worktrees\\\\reverent-leavitt-11ff67\\\\.claude\" 2>/dev/null; echo \"ok\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(rm -rf \"C:\\\\Users\\\\vitoz\\\\Desktop\\\\fitapp\\\\.next\" && echo \"deleted\")",
+      "Bash(command -v gh)",
+      "Bash(gh --version)",
+      "Bash(git fetch *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\vitoz\\\\Desktop\\\\fitapp\\\\.claude\\\\worktrees\\\\reverent-leavitt-11ff67\" -Recurse -Directory -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}
