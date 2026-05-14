@@ -13,7 +13,7 @@ const C = {
   training: '#7aafc8',
 } as const
 
-const MealIcon = ({ type, size = 18 }: { type: string; size?: number }) => {
+const MealIcon = ({ type, size = 22 }: { type: string; size?: number }) => {
   const s = size
   const icons: Record<string, React.ReactElement> = {
     colazione: (
@@ -57,13 +57,13 @@ type DashData = {
   totals:  { calories: number; protein: number; carbs: number; fat: number }
   targets: { calories: number; protein: number; carbs: number; fat: number }
   meals:   { name: string; calories: number; protein: number; carbs: number; fat: number }[]
-  workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean }
+  workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean; exercises?: string[] }
 }
 
 export default function DashboardPage() {
   const { userId, selectedDate, userProfile } = useAppStore()
   const router = useRouter()
-  const [data, setData]     = useState<DashData | null>(null)
+  const [data, setData]       = useState<DashData | null>(null)
   const [loading, setLoading] = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number } | null>(null)
 
@@ -92,6 +92,8 @@ export default function DashboardPage() {
   const calOver = t.calories > tg.calories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
 
+  const hasWorkout = data?.workout.exists || data?.workout.hasTennis
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.kcal, borderTopColor: 'transparent' }} />
@@ -101,14 +103,13 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:space-y-3 md:h-auto h-[calc(100dvh-7.5rem)]">
 
-      {/* KCAL */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 shrink-0">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">kcal consumate oggi</span>
+      {/* KCAL + MACRO — unified card */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 pt-3 pb-3 shrink-0">
+        {/* Kcal row */}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Calorie</span>
           <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-lg',
-            calOver
-              ? 'bg-red-50 dark:bg-red-950/50 text-red-400'
-              : 'text-white'
+            calOver ? 'bg-red-50 dark:bg-red-950/50 text-red-400' : 'text-white'
           )} style={!calOver ? { backgroundColor: C.kcal + 'cc' } : {}}>
             {calOver ? `+${t.calories - tg.calories}` : `${calPct}%`}
           </span>
@@ -117,29 +118,29 @@ export default function DashboardPage() {
           <span className="text-3xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>{t.calories}</span>
           <span className="text-xs text-gray-400">/ {tg.calories} kcal</span>
         </div>
-        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-3">
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
         </div>
-      </div>
-
-      {/* MACRO MINI CARDS */}
-      <div className="grid grid-cols-3 gap-2 shrink-0">
-        {[
-          { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
-          { label: 'Carbo',       val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
-          { label: 'Grassi',      val: t.fat,     tgt: tg.fat,     color: C.fat },
-        ].map(m => (
-          <div key={m.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2">
-            <p className="text-[10px] text-gray-400 font-medium truncate">{m.label}</p>
-            <p className="text-sm font-bold mt-0.5" style={{ color: m.color }}>
-              {m.val}<span className="text-[10px] text-gray-400 font-normal">/{m.tgt}g</span>
-            </p>
-            <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: m.color + '22' }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+        {/* Macro bars */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Proteine', val: t.protein, tgt: tg.protein, color: C.protein },
+            { label: 'Carbo',    val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
+            { label: 'Grassi',   val: t.fat,     tgt: tg.fat,     color: C.fat },
+          ].map(m => (
+            <div key={m.label}>
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[10px] text-gray-400 font-medium">{m.label}</span>
+                <span className="text-[10px] font-bold" style={{ color: m.color }}>{m.val}g</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '22' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+              </div>
+              <span className="text-[9px] text-gray-400 mt-0.5 block">/ {m.tgt}g</span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* BOTTOM CARDS */}
@@ -149,20 +150,20 @@ export default function DashboardPage() {
         <button onClick={() => router.push('/food/diary')}
           className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
-            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pasti di oggi</p>
+            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pasti</p>
           </div>
-          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0.5">
+          <div className="flex-1 overflow-hidden flex flex-col justify-around px-2 py-2 gap-0">
             {MEALS.map(({ name, icon, color }) => {
               const m = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               return (
-                <div key={name} className="flex items-center gap-2 px-1 py-1 rounded-xl">
-                  <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                <div key={name} className="flex items-center gap-2 px-1 py-0.5">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: color + '1a', color }}>
-                    <MealIcon type={icon} size={15} />
+                    <MealIcon type={icon} size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 leading-none truncate mb-0.5">{name}</p>
+                    <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 leading-none truncate mb-0.5">{name}</p>
                     {kcal > 0 ? (
                       <p className="text-[9px] text-gray-400 leading-tight truncate">
                         <span className="font-bold text-gray-600 dark:text-gray-300">{kcal}</span>
@@ -187,44 +188,62 @@ export default function DashboardPage() {
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Allenamento</p>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center p-3 gap-2">
-            {(data?.workout.exists || data?.workout.hasTennis) ? (
-              <>
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: C.training + '1a' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.training} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+
+          {hasWorkout ? (
+            <div className="flex-1 overflow-hidden flex flex-col p-3 gap-2 min-h-0">
+              {/* Icon + scheda header */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: C.training + '18' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.training} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 4v6M18 4v6M3 9h4M17 9h4M6 14v6M18 14v6M3 15h4M17 15h4M9 12h6"/>
                   </svg>
                 </div>
-                <div className="text-center space-y-0.5">
-                  {schedaInfo && (
-                    <p className="text-xs font-bold" style={{ color: C.training }}>
-                      Allenamento WO {schedaInfo.order}
-                    </p>
-                  )}
-                  {data.workout.hasTennis && (
-                    <p className="text-xs font-semibold" style={{ color: '#5a8a5a' }}>Tennis 🎾</p>
-                  )}
-                  {!schedaInfo && !data.workout.hasTennis && (
-                    <p className="text-xs font-bold" style={{ color: C.training }}>Workout completato</p>
+                <div className="min-w-0">
+                  {schedaInfo ? (
+                    <>
+                      <p className="text-xs font-bold leading-tight" style={{ color: C.training }}>
+                        WO {schedaInfo.order}
+                      </p>
+                      <p className="text-[10px] text-gray-400 truncate leading-tight">{schedaInfo.name}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs font-bold" style={{ color: C.training }}>Allenamento</p>
                   )}
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b0b8c8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                    <path d="M12 9v3l1.5 1.5"/>
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-semibold text-gray-400">Giorno di riposo</p>
-                  <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">Recupero attivo</p>
-                </div>
-              </>
-            )}
-          </div>
+              </div>
+
+              {/* Exercise list */}
+              <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+                {(data?.workout.exercises ?? []).map(ex => (
+                  <div key={ex} className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: C.training + '99' }} />
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400 truncate leading-tight">{ex}</p>
+                  </div>
+                ))}
+                {data?.workout.hasTennis && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: '#5a8a5a99' }} />
+                    <p className="text-[10px] font-semibold leading-tight" style={{ color: '#5a8a5a' }}>🎾 Tennis</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-3 gap-2">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#b0b8c8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  <circle cx="12" cy="12" r="1"/>
+                  <path d="M12 8v1M12 15v1M8 12h1M15 12h1"/>
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-gray-400">Riposo</p>
+                <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">Recupero attivo</p>
+              </div>
+            </div>
+          )}
         </button>
 
       </div>
