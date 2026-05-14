@@ -71,7 +71,7 @@ const MealIcon = ({ type, size = 24 }: { type: string; size?: number }) => {
 /* ── icona pallina da tennis ───────────────────────────────────────────────── */
 const TennisIcon = ({ size = 26 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9" fill="#e8e050" stroke="#b0a820" strokeWidth="1.5"/>
+    <circle cx="12" cy="12" r="9" fill="none" stroke="#b0a820" strokeWidth="1.5"/>
     <path d="M5.5 5.5C8.5 8.5 8.5 15.5 5.5 18.5" stroke="#b0a820" strokeWidth="1.5"/>
     <path d="M18.5 5.5C15.5 8.5 15.5 15.5 18.5 18.5" stroke="#b0a820" strokeWidth="1.5"/>
   </svg>
