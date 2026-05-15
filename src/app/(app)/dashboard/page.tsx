@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
+import React, { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Coffee, Apple, Utensils, Cookie, Moon, Dumbbell } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Coffee, Apple, Dumbbell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -24,12 +24,78 @@ const TennisIcon = ({ size = 26 }: { size?: number }) => (
 
 type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
 
+/* ── svg helper ─────────────────────────────────────────────────────────────── */
+const Icon = ({ s, color, children }: { s: number; color: string; children: React.ReactNode }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+)
+
 const MEALS: MealDef[] = [
-  { name: 'Colazione',           label: 'Colazione',    color: C.carbs,   renderIcon: (color, size) => <Coffee   size={size} color={color} strokeWidth={1.8} /> },
-  { name: 'Spuntino mattina',    label: 'Sp. Mattina',  color: C.protein, renderIcon: (color, size) => <Apple    size={size} color={color} strokeWidth={1.8} /> },
-  { name: 'Pranzo',              label: 'Pranzo',       color: C.kcal,    renderIcon: (color, size) => <Utensils size={size} color={color} strokeWidth={1.8} /> },
-  { name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', color: C.carbs,   renderIcon: (color, size) => <Cookie   size={size} color={color} strokeWidth={1.8} /> },
-  { name: 'Cena',                label: 'Cena',         color: C.fat,     renderIcon: (color, size) => <Moon     size={size} color={color} strokeWidth={1.8} /> },
+  {
+    /* Lucide Coffee */
+    name: 'Colazione', label: 'Colazione', color: C.carbs,
+    renderIcon: (color, size) => <Coffee size={size} color={color} strokeWidth={1.8} />,
+  },
+  {
+    /* Yogurt jar: wide+short (wider than tall), rect lid, spoon sticking out */
+    name: 'Spuntino mattina', label: 'Sp. Mattina', color: C.protein,
+    renderIcon: (color, size) => (
+      <Icon s={size} color={color}>
+        <rect x="4" y="8" width="14" height="2.5" rx="1"/>
+        <path d="M5 10.5h12l-1.5 8.5H6.5z"/>
+        <line x1="7.5" y1="15.5" x2="15.5" y2="15.5"/>
+        <line x1="16.5" y1="11" x2="19.5" y2="5.5"/>
+        <circle cx="20" cy="5" r="1.2"/>
+      </Icon>
+    ),
+  },
+  {
+    /* Fork + knife + 8-ray sun (top-centre between utensils) */
+    name: 'Pranzo', label: 'Pranzo', color: C.kcal,
+    renderIcon: (color, size) => (
+      <Icon s={size} color={color}>
+        {/* fork */}
+        <path d="M6 3v5a2 2 0 0 0 4 0V3"/>
+        <line x1="8" y1="8" x2="8" y2="21"/>
+        {/* knife */}
+        <line x1="15" y1="3" x2="15" y2="21"/>
+        <path d="M15 3c2 0 3 2 3 5"/>
+        {/* 8-ray sun between utensils */}
+        <circle cx="11.5" cy="4" r="1.4"/>
+        <line x1="11.5" y1="1.2" x2="11.5" y2="2.2"/>
+        <line x1="11.5" y1="5.8" x2="11.5" y2="6.8"/>
+        <line x1="8.7" y1="4" x2="9.7" y2="4"/>
+        <line x1="13.3" y1="4" x2="14.3" y2="4"/>
+        <line x1="9.5" y1="2.3" x2="10.2" y2="3"/>
+        <line x1="12.8" y1="5" x2="13.5" y2="5.7"/>
+        <line x1="13.5" y1="2.3" x2="12.8" y2="3"/>
+        <line x1="10.2" y1="5" x2="9.5" y2="5.7"/>
+      </Icon>
+    ),
+  },
+  {
+    /* Lucide Apple */
+    name: 'Spuntino pomeriggio', label: 'Pomeriggio', color: C.carbs,
+    renderIcon: (color, size) => <Apple size={size} color={color} strokeWidth={1.8} />,
+  },
+  {
+    /* Fork + knife + crescent moon top-left */
+    name: 'Cena', label: 'Cena', color: C.fat,
+    renderIcon: (color, size) => (
+      <Icon s={size} color={color}>
+        {/* moon top-left (Lucide Moon formula ×0.5, offset to y=1.5) */}
+        <path d="M4 1.5a3 3 0 0 0 4.5 4.5 4.5 4.5 0 1 1-4.5-4.5Z"/>
+        {/* fork */}
+        <path d="M11 3v5a2 2 0 0 0 4 0V3"/>
+        <line x1="13" y1="8" x2="13" y2="21"/>
+        {/* knife */}
+        <line x1="18.5" y1="3" x2="18.5" y2="21"/>
+        <path d="M18.5 3c2 0 3 2 3 5"/>
+      </Icon>
+    ),
+  },
 ]
 
 type DashData = {
