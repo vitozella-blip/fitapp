@@ -1,9 +1,9 @@
 'use client'
-import React, { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
+import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DateNav } from '@/components/shared/DateNav'
 
 const C = {
   kcal:     '#9d8fcc',
@@ -40,20 +40,6 @@ export default function DashboardPage() {
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number } | null>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
-
-  const today   = new Date().toISOString().split('T')[0]
-  const isToday = selectedDate === today
-
-  const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
-
-  function changeDate(days: number) {
-    const d = new Date(selectedDate)
-    d.setDate(d.getDate() + days)
-    setSelectedDate(d.toISOString().split('T')[0])
-  }
 
   useEffect(() => {
     try {
@@ -97,35 +83,8 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]">
 
       {/* ── HEADER DATA ─────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2.5 flex items-center gap-2 shrink-0">
-        <button onClick={() => changeDate(-1)}
-          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 shrink-0 transition-colors">
-          <ChevronLeft size={18} />
-        </button>
-
-        {/* data cliccabile → apre date picker */}
-        <button
-          onClick={() => { try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() } }}
-          className="flex-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate hover:opacity-70 transition-opacity">
-          {dateLabel}
-        </button>
-        <input ref={dateInputRef} type="date" className="sr-only"
-          value={selectedDate} max={today}
-          onChange={e => { if (e.target.value) setSelectedDate(e.target.value) }} />
-
-        {!isToday && (
-          <button onClick={() => setSelectedDate(today)}
-            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold text-white"
-            style={{ backgroundColor: C.kcal + 'cc' }}>
-            Oggi
-          </button>
-        )}
-        <button onClick={() => changeDate(1)} disabled={isToday}
-          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 shrink-0 transition-colors',
-            isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-          )}>
-          <ChevronRight size={18} />
-        </button>
+      <div className="shrink-0">
+        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} />
       </div>
 
       {/* ── CARD MACRO ──────────────────────────────────────────────────────── */}
@@ -158,9 +117,9 @@ export default function DashboardPage() {
         {/* Macro — valori compatti */}
         <div className="grid grid-cols-3 gap-2 text-center">
           {[
-            { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
-            { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
             { label: 'Grassi',      val: t.fat,     tgt: tg.fat,     color: C.fat },
+            { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
+            { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
           ].map(m => (
             <div key={m.label}>
               <p className="text-[10px] font-bold mb-0.5" style={{ color: m.color }}>{m.label}</p>
@@ -205,17 +164,17 @@ export default function DashboardPage() {
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
 
-                  {/* Macro sotto la pillola — 2 righe: kcal / P · C · G */}
+                  {/* Macro sotto la pillola — 2 righe: kcal / G · C · P */}
                   <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
                     {kcal > 0 ? (
                       <>
                         <p className="text-xs font-semibold" style={{ color: C.kcal }}>{kcal} kcal</p>
                         <p className="text-xs">
-                          <span style={{ color: C.protein }}>P {m!.protein}</span>
+                          <span style={{ color: C.fat }}>G {m!.fat}</span>
                           <span className="text-gray-400 dark:text-gray-500"> · </span>
                           <span style={{ color: C.carbs }}>C {m!.carbs}</span>
                           <span className="text-gray-400 dark:text-gray-500"> · </span>
-                          <span style={{ color: C.fat }}>G {m!.fat}</span>
+                          <span style={{ color: C.protein }}>P {m!.protein}</span>
                         </p>
                       </>
                     ) : (

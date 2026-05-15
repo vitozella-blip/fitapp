@@ -165,9 +165,9 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
               <div className="grid grid-cols-4 gap-2 mt-2 text-center">
                 {[
                   { l: 'Kcal', v: calcMacro(selected.calories), color: '#6c5ce7' },
-                  { l: 'P', v: `${calcMacro(selected.protein)}g`, color: '#5a9e5a' },
-                  { l: 'C', v: `${calcMacro(selected.carbs)}g`, color: '#e8813a' },
                   { l: 'G', v: `${calcMacro(selected.fat)}g`, color: '#9b59b6' },
+                  { l: 'C', v: `${calcMacro(selected.carbs)}g`, color: '#e8813a' },
+                  { l: 'P', v: `${calcMacro(selected.protein)}g`, color: '#5a9e5a' },
                 ].map(m => (
                   <div key={m.l} className="bg-white dark:bg-gray-900 rounded-lg py-1.5">
                     <p className="text-xs text-gray-400">{m.l}</p>

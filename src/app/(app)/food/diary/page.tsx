@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, ChevronLeft, ChevronRight, BookOpen, Calendar, PartyPopper } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, BookOpen, PartyPopper } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { DateNav } from '@/components/shared/DateNav'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
 import { cn } from '@/lib/utils'
 
@@ -28,10 +29,6 @@ export default function FoodDiaryPage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [modal, setModal] = useState<string | null>(null)
   const [freeMeals, setFreeMeals] = useState<Set<string>>(new Set())
-  const calRef = useRef<HTMLInputElement>(null)
-
-  const today = new Date().toISOString().split('T')[0]
-  const isToday = selectedDate === today
 
   const fetchEntries = useCallback(async () => {
     const r = await fetch(`/api/diary?userId=${userId}&date=${selectedDate}`)
@@ -54,11 +51,6 @@ export default function FoodDiaryPage() {
     setEntries(e => e.filter(x => x.id !== id))
   }
 
-  function changeDate(days: number) {
-    const d = new Date(selectedDate)
-    d.setDate(d.getDate() + days)
-    setSelectedDate(d.toISOString().split('T')[0])
-  }
 
   function toggleFreeMeal(meal: string) {
     setFreeMeals(prev => {
@@ -76,10 +68,6 @@ export default function FoodDiaryPage() {
     fat:      acc.fat      + calc(e.food.fat,      e.quantity),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
-  const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
-    weekday: 'long', day: 'numeric', month: 'long'
-  })
-
   const calPct = userProfile.targetCalories > 0
     ? Math.min(100, Math.round((totals.calories / userProfile.targetCalories) * 100))
     : 0
@@ -88,34 +76,7 @@ export default function FoodDiaryPage() {
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
       <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
 
-      {/* Date nav */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-3 py-2 flex items-center gap-2">
-        <button onClick={() => changeDate(-1)}
-          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
-          <ChevronLeft size={17} />
-        </button>
-        <button onClick={() => calRef.current?.showPicker?.()}
-          className="flex-1 flex items-center justify-center gap-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          <Calendar size={13} style={{ color: C.carbs }} className="shrink-0" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">{dateLabel}</span>
-        </button>
-        <input ref={calRef} type="date" value={selectedDate} max={today}
-          onChange={e => e.target.value && setSelectedDate(e.target.value)}
-          className="sr-only" />
-        {!isToday && (
-          <button onClick={() => setSelectedDate(today)}
-            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold text-white"
-            style={{ backgroundColor: C.carbs + 'cc' }}>
-            Oggi
-          </button>
-        )}
-        <button onClick={() => changeDate(1)} disabled={isToday}
-          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors',
-            isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-          )}>
-          <ChevronRight size={17} />
-        </button>
-      </div>
+      <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} />
 
       {/* Macro summary */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 space-y-2.5">
@@ -139,9 +100,9 @@ export default function FoodDiaryPage() {
         </div>
         <div className="grid grid-cols-3 gap-2 text-xs pt-0.5">
           {[
-            { label: 'Proteine',    val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
-            { label: 'Carboidrati', val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
             { label: 'Grassi',      val: totals.fat,     tgt: userProfile.targetFat,     color: C.fat },
+            { label: 'Carboidrati', val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
+            { label: 'Proteine',    val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
           ].map(m => (
             <div key={m.label} className="space-y-1">
               <div className="flex justify-between">
@@ -218,9 +179,9 @@ export default function FoodDiaryPage() {
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{e.food.name}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {e.quantity}g · {calc(e.food.calories, e.quantity)} kcal ·{' '}
-                        <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span> ·{' '}
+                        <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span> ·{' '}
                         <span style={{ color: C.carbs }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
-                        <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span>
+                        <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span>
                       </p>
                     </div>
                     <button onClick={() => deleteEntry(e.id)}
