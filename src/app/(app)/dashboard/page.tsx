@@ -248,7 +248,7 @@ export default function DashboardPage() {
               style={{ color: C.kcal }}>Pasti</p>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0.5">
+          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
             {MEALS.map(({ name, label, icon, color }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
@@ -263,22 +263,22 @@ export default function DashboardPage() {
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
 
-                  {/* Macro sotto la pillola */}
-                  <div className="text-center mt-0.5 px-0.5">
+                  {/* Macro sotto la pillola — stessa altezza in entrambe le card */}
+                  <p className="text-xs leading-tight mt-0.5 text-center px-0.5">
                     {kcal > 0 ? (
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                      <>
                         <span style={{ color: C.kcal }}>kcal {kcal}</span>
-                        {' · '}
+                        <span className="text-gray-300 dark:text-gray-600"> · </span>
                         <span style={{ color: C.protein }}>p {m!.protein}</span>
-                        {' · '}
+                        <span className="text-gray-300 dark:text-gray-600"> · </span>
                         <span style={{ color: C.carbs }}>c {m!.carbs}</span>
-                        {' · '}
+                        <span className="text-gray-300 dark:text-gray-600"> · </span>
                         <span style={{ color: C.fat }}>g {m!.fat}</span>
-                      </p>
+                      </>
                     ) : (
-                      <p className="text-[10px] text-gray-300 dark:text-gray-600 leading-tight">—</p>
+                      <span className="text-gray-300 dark:text-gray-600">—</span>
                     )}
-                  </div>
+                  </p>
                 </div>
               )
             })}
@@ -295,66 +295,78 @@ export default function DashboardPage() {
               style={{ color: C.training }}>Allenamento</p>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col p-2.5 gap-2 min-h-0">
+          {/* 5 slot identici a PASTI: justify-between + stessa padding → allineamento riga per riga */}
+          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
 
-            {/* Pillole sempre in cima */}
+            {/* ── Slot 0: Tennis  |  Riposo  |  Workout-solo ── */}
+            <div>
+              {data?.workout.hasTennis ? (
+                <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
+                  style={{ backgroundColor: '#f0ec7020' }}>
+                  <TennisIcon size={20} />
+                  <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
+                </div>
+              ) : data?.workout.exists ? (
+                <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
+                  style={{ backgroundColor: C.training + '18' }}>
+                  <DumbbellIcon size={20} color={C.training} />
+                  <span className="text-[10px] font-bold" style={{ color: C.training }}>
+                    {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
+                  </span>
+                </div>
+              ) : (
+                <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
+                  style={{ backgroundColor: '#b0b8c820' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="#b0b8c8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                  <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
+                </div>
+              )}
+              {/* spacer = stessa altezza riga macro di PASTI */}
+              <p className="text-xs leading-tight mt-0.5 text-center truncate px-1"
+                style={{ color: C.training, opacity: !data?.workout.hasTennis && !data?.workout.exists ? 0 : 1 }}>
+                {!data?.workout.hasTennis && data?.workout.exists && schedaInfo ? schedaInfo.name : ' '}
+              </p>
+            </div>
 
-            {/* Riposo */}
-            {!hasWorkout && (
-              <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                style={{ backgroundColor: '#b0b8c820' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                  stroke="#b0b8c8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-                <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
-              </div>
-            )}
-
-            {/* Pillola Tennis */}
-            {data?.workout.hasTennis && (
-              <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                style={{ backgroundColor: '#f0ec7020' }}>
-                <TennisIcon size={20} />
-                <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
-              </div>
-            )}
-
-            {/* Pillola Allenamento */}
-            {data?.workout.exists && (
-              <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                style={{ backgroundColor: C.training + '18' }}>
+            {/* ── Slot 1: Workout (solo se c'è anche Tennis) ── */}
+            <div>
+              <div className={cn(
+                'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
+                !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
+              )} style={{ backgroundColor: C.training + '18' }}>
                 <DumbbellIcon size={20} color={C.training} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
               </div>
-            )}
-
-            {/* Nome scheda */}
-            {schedaInfo && data?.workout.exists && (
-              <p className="text-[10px] font-semibold text-center truncate px-1 leading-tight"
+              <p className="text-xs leading-tight mt-0.5 text-center truncate px-1"
                 style={{ color: C.training }}>
-                {schedaInfo.name}
+                {data?.workout.hasTennis && data?.workout.exists && schedaInfo ? schedaInfo.name : ' '}
               </p>
-            )}
+            </div>
 
-            {/* Lista esercizi */}
-            {(data?.workout.exercises ?? []).length > 0 && (
-              <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
-                {(data?.workout.exercises ?? []).map(ex => (
-                  <div key={ex} className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: C.training + '99' }} />
-                    <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate leading-tight">{ex}</p>
+            {/* ── Slot 2-4: esercizi ── */}
+            {[0, 1, 2].map(i => {
+              const ex = (data?.workout.exercises ?? [])[i]
+              return (
+                <div key={i}>
+                  <div className="py-2 flex items-center gap-1.5 px-1">
+                    {ex ? (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: C.training + '99' }} />
+                        <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate leading-tight">{ex}</p>
+                      </>
+                    ) : null}
                   </div>
-                ))}
-              </div>
-            )}
+                  <p className="text-xs leading-tight mt-0.5">&nbsp;</p>
+                </div>
+              )
+            })}
 
-            {onlyTennis && (data?.workout.exercises ?? []).length === 0 && (
-              <p className="text-[9px] text-center text-gray-400 mt-1">Sessione completata</p>
-            )}
           </div>
         </button>
 
