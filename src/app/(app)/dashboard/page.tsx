@@ -269,11 +269,11 @@ export default function DashboardPage() {
                       <>
                         <span style={{ color: C.kcal }}>kcal {kcal}</span>
                         <span className="text-gray-300 dark:text-gray-600"> · </span>
-                        <span style={{ color: C.protein }}>p {m!.protein}</span>
+                        <span style={{ color: C.protein }}>P {m!.protein}</span>
                         <span className="text-gray-300 dark:text-gray-600"> · </span>
-                        <span style={{ color: C.carbs }}>c {m!.carbs}</span>
+                        <span style={{ color: C.carbs }}>C {m!.carbs}</span>
                         <span className="text-gray-300 dark:text-gray-600"> · </span>
-                        <span style={{ color: C.fat }}>g {m!.fat}</span>
+                        <span style={{ color: C.fat }}>G {m!.fat}</span>
                       </>
                     ) : (
                       <span className="text-gray-300 dark:text-gray-600">—</span>
@@ -348,12 +348,12 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* ── Slot 2-4: esercizi ── */}
+            {/* ── Slot 2-4: esercizi — min-h-9 mantiene stessa altezza delle pillole PASTI ── */}
             {[0, 1, 2].map(i => {
               const ex = (data?.workout.exercises ?? [])[i]
               return (
                 <div key={i}>
-                  <div className="py-2 flex items-center gap-1.5 px-1">
+                  <div className="flex items-center gap-1.5 px-1 min-h-9">
                     {ex ? (
                       <>
                         <div className="w-1.5 h-1.5 rounded-full shrink-0"
