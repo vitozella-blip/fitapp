@@ -16,7 +16,14 @@
       "Bash(git fetch *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\vitoz\\\\Desktop\\\\fitapp\\\\.claude\\\\worktrees\\\\reverent-leavitt-11ff67\" -Recurse -Directory -ErrorAction SilentlyContinue)",
       "Bash(Select-Object FullName)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(curl -sSk \"https://api.github.com/repos/vitozella-blip/fitapp/pulls?head=vitozella-blip:claude/reverent-leavitt-11ff67&state=open\")",
+      "Bash(curl -sSk \"https://api.github.com/repos/vitozella-blip/fitapp/pulls?head=vitozella-blip:claude/reverent-leavitt-11ff67&state=all\")",
+      "Bash(dir /s /b \"C:\\\\Users\\\\vitoz\\\\Desktop\\\\fitapp\\\\.claude\\\\worktrees\\\\reverent-leavitt-11ff67\\\\src\\\\*.tsx\")",
+      "PowerShell($paths = @\\(\"$env:LOCALAPPDATA\\\\GitHubCLI\\\\gh.exe\", \"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\", \"${env:ProgramFiles\\(x86\\)}\\\\GitHub CLI\\\\gh.exe\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { Write-Output \"FOUND: $p\" } }; Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)",
+      "Bash(xargs wc -l)",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('xlsx'\\); console.log\\('xlsx ok'\\)\")"
     ]
   }
 }

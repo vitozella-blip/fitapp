@@ -80,45 +80,37 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={16} /></button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-2">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
-            placeholder="Cerca alimento o marca..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-          {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+        {/* Search + preferiti */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
+              placeholder="Cerca alimento o marca..."
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+            {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+          </div>
+          <button
+            onClick={() => { setFavFilter(f => !f); setSelected(null) }}
+            aria-label="Preferiti"
+            className={cn(
+              'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors',
+              favFilter
+                ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-yellow-500'
+                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
+            )}>
+            <Star size={16} fill={favFilter ? 'currentColor' : 'none'} />
+          </button>
         </div>
 
-        {/* Filters + add to database */}
-        {!selected && (
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              onClick={() => { setFavFilter(f => !f); setSelected(null) }}
-              className={cn(
-                'flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors shrink-0',
-                favFilter
-                  ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-yellow-500'
-                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500'
-              )}>
-              <Star size={12} fill={favFilter ? 'currentColor' : 'none'} />
-              Preferiti
-            </button>
-            {categories.length > 0 && (
-              <div className="relative flex-1">
-                <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSelected(null) }}
-                  className="w-full appearance-none pl-2.5 pr-6 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none">
-                  <option value="">Tutte le categorie</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
-            )}
-            {q.length >= 2 && (
-              <button onClick={goToCreate}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40 text-orange-500 text-xs font-semibold shrink-0 transition-colors">
-                <Plus size={11} /> Database
-              </button>
-            )}
+        {/* Filtro categorie */}
+        {!selected && categories.length > 0 && (
+          <div className="relative mb-3">
+            <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSelected(null) }}
+              className="w-full appearance-none pl-2.5 pr-6 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none">
+              <option value="">Tutte le categorie</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
         )}
 

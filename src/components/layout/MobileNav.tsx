@@ -5,15 +5,15 @@ import { LayoutDashboard, Apple, Dumbbell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TABS = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, match: '/dashboard' },
-  { label: 'Alimentazione', href: '/food', icon: Apple, match: '/food' },
-  { label: 'Allenamento', href: '/training', icon: Dumbbell, match: '/training' },
+  { label: 'Dashboard',    href: '/dashboard', icon: LayoutDashboard, match: '/dashboard' },
+  { label: 'Alimentazione', href: '/food',      icon: Apple,          match: '/food'      },
+  { label: 'Allenamento',  href: '/training',  icon: Dumbbell,       match: '/training'  },
 ]
 
 const ACTIVE_COLORS: Record<string, string> = {
   '/dashboard': 'text-violet-600 dark:text-violet-400',
-  '/food': 'text-orange-500',
-  '/training': 'text-blue-500',
+  '/food':      'text-orange-500',
+  '/training':  'text-blue-500',
 }
 
 export function MobileNav() {
