@@ -8,9 +8,9 @@ const C = {
 } as const
 
 const SECTIONS = [
-  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: C.training },
   { label: 'Diario Allenamenti',  href: '/training/diary',   e: '📖', color: C.kcal     },
   { label: 'Storico',             href: '/training/history', e: '📈', color: C.protein  },
+  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: C.training },
 ]
 
 export default function TrainingHubPage() {

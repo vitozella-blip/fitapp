@@ -10,11 +10,11 @@ const C = {
 } as const
 
 const SECTIONS = [
-  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#e07070' },
-  { label: 'Alimenti',         href: '/food/database',  e: '🥖', color: C.carbs   },
-  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: C.protein },
-  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: C.fat    },
   { label: 'Diario Pasti',     href: '/food/diary',     e: '📖', color: C.kcal    },
+  { label: 'Alimenti',         href: '/food/database',  e: '🥖', color: C.carbs   },
+  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: C.fat    },
+  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#e07070' },
+  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: C.protein },
 ]
 
 export default function FoodHubPage() {
