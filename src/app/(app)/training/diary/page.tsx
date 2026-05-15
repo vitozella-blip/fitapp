@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, ChevronLeft, ChevronRight, Dumbbell, Check, Flame, Calendar, X, Loader2, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { DateNav } from '@/components/shared/DateNav'
 import { cn } from '@/lib/utils'
 
 const CT       = '#7aafc8'
@@ -108,89 +109,6 @@ function SchedaPickerPanel({ userId, date, onPick, onClose }: {
   )
 }
 
-// ── Mini calendar ─────────────────────────────────────────────────────────────
-function WorkoutCalendar({ userId, selectedDate, onSelect, onClose }: {
-  userId: string; selectedDate: string
-  onSelect: (d: string) => void; onClose: () => void
-}) {
-  const today = new Date().toISOString().split('T')[0]
-  const initDate = new Date(selectedDate + 'T12:00:00')
-  const [viewYear,  setViewYear]  = useState(initDate.getFullYear())
-  const [viewMonth, setViewMonth] = useState(initDate.getMonth() + 1)
-  const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set())
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    fetch(`/api/workout-dates?userId=${userId}&year=${viewYear}&month=${viewMonth}`)
-      .then(r => r.json()).then((dates: string[]) => setWorkoutDates(new Set(dates))).catch(() => {})
-  }, [userId, viewYear, viewMonth])
-
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [onClose])
-
-  function prevMonth() {
-    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12) }
-    else setViewMonth(m => m - 1)
-  }
-  function nextMonth() {
-    const ym = `${viewYear}-${String(viewMonth).padStart(2,'0')}`
-    if (ym >= today.slice(0, 7)) return
-    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1) }
-    else setViewMonth(m => m + 1)
-  }
-
-  const monthLabel = new Date(viewYear, viewMonth - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
-  const firstDay   = new Date(viewYear, viewMonth - 1, 1).getDay()
-  const startOffset = firstDay === 0 ? 6 : firstDay - 1
-  const daysInMonth = new Date(viewYear, viewMonth, 0).getDate()
-  const cells: (number | null)[] = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
-  while (cells.length % 7 !== 0) cells.push(null)
-  const isNextDisabled = `${viewYear}-${String(viewMonth).padStart(2,'0')}` >= today.slice(0, 7)
-
-  return (
-    <div ref={ref}
-      className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl p-3">
-      <div className="flex items-center justify-between mb-2">
-        <button onClick={prevMonth} className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400"><ChevronLeft size={15} /></button>
-        <span className="text-sm font-bold text-gray-800 dark:text-gray-200 capitalize">{monthLabel}</span>
-        <button onClick={nextMonth} disabled={isNextDisabled}
-          className={cn('w-7 h-7 rounded-lg flex items-center justify-center', isNextDisabled ? 'text-gray-200 dark:text-gray-700' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400')}>
-          <ChevronRight size={15} />
-        </button>
-      </div>
-      <div className="grid grid-cols-7 mb-1">
-        {['L','M','M','G','V','S','D'].map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-bold text-gray-300 dark:text-gray-600 py-0.5">{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-y-0.5">
-        {cells.map((day, i) => {
-          if (!day) return <div key={i} />
-          const iso = `${viewYear}-${String(viewMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-          const isSelected = iso === selectedDate
-          const isToday    = iso === today
-          const isFuture   = iso > today
-          const dotColor   = workoutDates.has(iso) ? getSchedaColor(iso) : null
-          return (
-            <button key={i} disabled={isFuture} onClick={() => { onSelect(iso); onClose() }}
-              className={cn('flex flex-col items-center py-1 rounded-xl transition-colors', isFuture ? 'opacity-30 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-800')}
-              style={isSelected ? { outline: `2px solid ${CT}`, outlineOffset: '1px' } : {}}>
-              <span className={cn('text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full', isToday ? 'text-white' : isSelected ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')}
-                style={isToday ? { backgroundColor: CT } : {}}>{day}</span>
-              <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ backgroundColor: dotColor ?? 'transparent' }} />
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function TrainingDiaryPage() {
   const { userId, selectedDate, setSelectedDate, userProfile } = useAppStore()
@@ -201,7 +119,6 @@ export default function TrainingDiaryPage() {
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [tennisLoading, setTennisLoading] = useState(false)
   const [expandedExId, setExpandedExId]   = useState<string | null>(null)
-  const [showCal, setShowCal] = useState(false)
 
   // Per-exercise add-set form state
   const [addExId,    setAddExId]    = useState<string | null>(null)
@@ -279,9 +196,8 @@ export default function TrainingDiaryPage() {
     }
   }
 
-  function changeDate(days: number) {
-    const d = new Date(selectedDate); d.setDate(d.getDate() + days)
-    setSelectedDate(d.toISOString().split('T')[0])
+  function handleDateChange(d: string) {
+    setSelectedDate(d)
     setExpandedExId(null); setAddExId(null)
   }
 
@@ -292,7 +208,6 @@ export default function TrainingDiaryPage() {
     setCompleted(nc); saveSet(COMPLETED_KEY, nc)
   }
 
-  const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
   const allSets   = (workout?.sets ?? []).filter(Boolean)
   const tennisSets   = allSets.filter(s => s.exercise?.name === TENNIS_NAME)
   const tennisActive = tennisSets.length > 0
@@ -363,18 +278,7 @@ export default function TrainingDiaryPage() {
         }
       />
 
-      {/* Date nav */}
-      <div className="relative">
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-3 py-2 flex items-center gap-2">
-          <button onClick={() => changeDate(-1)} className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors"><ChevronLeft size={17} /></button>
-          <button onClick={() => setShowCal(c => !c)} className="flex-1 flex items-center justify-center gap-2 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <Calendar size={13} style={{ color: CT }} className="shrink-0" />
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">{dateLabel}</span>
-          </button>
-          <button onClick={() => changeDate(1)} className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors"><ChevronRight size={17} /></button>
-        </div>
-        {showCal && <WorkoutCalendar userId={userId} selectedDate={selectedDate} onSelect={setSelectedDate} onClose={() => setShowCal(false)} />}
-      </div>
+      <DateNav selectedDate={selectedDate} onChange={handleDateChange} accent={CT} />
 
       {/* Empty state */}
       {!hasAny && (

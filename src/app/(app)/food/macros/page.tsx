@@ -9,9 +9,9 @@ type Food = { id: string; name: string; calories: number; protein: number; carbs
 type Macro = 'protein' | 'carbs' | 'fat'
 
 const MACROS: { key: Macro; label: string; color: string; bg: string; per: number }[] = [
-  { key: 'protein', label: 'Proteine', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800', per: 4 },
-  { key: 'carbs', label: 'Carboidrati', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800', per: 4 },
   { key: 'fat', label: 'Grassi', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800', per: 9 },
+  { key: 'carbs', label: 'Carboidrati', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800', per: 4 },
+  { key: 'protein', label: 'Proteine', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800', per: 4 },
 ]
 
 type Result = { grams: number; calories: number; protein: number; carbs: number; fat: number }
@@ -145,7 +145,7 @@ export default function MacrosPage() {
           <div className={cn('px-4 py-3 rounded-xl border', selectedMacro.bg)}>
             <p className={cn('font-bold text-sm', selectedMacro.color)}>{selected.name}</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              P {selected.protein}g · C {selected.carbs}g · G {selected.fat}g / 100g
+              G {selected.fat}g · C {selected.carbs}g · P {selected.protein}g / 100g
             </p>
           </div>
         )}
@@ -171,9 +171,9 @@ export default function MacrosPage() {
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Calorie', value: result.calories, unit: 'kcal', color: 'text-gray-900 dark:text-gray-100', bg: 'bg-gray-50 dark:bg-gray-800' },
-                  { label: 'Proteine', value: result.protein, unit: 'g', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950' },
-                  { label: 'Carboidrati', value: result.carbs, unit: 'g', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
                   { label: 'Grassi', value: result.fat, unit: 'g', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950' },
+                  { label: 'Carboidrati', value: result.carbs, unit: 'g', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
+                  { label: 'Proteine', value: result.protein, unit: 'g', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950' },
                 ].map(item => (
                   <div key={item.label} className={cn('rounded-xl p-3 text-center', item.bg)}>
                     <p className="text-xs text-gray-400 mb-1">{item.label}</p>
