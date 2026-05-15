@@ -2,9 +2,9 @@
 import Link from 'next/link'
 
 const SECTIONS = [
-  { label: 'Diario Allenamenti',  href: '/training/diary',   e: '📖', color: '#7aafc8' },
-  { label: 'Storico',             href: '/training/history', e: '📈', color: '#5a90b8' },
-  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: '#9abfd8' },
+  { label: 'Diario Allenamenti',  href: '/training/diary',   e: '📖', color: '#4a7a9b' },
+  { label: 'Storico',             href: '/training/history', e: '📈', color: '#7aafc8' },
+  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: '#a8cfe0' },
 ]
 
 export default function TrainingHubPage() {

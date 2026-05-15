@@ -2,11 +2,11 @@
 import Link from 'next/link'
 
 const SECTIONS = [
-  { label: 'Diario Pasti',     href: '/food/diary',     e: '📖', color: '#e8924a' },
-  { label: 'Alimenti',         href: '/food/database',  e: '🥚', color: '#f0aa78' },
-  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: '#e07850' },
-  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#f5b840' },
-  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: '#d4784a' },
+  { label: 'Diario Pasti',     href: '/food/diary',     e: '📖', color: '#c45a20' },
+  { label: 'Alimenti',         href: '/food/database',  e: '🥚', color: '#d4784a' },
+  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: '#e8924a' },
+  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#f0aa78' },
+  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: '#f5c49a' },
 ]
 
 export default function FoodHubPage() {
