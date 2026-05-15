@@ -13,18 +13,29 @@ const C = {
   training: '#7aafc8',
 } as const
 
-type MealDef = { name: string; label: string; renderIcon: (size: number) => ReactElement; color: string }
+type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
 
-const Em = ({ e, size }: { e: string; size: number }) => (
-  <span style={{ fontSize: size, lineHeight: 1, userSelect: 'none' }}>{e}</span>
+const Em = ({ e, size, tint }: { e: string; size: number; tint?: string }) => (
+  <span style={{ position: 'relative', display: 'inline-block', lineHeight: 1, userSelect: 'none' }}>
+    <span style={{ fontSize: size, lineHeight: 1, display: 'block' }}>{e}</span>
+    {tint && (
+      <span style={{
+        position: 'absolute', inset: 0,
+        backgroundColor: tint,
+        mixBlendMode: 'color',
+        pointerEvents: 'none',
+        borderRadius: 2,
+      }} />
+    )}
+  </span>
 )
 
 const MEALS: MealDef[] = [
-  { name: 'Colazione',           label: 'Colazione',     color: C.carbs,   renderIcon: (s) => <Em e="☕" size={s} /> },
-  { name: 'Spuntino mattina',    label: 'Sp. Mattina',   color: C.protein, renderIcon: (s) => <Em e="🍫" size={s} /> },
-  { name: 'Pranzo',              label: 'Pranzo',        color: C.kcal,    renderIcon: (s) => <Em e="🍗" size={s} /> },
-  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio',color: C.carbs,   renderIcon: (s) => <Em e="🍌" size={s} /> },
-  { name: 'Cena',                label: 'Cena',          color: C.fat,     renderIcon: (s) => <Em e="🐟" size={s} /> },
+  { name: 'Colazione',           label: 'Colazione',     color: C.carbs,   renderIcon: (c, s) => <Em e="☕" size={s} tint={c} /> },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',   color: C.protein, renderIcon: (c, s) => <Em e="🍫" size={s} tint={c} /> },
+  { name: 'Pranzo',              label: 'Pranzo',        color: C.kcal,    renderIcon: (c, s) => <Em e="🍗" size={s} tint={c} /> },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio',color: C.carbs,   renderIcon: (c, s) => <Em e="🍌" size={s} tint={c} /> },
+  { name: 'Cena',                label: 'Cena',          color: C.fat,     renderIcon: (c, s) => <Em e="🐟" size={s} tint={c} /> },
 ]
 
 type DashData = {
@@ -200,7 +211,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl"
                     style={{ backgroundColor: color + '28' }}>
                     <span style={{ flexShrink: 0 }}>
-                      {renderIcon(20)}
+                      {renderIcon(color, 20)}
                     </span>
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
@@ -245,13 +256,13 @@ export default function DashboardPage() {
               {data?.workout.hasTennis ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: '#f0ec7030' }}>
-                  <Em e="🎾" size={20} />
+                  <Em e="🎾" size={20} tint="#7aaa40" />
                   <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
                 </div>
               ) : data?.workout.exists ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: C.training + '28' }}>
-                  <Em e="🏋🏻" size={20} />
+                  <Em e="🏋🏻" size={20} tint={C.training} />
                   <span className="text-[10px] font-bold" style={{ color: C.training }}>
                     {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                   </span>
@@ -259,10 +270,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: '#b0b8c830' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="#b0b8c8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                  </svg>
+                  <Em e="🛋️" size={20} tint="#b0b8c8" />
                   <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
                 </div>
               )}
@@ -279,7 +287,7 @@ export default function DashboardPage() {
                 'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
                 !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
               )} style={{ backgroundColor: C.training + '28' }}>
-                <Em e="🏋🏻" size={20} />
+                <Em e="🏋🏻" size={20} tint={C.training} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
