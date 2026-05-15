@@ -132,11 +132,6 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-colors">
-          <span style={{ fontSize: 16, lineHeight: 1 }}>{theme === 'dark' ? '🌙' : '☀️'}</span>
-        </button>
-
         <div ref={menuRef} className="relative">
           <button onClick={() => setMenuOpen(o => !o)}
             className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
@@ -153,6 +148,11 @@ export function Header() {
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
                 <Upload size={15} className="text-gray-400" /> Importa
               </Link>
+              <button onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); setMenuOpen(false) }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                <span style={{ fontSize: 15, lineHeight: 1, width: 15, textAlign: 'center' }}>{theme === 'dark' ? '☀️' : '🌙'}</span>
+                {theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}
+              </button>
             </div>
           )}
         </div>
