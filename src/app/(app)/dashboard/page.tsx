@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Coffee, Apple, Dumbbell } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Coffee, Dumbbell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -51,32 +51,16 @@ const MEALS: MealDef[] = [
     ),
   },
   {
-    /* Chicken drumstick: rounded meat + diagonal bone + knob */
     name: 'Pranzo', label: 'Pranzo', color: C.kcal,
-    renderIcon: (color, size) => (
-      <Icon s={size} color={color}>
-        <path d="M5 10C5 5 8.5 2 12.5 2C16.5 2 19.5 5.5 19.5 10C19.5 14 17 17 13 17.5"/>
-        <line x1="13" y1="17.5" x2="18" y2="22"/>
-        <circle cx="18" cy="22" r="1.5"/>
-      </Icon>
-    ),
+    renderIcon: (_color, size) => <span style={{ fontSize: size, lineHeight: 1 }}>🍗</span>,
   },
   {
-    /* Lucide Apple */
     name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', color: C.carbs,
-    renderIcon: (color, size) => <Apple size={size} color={color} strokeWidth={1.8} />,
+    renderIcon: (_color, size) => <span style={{ fontSize: size, lineHeight: 1 }}>🍌</span>,
   },
   {
-    /* Fish: oval body + forked tail + eye */
     name: 'Cena', label: 'Cena', color: C.fat,
-    renderIcon: (color, size) => (
-      <Icon s={size} color={color}>
-        <path d="M4 12C4 8 7 5 12 5C17 5 20 8 20 12C20 16 17 19 12 19C7 19 4 16 4 12Z"/>
-        <path d="M4 12L1 8"/>
-        <path d="M4 12L1 16"/>
-        <circle cx="15" cy="11" r="1"/>
-      </Icon>
-    ),
+    renderIcon: (_color, size) => <span style={{ fontSize: size, lineHeight: 1 }}>🐟</span>,
   },
 ]
 
