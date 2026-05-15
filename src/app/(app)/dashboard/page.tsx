@@ -1,9 +1,8 @@
 'use client'
-import React from 'react'
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Coffee, Apple, Utensils, Cookie, Moon, Dumbbell, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -14,60 +13,6 @@ const C = {
   training: '#7aafc8',
 } as const
 
-/* ── icone pasti ───────────────────────────────────────────────────────────── */
-const MealIcon = ({ type, size = 24 }: { type: string; size?: number }) => {
-  const s = size
-  const icons: Record<string, React.ReactElement> = {
-    colazione: (
-      // ciotola cereali
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 12h16"/>
-        <path d="M5 12a7 7 0 0 0 14 0"/>
-        <path d="M9 8c.5-1.5 1.5-2.5 3-2.5S14.5 6.5 15 8"/>
-        <path d="M8 5.5c.3-.8 1-1.5 2-1.5"/>
-      </svg>
-    ),
-    spuntino_m: (
-      // vasetto yogurt
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 8h8l-1.5 11h-5z"/>
-        <path d="M8 8V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-        <path d="M11 12.5h2M10.5 16h3"/>
-      </svg>
-    ),
-    pranzo: (
-      // cloche + sole
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="18" x2="21" y2="18"/>
-        <path d="M5 18a7 7 0 0 1 14 0"/>
-        <path d="M10 11h4M12 11V9"/>
-        <circle cx="19" cy="5" r="1.5"/>
-        <path d="M19 2.5v.8M19 7.2v.8M16.5 5h.8M21.2 5h.8"/>
-      </svg>
-    ),
-    spuntino_p: (
-      // banana
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 20C5 15 8 9 14 7C19 6 22 9 21 13"/>
-        <path d="M5 18C6 14 9 9 14 8"/>
-        <path d="M21 13C20 16 17 18 13 18"/>
-      </svg>
-    ),
-    cena: (
-      // cloche + luna
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="18" x2="21" y2="18"/>
-        <path d="M5 18a7 7 0 0 1 14 0"/>
-        <path d="M10 11h4M12 11V9"/>
-        <g transform="translate(-1.5 1) scale(0.28)" strokeWidth={1.8 / 0.28}>
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </g>
-      </svg>
-    ),
-  }
-  return icons[type] ?? icons.pranzo
-}
-
 /* ── icona pallina da tennis ───────────────────────────────────────────────── */
 const TennisIcon = ({ size = 26 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -77,21 +22,12 @@ const TennisIcon = ({ size = 26 }: { size?: number }) => (
   </svg>
 )
 
-/* ── icona manubrio ─────────────────────────────────────────────────────────── */
-const DumbbellIcon = ({ size = 26, color }: { size?: number; color: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6.5 12h11"/>
-    <path d="M5.5 8.5v7M18.5 8.5v7"/>
-    <path d="M3 10v4M21 10v4"/>
-  </svg>
-)
-
-const MEALS = [
-  { name: 'Colazione',           label: 'Colazione',  icon: 'colazione',  color: C.carbs },
-  { name: 'Spuntino mattina',    label: 'Sp. Mattina', icon: 'spuntino_m', color: C.protein },
-  { name: 'Pranzo',              label: 'Pranzo',      icon: 'pranzo',     color: C.kcal },
-  { name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', icon: 'spuntino_p', color: C.carbs },
-  { name: 'Cena',                label: 'Cena',        icon: 'cena',       color: C.fat },
+const MEALS: { name: string; label: string; Icon: LucideIcon; color: string }[] = [
+  { name: 'Colazione',           label: 'Colazione',    Icon: Coffee,    color: C.carbs },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',  Icon: Apple,     color: C.protein },
+  { name: 'Pranzo',              label: 'Pranzo',       Icon: Utensils,  color: C.kcal },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', Icon: Cookie,    color: C.carbs },
+  { name: 'Cena',                label: 'Cena',         Icon: Moon,      color: C.fat },
 ]
 
 type DashData = {
@@ -249,7 +185,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
-            {MEALS.map(({ name, label, icon, color }) => {
+            {MEALS.map(({ name, label, Icon, color }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               return (
@@ -258,7 +194,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl"
                     style={{ backgroundColor: color + '20' }}>
                     <span style={{ color, flexShrink: 0 }}>
-                      <MealIcon type={icon} size={20} />
+                      <Icon size={20} strokeWidth={1.8} />
                     </span>
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
@@ -309,7 +245,7 @@ export default function DashboardPage() {
               ) : data?.workout.exists ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: C.training + '18' }}>
-                  <DumbbellIcon size={20} color={C.training} />
+                  <Dumbbell size={20} color={C.training} strokeWidth={1.8} />
                   <span className="text-[10px] font-bold" style={{ color: C.training }}>
                     {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                   </span>
@@ -337,7 +273,7 @@ export default function DashboardPage() {
                 'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
                 !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
               )} style={{ backgroundColor: C.training + '18' }}>
-                <DumbbellIcon size={20} color={C.training} />
+                <Dumbbell size={20} color={C.training} strokeWidth={1.8} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
