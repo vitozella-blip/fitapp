@@ -308,12 +308,7 @@ export default function ImportPage() {
 
       {/* ── Template ── */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Template Excel</p>
-        <p className="text-xs text-gray-500 mb-3">
-          {importType === 'food'
-            ? 'Colonne: Marca, Alimento, kcal, Gras, satu, Carb, zucc, Prot, Sale'
-            : 'Sezioni WORKOUT N con Esercizi, Note, Set/Reps/Rec per 6 settimane. 4 WO × 8 esercizi.'}
-        </p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Template Excel</p>
         <button onClick={() => downloadTemplate(importType)}
           className="text-xs font-semibold px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           📥 Scarica template {importType === 'food' ? 'Alimenti' : 'Allenamento'}
