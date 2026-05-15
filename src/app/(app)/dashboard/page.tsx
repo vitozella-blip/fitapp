@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Coffee, Dumbbell } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Coffee, Apple, Utensils, Cookie, Moon, Dumbbell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -25,54 +25,11 @@ const TennisIcon = ({ size = 26 }: { size?: number }) => (
 type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
 
 const MEALS: MealDef[] = [
-  {
-    name: 'Colazione', label: 'Colazione', color: C.carbs,
-    renderIcon: (color, size) => <Coffee size={size} color={color} strokeWidth={1.8} />,
-  },
-  {
-    name: 'Spuntino mattina', label: 'Sp. Mattina', color: C.protein,
-    renderIcon: (color, size) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 8h8l-1.5 11h-5z"/>
-        <path d="M8 8V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-        <path d="M11 12.5h2M10.5 16h3"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Pranzo', label: 'Pranzo', color: C.kcal,
-    renderIcon: (color, size) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="18" x2="21" y2="18"/>
-        <path d="M5 18a7 7 0 0 1 14 0"/>
-        <path d="M10 11h4M12 11V9"/>
-        <circle cx="19" cy="5" r="1.5"/>
-        <path d="M19 2.5v.8M19 7.2v.8M16.5 5h.8M21.2 5h.8"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', color: C.carbs,
-    renderIcon: (color, size) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 20C5 15 8 9 14 7C19 6 22 9 21 13"/>
-        <path d="M5 18C6 14 9 9 14 8"/>
-        <path d="M21 13C20 16 17 18 13 18"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Cena', label: 'Cena', color: C.fat,
-    renderIcon: (color, size) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="18" x2="21" y2="18"/>
-        <path d="M5 18a7 7 0 0 1 14 0"/>
-        <path d="M10 11h4M12 11V9"/>
-        {/* mezzaluna top-left: cerchio esterno r=4 meno cerchio interno r=3.5 offset */}
-        <path d="M7 1A4 4 0 1 0 7 8A3.5 3.5 0 0 1 7 1Z"/>
-      </svg>
-    ),
-  },
+  { name: 'Colazione',           label: 'Colazione',    color: C.carbs,   renderIcon: (color, size) => <Coffee   size={size} color={color} strokeWidth={1.8} /> },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',  color: C.protein, renderIcon: (color, size) => <Apple    size={size} color={color} strokeWidth={1.8} /> },
+  { name: 'Pranzo',              label: 'Pranzo',       color: C.kcal,    renderIcon: (color, size) => <Utensils size={size} color={color} strokeWidth={1.8} /> },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', color: C.carbs,   renderIcon: (color, size) => <Cookie   size={size} color={color} strokeWidth={1.8} /> },
+  { name: 'Cena',                label: 'Cena',         color: C.fat,     renderIcon: (color, size) => <Moon     size={size} color={color} strokeWidth={1.8} /> },
 ]
 
 type DashData = {
