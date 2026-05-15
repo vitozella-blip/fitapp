@@ -35,7 +35,10 @@ model Food {
   calories Float
   protein  Float
   carbs    Float
-  fat      Float
+  fat           Float
+  saturatedFat  Float?
+  sugars        Float?
+  salt          Float?
   per100g  Boolean @default(true)
   userId   String?
   user     User?   @relation(fields: [userId], references: [id])
