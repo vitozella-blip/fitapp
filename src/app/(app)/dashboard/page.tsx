@@ -39,60 +39,42 @@ const MEALS: MealDef[] = [
     renderIcon: (color, size) => <Coffee size={size} color={color} strokeWidth={1.8} />,
   },
   {
-    /* Yogurt jar: wide+short (wider than tall), rect lid, spoon sticking out */
+    /* Yogurt jar: bigger, no spoon — wide lid, tapered body, 2 stripes */
     name: 'Spuntino mattina', label: 'Sp. Mattina', color: C.protein,
     renderIcon: (color, size) => (
       <Icon s={size} color={color}>
-        <rect x="4" y="8" width="14" height="2.5" rx="1"/>
-        <path d="M5 10.5h12l-1.5 8.5H6.5z"/>
-        <line x1="7.5" y1="15.5" x2="15.5" y2="15.5"/>
-        <line x1="16.5" y1="11" x2="19.5" y2="5.5"/>
-        <circle cx="20" cy="5" r="1.2"/>
+        <rect x="3" y="5" width="16" height="3" rx="1.5"/>
+        <path d="M4 8h14l-2 13H6z"/>
+        <line x1="6" y1="14" x2="17" y2="14"/>
+        <line x1="6.5" y1="17.5" x2="16" y2="17.5"/>
       </Icon>
     ),
   },
   {
-    /* Fork + knife + 8-ray sun (top-centre between utensils) */
+    /* Chicken drumstick: rounded meat + diagonal bone + knob */
     name: 'Pranzo', label: 'Pranzo', color: C.kcal,
     renderIcon: (color, size) => (
       <Icon s={size} color={color}>
-        {/* fork */}
-        <path d="M6 3v5a2 2 0 0 0 4 0V3"/>
-        <line x1="8" y1="8" x2="8" y2="21"/>
-        {/* knife */}
-        <line x1="15" y1="3" x2="15" y2="21"/>
-        <path d="M15 3c2 0 3 2 3 5"/>
-        {/* 8-ray sun between utensils */}
-        <circle cx="11.5" cy="4" r="1.4"/>
-        <line x1="11.5" y1="1.2" x2="11.5" y2="2.2"/>
-        <line x1="11.5" y1="5.8" x2="11.5" y2="6.8"/>
-        <line x1="8.7" y1="4" x2="9.7" y2="4"/>
-        <line x1="13.3" y1="4" x2="14.3" y2="4"/>
-        <line x1="9.5" y1="2.3" x2="10.2" y2="3"/>
-        <line x1="12.8" y1="5" x2="13.5" y2="5.7"/>
-        <line x1="13.5" y1="2.3" x2="12.8" y2="3"/>
-        <line x1="10.2" y1="5" x2="9.5" y2="5.7"/>
+        <path d="M5 10C5 5 8.5 2 12.5 2C16.5 2 19.5 5.5 19.5 10C19.5 14 17 17 13 17.5"/>
+        <line x1="13" y1="17.5" x2="18" y2="22"/>
+        <circle cx="18" cy="22" r="1.5"/>
       </Icon>
     ),
   },
   {
     /* Lucide Apple */
-    name: 'Spuntino pomeriggio', label: 'Pomeriggio', color: C.carbs,
+    name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', color: C.carbs,
     renderIcon: (color, size) => <Apple size={size} color={color} strokeWidth={1.8} />,
   },
   {
-    /* Fork + knife + crescent moon top-left */
+    /* Fish: oval body + forked tail + eye */
     name: 'Cena', label: 'Cena', color: C.fat,
     renderIcon: (color, size) => (
       <Icon s={size} color={color}>
-        {/* moon top-left (Lucide Moon formula ×0.5, offset to y=1.5) */}
-        <path d="M4 1.5a3 3 0 0 0 4.5 4.5 4.5 4.5 0 1 1-4.5-4.5Z"/>
-        {/* fork */}
-        <path d="M11 3v5a2 2 0 0 0 4 0V3"/>
-        <line x1="13" y1="8" x2="13" y2="21"/>
-        {/* knife */}
-        <line x1="18.5" y1="3" x2="18.5" y2="21"/>
-        <path d="M18.5 3c2 0 3 2 3 5"/>
+        <path d="M4 12C4 8 7 5 12 5C17 5 20 8 20 12C20 16 17 19 12 19C7 19 4 16 4 12Z"/>
+        <path d="M4 12L1 8"/>
+        <path d="M4 12L1 16"/>
+        <circle cx="15" cy="11" r="1"/>
       </Icon>
     ),
   },
