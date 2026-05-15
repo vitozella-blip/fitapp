@@ -255,7 +255,7 @@ export default function DashboardPage() {
               ) : data?.workout.exists ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: C.training + '28' }}>
-                  <Em e="🏋🏻" size={20} />
+                  <img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
                   <span className="text-[10px] font-bold" style={{ color: C.training }}>
                     {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                   </span>
@@ -280,7 +280,7 @@ export default function DashboardPage() {
                 'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
                 !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
               )} style={{ backgroundColor: C.training + '28' }}>
-                <Em e="🏋🏻" size={20} />
+                <img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
