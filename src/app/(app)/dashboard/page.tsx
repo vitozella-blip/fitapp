@@ -51,16 +51,39 @@ const MEALS: MealDef[] = [
     ),
   },
   {
+    /* 🍗 drumstick outline */
     name: 'Pranzo', label: 'Pranzo', color: C.kcal,
-    renderIcon: (_color, size) => <span style={{ fontSize: size, lineHeight: 1 }}>🍗</span>,
+    renderIcon: (color, size) => (
+      <Icon s={size} color={color}>
+        <path d="M7 15C4.5 13 4 9.5 5.5 7C7 4.5 10 3 13 3.5C16 4 18 6 18 8C19.5 7.5 21 8.5 21 10.5C21 12.5 19.5 14 18 14C18 16 16 18 13.5 18C11 18 8.5 17 7 15Z"/>
+        <line x1="14" y1="17.5" x2="19" y2="22"/>
+        <circle cx="19" cy="22" r="1.3"/>
+      </Icon>
+    ),
   },
   {
+    /* 🍌 banana outline */
     name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', color: C.carbs,
-    renderIcon: (_color, size) => <span style={{ fontSize: size, lineHeight: 1 }}>🍌</span>,
+    renderIcon: (color, size) => (
+      <Icon s={size} color={color}>
+        <path d="M5 19C6 14 10 7 17 6C21 5 23 9 22 13"/>
+        <path d="M5 19C9 19 16 17 22 13"/>
+        <line x1="17" y1="6" x2="18.5" y2="3"/>
+      </Icon>
+    ),
   },
   {
+    /* 🐟 fish outline */
     name: 'Cena', label: 'Cena', color: C.fat,
-    renderIcon: (_color, size) => <span style={{ fontSize: size, lineHeight: 1 }}>🐟</span>,
+    renderIcon: (color, size) => (
+      <Icon s={size} color={color}>
+        <path d="M21 12C21 8 17.5 5 12.5 5C7.5 5 5 8 5 12C5 16 7.5 19 12.5 19C17.5 19 21 16 21 12Z"/>
+        <path d="M5 12L2 8.5"/>
+        <path d="M5 12L2 15.5"/>
+        <circle cx="16" cy="11" r="1"/>
+        <path d="M12 5C13 2.5 15.5 2 16.5 5"/>
+      </Icon>
+    ),
   },
 ]
 
