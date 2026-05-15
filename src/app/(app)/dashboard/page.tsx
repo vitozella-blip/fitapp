@@ -182,12 +182,12 @@ export default function DashboardPage() {
 
         {/* ────────── PASTI ────────── */}
         <button onClick={() => router.push('/food/diary')}
-          className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
+          className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200/70 dark:border-orange-900/50 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
 
           {/* Titolo centrato */}
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="px-3 py-2 border-b border-orange-200/70 dark:border-orange-900/50 shrink-0">
             <p className="text-center text-[11px] font-bold uppercase tracking-wide"
-              style={{ color: C.kcal }}>Pasti</p>
+              style={{ color: '#e8924a' }}>Pasti</p>
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
@@ -205,22 +205,26 @@ export default function DashboardPage() {
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
 
-                  {/* Macro sotto la pillola — stessa altezza in entrambe le card */}
-                  <p className="text-xs leading-tight mt-0.5 text-center px-0.5">
+                  {/* Macro sotto la pillola — 2 righe: kcal / P · C · G */}
+                  <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
                     {kcal > 0 ? (
                       <>
-                        <span style={{ color: C.kcal }}>kcal {kcal}</span>
-                        <span className="text-gray-400 dark:text-gray-500"> · </span>
-                        <span style={{ color: C.protein }}>P {m!.protein}</span>
-                        <span className="text-gray-400 dark:text-gray-500"> · </span>
-                        <span style={{ color: C.carbs }}>C {m!.carbs}</span>
-                        <span className="text-gray-400 dark:text-gray-500"> · </span>
-                        <span style={{ color: C.fat }}>G {m!.fat}</span>
+                        <p className="text-xs font-semibold" style={{ color: C.kcal }}>{kcal} kcal</p>
+                        <p className="text-xs">
+                          <span style={{ color: C.protein }}>P {m!.protein}</span>
+                          <span className="text-gray-400 dark:text-gray-500"> · </span>
+                          <span style={{ color: C.carbs }}>C {m!.carbs}</span>
+                          <span className="text-gray-400 dark:text-gray-500"> · </span>
+                          <span style={{ color: C.fat }}>G {m!.fat}</span>
+                        </p>
                       </>
                     ) : (
-                      <span className="text-gray-400 dark:text-gray-500">—</span>
+                      <>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">—</p>
+                        <p className="text-xs">&nbsp;</p>
+                      </>
                     )}
-                  </p>
+                  </div>
                 </div>
               )
             })}
@@ -229,10 +233,10 @@ export default function DashboardPage() {
 
         {/* ────────── ALLENAMENTO ────────── */}
         <button onClick={() => router.push('/training/diary')}
-          className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
+          className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
 
           {/* Titolo centrato */}
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="px-3 py-2 border-b border-blue-200/70 dark:border-blue-900/50 shrink-0">
             <p className="text-center text-[11px] font-bold uppercase tracking-wide"
               style={{ color: C.training }}>Allenamento</p>
           </div>
@@ -264,7 +268,7 @@ export default function DashboardPage() {
                 </div>
               )}
               {/* spacer = stessa altezza riga macro di PASTI */}
-              <p className="text-xs leading-tight mt-0.5 text-center truncate px-1"
+              <p className="text-xs leading-tight mt-0.5 text-center truncate px-1 h-[1.875rem] flex items-center justify-center"
                 style={{ color: C.training, opacity: !data?.workout.hasTennis && !data?.workout.exists ? 0 : 1 }}>
                 {!data?.workout.hasTennis && data?.workout.exists && schedaInfo ? schedaInfo.name : ' '}
               </p>
@@ -281,7 +285,7 @@ export default function DashboardPage() {
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
               </div>
-              <p className="text-xs leading-tight mt-0.5 text-center truncate px-1"
+              <p className="text-xs leading-tight mt-0.5 text-center truncate px-1 h-[1.875rem] flex items-center justify-center"
                 style={{ color: C.training }}>
                 {data?.workout.hasTennis && data?.workout.exists && schedaInfo ? schedaInfo.name : ' '}
               </p>
@@ -301,7 +305,7 @@ export default function DashboardPage() {
                       </>
                     ) : null}
                   </div>
-                  <p className="text-xs leading-tight mt-0.5">&nbsp;</p>
+                  <p className="text-xs leading-tight mt-0.5 h-[1.875rem]">&nbsp;</p>
                 </div>
               )
             })}
