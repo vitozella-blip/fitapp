@@ -5,7 +5,8 @@ import { pool } from '@/lib/db'
 
 type FoodRow = {
   name?: unknown; brand?: unknown; calories?: unknown
-  protein?: unknown; carbs?: unknown; fat?: unknown; per100g?: unknown
+  protein?: unknown; carbs?: unknown; fat?: unknown
+  saturatedFat?: unknown; sugars?: unknown; salt?: unknown; per100g?: unknown
 }
 type ExerciseRow = {
   name?: unknown; muscleGroup?: unknown; equipment?: unknown; instructions?: unknown
@@ -31,6 +32,14 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(data) || data.length === 0)
       return NextResponse.json({ error: 'Nessun dato' }, { status: 400 })
 
+    // Ensure optional columns exist (idempotent)
+    await pool.query(`
+      ALTER TABLE "Food"
+        ADD COLUMN IF NOT EXISTS "saturatedFat" FLOAT,
+        ADD COLUMN IF NOT EXISTS "sugars" FLOAT,
+        ADD COLUMN IF NOT EXISTS "salt" FLOAT
+    `)
+
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
       const name     = String(row.name ?? '').trim()
@@ -38,18 +47,21 @@ export async function POST(req: NextRequest) {
       if (!name || isNaN(calories)) {
         errorDetails.push({ row: i + 1, error: 'Nome e calorie obbligatori' }); continue
       }
-      const protein = Number(row.protein ?? 0) || 0
-      const carbs   = Number(row.carbs   ?? 0) || 0
-      const fat     = Number(row.fat     ?? 0) || 0
-      const brand   = row.brand ? String(row.brand).trim() || null : null
-      const per100g = row.per100g == null ? true
+      const protein      = Number(row.protein      ?? 0) || 0
+      const carbs        = Number(row.carbs        ?? 0) || 0
+      const fat          = Number(row.fat          ?? 0) || 0
+      const saturatedFat = row.saturatedFat != null && String(row.saturatedFat).trim() !== '' ? Number(row.saturatedFat) : null
+      const sugars       = row.sugars       != null && String(row.sugars).trim()       !== '' ? Number(row.sugars)       : null
+      const salt         = row.salt         != null && String(row.salt).trim()         !== '' ? Number(row.salt)         : null
+      const brand        = row.brand ? String(row.brand).trim() || null : null
+      const per100g      = row.per100g == null ? true
         : typeof row.per100g === 'boolean' ? row.per100g
         : !['false', '0', 'no'].includes(String(row.per100g).toLowerCase())
       try {
         await pool.query(
-          `INSERT INTO "Food" (id, name, brand, calories, protein, carbs, fat, "per100g", "userId")
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)`,
-          [name, brand, calories, protein, carbs, fat, per100g, userId]
+          `INSERT INTO "Food" (id, name, brand, calories, protein, carbs, fat, "saturatedFat", "sugars", "salt", "per100g", "userId")
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [name, brand, calories, protein, carbs, fat, saturatedFat, sugars, salt, per100g, userId]
         )
         imported++
       } catch (e) {

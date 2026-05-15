@@ -23,7 +23,13 @@
       "PowerShell($paths = @\\(\"$env:LOCALAPPDATA\\\\GitHubCLI\\\\gh.exe\", \"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\", \"${env:ProgramFiles\\(x86\\)}\\\\GitHub CLI\\\\gh.exe\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { Write-Output \"FOUND: $p\" } }; Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)",
       "Bash(xargs wc -l)",
       "Bash(npm install *)",
-      "Bash(node -e \"require\\('xlsx'\\); console.log\\('xlsx ok'\\)\")"
+      "Bash(node -e \"require\\('xlsx'\\); console.log\\('xlsx ok'\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/xlsx/package.json'\\).version\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.dependencies,null,2\\)\\)\")",
+      "Bash(node -e \"console.log\\('xlsx in deps:', require\\('./package.json'\\).dependencies.xlsx || 'MISSING'\\)\")",
+      "Bash(npm run *)",
+      "Bash(ls \"C:\\\\Users\\\\vitoz\\\\Desktop\\\\app\\\\icone chiamata allenamento\")"
     ]
   }
 }

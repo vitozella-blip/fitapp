@@ -12,9 +12,12 @@ const SECTIONS = [
 export default function FoodHubPage() {
   return (
     <div className="space-y-4 max-w-2xl mx-auto md:max-w-none">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Alimentazione</h1>
-        <p className="text-sm text-gray-400 mt-1">Gestisci la tua nutrizione</p>
+      <div className="mb-6 flex items-center gap-3">
+        <img src="/icon-food.png" alt="" style={{ width: 52, height: 52, objectFit: 'contain' }} />
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Alimentazione</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Gestisci la tua nutrizione</p>
+        </div>
       </div>
       <div className="space-y-2">
         {SECTIONS.map(s => (

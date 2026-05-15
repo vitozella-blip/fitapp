@@ -18,26 +18,40 @@ type FoodForm = { name: string; brand: string; calories: string; protein: string
 
 const emptyForm = (): FoodForm => ({ name: '', brand: '', calories: '', protein: '', carbs: '', fat: '', saturatedFat: '', sugars: '', salt: '', categoryId: '' })
 
+const fmt = (v: number | undefined | null, unit = 'g') =>
+  v == null || v === 0 ? '—' : `${v} ${unit}`
+
+const DETAIL_ROWS: { label: string; key: keyof Food; color: string; sub?: boolean }[] = [
+  { label: 'Energia',         key: 'calories',     color: '#6c5ce7' },
+  { label: 'Grassi',          key: 'fat',          color: '#9b59b6' },
+  { label: 'di cui saturi',   key: 'saturatedFat', color: '#c4a0d6', sub: true },
+  { label: 'Carboidrati',     key: 'carbs',        color: '#e8813a' },
+  { label: 'di cui zuccheri', key: 'sugars',       color: '#f0aa78', sub: true },
+  { label: 'Proteine',        key: 'protein',      color: '#5a9e5a' },
+  { label: 'Sale',            key: 'salt',         color: '#94a3b8' },
+]
+
 function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
   food: Food; isFav: boolean
   onToggleFav: () => void; onEdit: () => void; onDelete: () => void
 }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className="border-b border-gray-50 dark:border-gray-800 last:border-0">
       <div className="flex items-center gap-2 px-4 py-3">
         <button onClick={onToggleFav} className="shrink-0">
           <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
         </button>
-        <div className="flex-1 min-w-0">
+        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{food.name}</p>
-          {food.brand && <p className="text-xs text-gray-400 truncate">- {food.brand}</p>}
+          {food.brand && <p className="text-xs text-gray-400 truncate">{food.brand}</p>}
           <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
             <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
             <span style={{ color: '#9b59b6' }}>G {food.fat}g</span>
             <span style={{ color: '#e8813a' }}>C {food.carbs}g</span>
             <span style={{ color: '#5a9e5a' }}>P {food.protein}g</span>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors">
             <Pencil size={13} />
@@ -47,6 +61,24 @@ function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
           </button>
         </div>
       </div>
+
+      {open && (
+        <div className="px-4 pb-3 space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Valori per 100g</p>
+          {DETAIL_ROWS.map(r => {
+            const raw = food[r.key] as number | undefined | null
+            const val = r.key === 'calories'
+              ? (raw ? `${raw} kcal` : '—')
+              : fmt(raw)
+            return (
+              <div key={r.label} className={cn('flex items-center justify-between py-1', r.sub ? 'pl-4' : '')}>
+                <span className={cn('text-xs', r.sub ? 'font-normal' : 'font-semibold')} style={{ color: r.color }}>{r.label}</span>
+                <span className={cn('text-xs', r.sub ? 'font-medium' : 'font-bold')} style={{ color: r.color }}>{val}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

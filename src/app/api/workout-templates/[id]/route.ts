@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  try {
+    const { rows: [t] } = await pool.query(`SELECT id, name FROM "WorkoutTemplate" WHERE id=$1`, [id])
+    if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const { rows: exs } = await pool.query(
+      `SELECT te.id, te.sets, te.reps, te."restSeconds", te."noteScheda", te."notePersonali",
+              e.id as "exId", e.name as "exName", e."muscleGroup"
+       FROM "WorkoutTemplateExercise" te
+       JOIN "Exercise" e ON e.id = te."exerciseId"
+       WHERE te."templateId" = $1
+       ORDER BY te."order"`, [id]
+    )
+    return NextResponse.json({
+      id: t.id, name: t.name,
+      exercises: exs.map(r => ({
+        id: r.id, sets: r.sets, reps: r.reps, restSeconds: r.restSeconds,
+        noteScheda: r.noteScheda, notePersonali: r.notePersonali,
+        exercise: { id: r.exId, name: r.exName, muscleGroup: r.muscleGroup },
+      })),
+    })
+  } catch (e) { console.error(e); return NextResponse.json({ error: 'Errore' }, { status: 500 }) }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await req.json()

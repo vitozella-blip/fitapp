@@ -10,12 +10,15 @@ import { cn } from '@/lib/utils'
 type ImportType = 'food' | 'exercise'
 
 const FOOD_FIELDS = [
-  { key: 'name',     label: 'Nome',        required: true  },
-  { key: 'brand',    label: 'Brand',       required: false },
-  { key: 'calories', label: 'Calorie',     required: true  },
-  { key: 'protein',  label: 'Proteine',    required: true  },
-  { key: 'carbs',    label: 'Carboidrati', required: true  },
-  { key: 'fat',      label: 'Grassi',      required: true  },
+  { key: 'name',         label: 'Nome',          required: true  },
+  { key: 'brand',        label: 'Brand',         required: false },
+  { key: 'calories',     label: 'Calorie',       required: true  },
+  { key: 'protein',      label: 'Proteine',      required: true  },
+  { key: 'carbs',        label: 'Carboidrati',   required: true  },
+  { key: 'fat',          label: 'Grassi',        required: true  },
+  { key: 'saturatedFat', label: 'Di cui saturi', required: false },
+  { key: 'sugars',       label: 'Di cui zucch.', required: false },
+  { key: 'salt',         label: 'Sale',          required: false },
 ] as const
 
 // Alias auto-riconoscimento colonne alimenti (IT + EN + colonne template utente)
@@ -30,6 +33,10 @@ const FOOD_ALIASES: Record<string, string> = {
   carb: 'carbs', 'carb.': 'carbs', 'carboidrati (g)': 'carbs',
   grassi: 'fat', fat: 'fat', lipidi: 'fat', gras: 'fat',
   'grassi totali': 'fat', 'lip.': 'fat', 'grassi (g)': 'fat',
+  'di cui saturi': 'saturatedFat', satu: 'saturatedFat', saturi: 'saturatedFat',
+  'acidi grassi saturi': 'saturatedFat', 'saturated fat': 'saturatedFat',
+  'di cui zuccheri': 'sugars', zucc: 'sugars', zuccheri: 'sugars', sugars: 'sugars',
+  sale: 'salt', salt: 'salt', sodio: 'salt',
 }
 
 // Trova la riga intestazione scorrendo le prime 5 righe (gestisce titoli in row 0)
