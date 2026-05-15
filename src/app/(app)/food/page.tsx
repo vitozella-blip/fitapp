@@ -1,20 +1,12 @@
 'use client'
 import Link from 'next/link'
 
-const C = {
-  kcal:     '#9d8fcc',
-  protein:  '#7dbf7d',
-  carbs:    '#f0aa78',
-  fat:      '#c4a0d6',
-  training: '#7aafc8',
-} as const
-
 const SECTIONS = [
-  { label: 'Diario Pasti',     href: '/food/diary',     e: '📖', color: C.kcal    },
-  { label: 'Alimenti',         href: '/food/database',  e: '🥚', color: C.carbs   },
-  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: C.fat    },
-  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#e07070' },
-  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: C.protein },
+  { label: 'Diario Pasti',     href: '/food/diary',     e: '📖', color: '#e8924a' },
+  { label: 'Alimenti',         href: '/food/database',  e: '🥚', color: '#f0aa78' },
+  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: '#e07850' },
+  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#f5b840' },
+  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: '#d4784a' },
 ]
 
 export default function FoodHubPage() {

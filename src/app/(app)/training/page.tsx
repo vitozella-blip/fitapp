@@ -1,16 +1,10 @@
 'use client'
 import Link from 'next/link'
 
-const C = {
-  kcal:     '#9d8fcc',
-  protein:  '#7dbf7d',
-  training: '#7aafc8',
-} as const
-
 const SECTIONS = [
-  { label: 'Diario Allenamenti',  href: '/training/diary',   e: '📖', color: C.kcal     },
-  { label: 'Storico',             href: '/training/history', e: '📈', color: C.protein  },
-  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: C.training },
+  { label: 'Diario Allenamenti',  href: '/training/diary',   e: '📖', color: '#7aafc8' },
+  { label: 'Storico',             href: '/training/history', e: '📈', color: '#5a90b8' },
+  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: '#9abfd8' },
 ]
 
 export default function TrainingHubPage() {
