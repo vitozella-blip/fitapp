@@ -13,29 +13,73 @@ const C = {
   training: '#7aafc8',
 } as const
 
+// ── SVG Icons ────────────────────────────────────────────────────────────────
+type IconProps = { className?: string; style?: React.CSSProperties }
+const svgBase = { fill: 'none', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+const BreakfastIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <path d="M7 8h7a4 4 0 0 1 0 8H9a4 4 0 0 1-4-4V5" />
+    <path d="M14 8h1a3 3 0 0 1 0 6h-1" />
+    <path d="M6 3v3" /><path d="M9 3v3" />
+  </svg>
+)
+const SnackMorningIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <rect x="6" y="4" width="12" height="16" rx="2" />
+    <path d="M9 8h6" /><path d="M9 12h6" /><path d="M9 16h4" />
+  </svg>
+)
+const LunchIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <path d="M7 6v5" /><path d="M10 6v5" /><path d="M7 9h3" />
+    <path d="M14 6v14" /><path d="M17 6c0 2-1 3-3 3" />
+  </svg>
+)
+const SnackAfternoonIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <path d="M12 3C8 3 6 6 6 10c0 6 6 11 6 11s6-5 6-11c0-4-2-7-6-7Z" />
+    <path d="M12 7c1.5 0 3 1 3 3" />
+  </svg>
+)
+const DinnerIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <path d="M4 12c2-4 6-6 8-6s6 2 8 6" />
+    <path d="M6 12c1 4 4 6 6 6s5-2 6-6" />
+    <path d="M12 6v12" />
+  </svg>
+)
+const WorkoutIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <path d="M3 10v4" /><path d="M21 10v4" />
+    <path d="M6 8v8" /><path d="M18 8v8" />
+    <path d="M6 12h12" />
+  </svg>
+)
+const TennisIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M7 7c3 2 5 5 6 10" />
+    <path d="M17 7c-3 2-5 5-6 10" />
+  </svg>
+)
+const OffDayIcon = ({ className = 'w-5 h-5', style }: IconProps) => (
+  <svg viewBox="0 0 24 24" stroke="currentColor" {...svgBase} className={className} style={style}>
+    <path d="M5 14h14" />
+    <path d="M7 14v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
+    <path d="M4 14v4" /><path d="M20 14v4" />
+  </svg>
+)
+// ─────────────────────────────────────────────────────────────────────────────
+
 type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
 
-const Em = ({ e, size, tint }: { e: string; size: number; tint?: string }) => (
-  <span style={{ position: 'relative', display: 'inline-block', lineHeight: 1, userSelect: 'none' }}>
-    <span style={{ fontSize: size, lineHeight: 1, display: 'block' }}>{e}</span>
-    {tint && (
-      <span style={{
-        position: 'absolute', inset: 0,
-        backgroundColor: tint,
-        mixBlendMode: 'color',
-        pointerEvents: 'none',
-        borderRadius: 2,
-      }} />
-    )}
-  </span>
-)
-
 const MEALS: MealDef[] = [
-  { name: 'Colazione',           label: 'Colazione',     color: C.carbs,   renderIcon: (c, s) => <Em e="☕" size={s} tint={c} /> },
-  { name: 'Spuntino mattina',    label: 'Sp. Mattina',   color: C.protein, renderIcon: (c, s) => <Em e="🍫" size={s} tint={c} /> },
-  { name: 'Pranzo',              label: 'Pranzo',        color: C.kcal,    renderIcon: (c, s) => <Em e="🍗" size={s} tint={c} /> },
-  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio',color: C.carbs,   renderIcon: (c, s) => <Em e="🍌" size={s} tint={c} /> },
-  { name: 'Cena',                label: 'Cena',          color: C.fat,     renderIcon: (c, s) => <Em e="🐟" size={s} tint={c} /> },
+  { name: 'Colazione',           label: 'Colazione',      color: C.carbs,   renderIcon: (c) => <BreakfastIcon      className="w-5 h-5" style={{ color: c }} /> },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',    color: C.protein, renderIcon: (c) => <SnackMorningIcon   className="w-5 h-5" style={{ color: c }} /> },
+  { name: 'Pranzo',              label: 'Pranzo',         color: C.kcal,    renderIcon: (c) => <LunchIcon          className="w-5 h-5" style={{ color: c }} /> },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', color: C.carbs,   renderIcon: (c) => <SnackAfternoonIcon className="w-5 h-5" style={{ color: c }} /> },
+  { name: 'Cena',                label: 'Cena',           color: C.fat,     renderIcon: (c) => <DinnerIcon         className="w-5 h-5" style={{ color: c }} /> },
 ]
 
 type DashData = {
@@ -255,14 +299,14 @@ export default function DashboardPage() {
             <div>
               {data?.workout.hasTennis ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                  style={{ backgroundColor: '#f0ec7030' }}>
-                  <Em e="🎾" size={20} tint="#7aaa40" />
+                  style={{ backgroundColor: '#7aaa4028' }}>
+                  <TennisIcon className="w-5 h-5" style={{ color: '#7aaa40' }} />
                   <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
                 </div>
               ) : data?.workout.exists ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: C.training + '28' }}>
-                  <Em e="🏋🏻" size={20} tint={C.training} />
+                  <WorkoutIcon className="w-5 h-5" style={{ color: C.training }} />
                   <span className="text-[10px] font-bold" style={{ color: C.training }}>
                     {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                   </span>
@@ -270,7 +314,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: '#b0b8c830' }}>
-                  <Em e="🛋️" size={20} tint="#b0b8c8" />
+                  <OffDayIcon className="w-5 h-5" style={{ color: '#b0b8c8' }} />
                   <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
                 </div>
               )}
@@ -287,7 +331,7 @@ export default function DashboardPage() {
                 'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
                 !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
               )} style={{ backgroundColor: C.training + '28' }}>
-                <Em e="🏋🏻" size={20} tint={C.training} />
+                <WorkoutIcon className="w-5 h-5" style={{ color: C.training }} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
