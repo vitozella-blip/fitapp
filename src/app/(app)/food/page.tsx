@@ -27,10 +27,10 @@ export default function FoodHubPage() {
       <div className="space-y-2">
         {SECTIONS.map(s => (
           <Link key={s.href} href={s.href}
-            className="flex items-center justify-center gap-1.5 py-2 rounded-2xl active:scale-[0.98] transition-transform"
+            className="flex items-center justify-center gap-2 py-4 rounded-2xl active:scale-[0.98] transition-transform"
             style={{ backgroundColor: s.color + '28' }}>
-            <span style={{ fontSize: 20, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{s.e}</span>
-            <span className="text-[10px] font-bold" style={{ color: s.color }}>{s.label}</span>
+            <span style={{ fontSize: 24, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{s.e}</span>
+            <span className="text-sm font-bold" style={{ color: s.color }}>{s.label}</span>
           </Link>
         ))}
       </div>
