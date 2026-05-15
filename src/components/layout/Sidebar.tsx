@@ -9,11 +9,13 @@ const accentCls = {
   primary: 'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950',
   food: 'text-orange-600 bg-orange-50 dark:text-orange-300 dark:bg-orange-950',
   training: 'text-blue-600 bg-blue-50 dark:text-blue-300 dark:bg-blue-950',
+  tools: 'text-violet-600 bg-violet-50 dark:text-violet-300 dark:bg-violet-950',
 }
 const dotCls = {
   primary: 'bg-emerald-500',
   food: 'bg-orange-400',
   training: 'bg-blue-400',
+  tools: 'bg-violet-400',
 }
 
 export function Sidebar() {

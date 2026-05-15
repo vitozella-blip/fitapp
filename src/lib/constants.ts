@@ -9,6 +9,7 @@ import {
   ClipboardList,
   History,
   BarChart3,
+  Upload,
 } from 'lucide-react'
 
 export type NavItem = {
@@ -20,7 +21,7 @@ export type NavItem = {
 
 export type NavGroup = {
   label: string
-  accent: 'primary' | 'food' | 'training'
+  accent: 'primary' | 'food' | 'training' | 'tools'
   items: NavItem[]
 }
 
@@ -51,6 +52,13 @@ export const NAV: NavGroup[] = [
       { label: 'Piano', href: '/training/plan', icon: ClipboardList, section: 'training' },
       { label: 'Storico', href: '/training/history', icon: History, section: 'training' },
       { label: 'Statistiche', href: '/training/stats', icon: BarChart3, section: 'training' },
+    ],
+  },
+  {
+    label: 'Strumenti',
+    accent: 'tools',
+    items: [
+      { label: 'Importa dati', href: '/import', icon: Upload },
     ],
   },
 ]
