@@ -126,8 +126,8 @@ export function Header() {
       </div>
 
       <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-        {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+        className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-colors">
+        <span style={{ fontSize: 16, lineHeight: 1 }}>{theme === 'dark' ? '🌙' : '☀️'}</span>
       </button>
     </header>
   )

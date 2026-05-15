@@ -1,13 +1,12 @@
 'use client'
 import Link from 'next/link'
-import { BookOpen, Apple, ChefHat, Target, CalendarDays, ChevronRight } from 'lucide-react'
 
 const SECTIONS = [
-  { label: 'Diario', desc: 'Registra i tuoi pasti', href: '/food/diary', icon: BookOpen, color: 'bg-orange-50 dark:bg-orange-950 text-orange-500' },
-  { label: 'Alimenti', desc: 'Cerca nel database', href: '/food/database', icon: Apple, color: 'bg-amber-50 dark:bg-amber-950 text-amber-500' },
-  { label: 'Ricette', desc: 'Le tue ricette personali', href: '/food/recipes', icon: ChefHat, color: 'bg-yellow-50 dark:bg-yellow-950 text-yellow-500' },
-  { label: 'Completa Macro', desc: 'Raggiungi i tuoi obiettivi', href: '/food/macros', icon: Target, color: 'bg-red-50 dark:bg-red-950 text-red-500' },
-  { label: 'Piano Alimentare', desc: 'Pianifica la settimana', href: '/food/plan', icon: CalendarDays, color: 'bg-rose-50 dark:bg-rose-950 text-rose-500' },
+  { label: 'Diario Pasti',     href: '/food/diary',     e: '📖', color: '#c45a20' },
+  { label: 'Alimenti',         href: '/food/database',  e: '🥚', color: '#d4784a' },
+  { label: 'Ricette',          href: '/food/recipes',   e: '👨🏻‍🍳', color: '#e8924a' },
+  { label: 'Completa Macro',   href: '/food/macros',    e: '🎯', color: '#f0aa78' },
+  { label: 'Piano Alimentare', href: '/food/plan',      e: '🗓️', color: '#f5c49a' },
 ]
 
 export default function FoodHubPage() {
@@ -20,15 +19,10 @@ export default function FoodHubPage() {
       <div className="space-y-2">
         {SECTIONS.map(s => (
           <Link key={s.href} href={s.href}
-            className="flex items-center gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${s.color}`}>
-              <s.icon size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{s.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{s.desc}</p>
-            </div>
-            <ChevronRight size={16} className="text-gray-300 shrink-0" />
+            className="flex items-center justify-center gap-2 py-4 rounded-2xl active:scale-[0.98] transition-transform"
+            style={{ backgroundColor: s.color + '28' }}>
+            <span style={{ fontSize: 24, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{s.e}</span>
+            <span className="text-sm font-bold" style={{ color: s.color }}>{s.label}</span>
           </Link>
         ))}
       </div>

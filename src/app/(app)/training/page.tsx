@@ -1,11 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { Dumbbell, History, ClipboardList, ChevronRight } from 'lucide-react'
 
 const SECTIONS = [
-  { label: 'Diario Allenamento', desc: 'Registra il workout di oggi', href: '/training/diary', icon: Dumbbell, color: 'bg-blue-50 dark:bg-blue-950 text-blue-500' },
-  { label: 'Storico', desc: 'I tuoi allenamenti passati', href: '/training/history', icon: History, color: 'bg-indigo-50 dark:bg-indigo-950 text-indigo-500' },
-  { label: 'Piano Allenamento', desc: 'Gestisci i tuoi workout', href: '/training/plan', icon: ClipboardList, color: 'bg-violet-50 dark:bg-violet-950 text-violet-500' },
+  { label: 'Diario Allenamenti',  href: '/training/diary',   e: '📖', color: '#4a7a9b' },
+  { label: 'Storico',             href: '/training/history', e: '📈', color: '#7aafc8' },
+  { label: 'Piano Allenamento',   href: '/training/plan',    e: '🗓️', color: '#a8cfe0' },
 ]
 
 export default function TrainingHubPage() {
@@ -18,15 +17,10 @@ export default function TrainingHubPage() {
       <div className="space-y-2">
         {SECTIONS.map(s => (
           <Link key={s.href} href={s.href}
-            className="flex items-center gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${s.color}`}>
-              <s.icon size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{s.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{s.desc}</p>
-            </div>
-            <ChevronRight size={16} className="text-gray-300 shrink-0" />
+            className="flex items-center justify-center gap-2 py-4 rounded-2xl active:scale-[0.98] transition-transform"
+            style={{ backgroundColor: s.color + '28' }}>
+            <span style={{ fontSize: 24, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{s.e}</span>
+            <span className="text-sm font-bold" style={{ color: s.color }}>{s.label}</span>
           </Link>
         ))}
       </div>
