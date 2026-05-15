@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Coffee, Apple, Utensils, Cookie, Moon, Dumbbell, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Coffee, Dumbbell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -22,12 +22,57 @@ const TennisIcon = ({ size = 26 }: { size?: number }) => (
   </svg>
 )
 
-const MEALS: { name: string; label: string; Icon: LucideIcon; color: string }[] = [
-  { name: 'Colazione',           label: 'Colazione',    Icon: Coffee,    color: C.carbs },
-  { name: 'Spuntino mattina',    label: 'Sp. Mattina',  Icon: Apple,     color: C.protein },
-  { name: 'Pranzo',              label: 'Pranzo',       Icon: Utensils,  color: C.kcal },
-  { name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', Icon: Cookie,    color: C.carbs },
-  { name: 'Cena',                label: 'Cena',         Icon: Moon,      color: C.fat },
+type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
+
+const MEALS: MealDef[] = [
+  {
+    name: 'Colazione', label: 'Colazione', color: C.carbs,
+    renderIcon: (color, size) => <Coffee size={size} color={color} strokeWidth={1.8} />,
+  },
+  {
+    name: 'Spuntino mattina', label: 'Sp. Mattina', color: C.protein,
+    renderIcon: (color, size) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 8h8l-1.5 11h-5z"/>
+        <path d="M8 8V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+        <path d="M11 12.5h2M10.5 16h3"/>
+      </svg>
+    ),
+  },
+  {
+    name: 'Pranzo', label: 'Pranzo', color: C.kcal,
+    renderIcon: (color, size) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="3" y1="18" x2="21" y2="18"/>
+        <path d="M5 18a7 7 0 0 1 14 0"/>
+        <path d="M10 11h4M12 11V9"/>
+        <circle cx="19" cy="5" r="1.5"/>
+        <path d="M19 2.5v.8M19 7.2v.8M16.5 5h.8M21.2 5h.8"/>
+      </svg>
+    ),
+  },
+  {
+    name: 'Spuntino pomeriggio', label: 'Sp. Pomerigg', color: C.carbs,
+    renderIcon: (color, size) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 20C5 15 8 9 14 7C19 6 22 9 21 13"/>
+        <path d="M5 18C6 14 9 9 14 8"/>
+        <path d="M21 13C20 16 17 18 13 18"/>
+      </svg>
+    ),
+  },
+  {
+    name: 'Cena', label: 'Cena', color: C.fat,
+    renderIcon: (color, size) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="3" y1="18" x2="21" y2="18"/>
+        <path d="M5 18a7 7 0 0 1 14 0"/>
+        <path d="M10 11h4M12 11V9"/>
+        {/* mezzaluna top-left: cerchio esterno r=4 meno cerchio interno r=3.5 offset */}
+        <path d="M7 1A4 4 0 1 0 7 8A3.5 3.5 0 0 1 7 1Z"/>
+      </svg>
+    ),
+  },
 ]
 
 type DashData = {
@@ -43,6 +88,7 @@ export default function DashboardPage() {
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number } | null>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const today   = new Date().toISOString().split('T')[0]
   const isToday = selectedDate === today
@@ -99,14 +145,22 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]">
 
       {/* ── HEADER DATA ─────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-3 py-2.5 flex items-center gap-2 shrink-0">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2.5 flex items-center gap-2 shrink-0">
         <button onClick={() => changeDate(-1)}
-          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
+          className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 shrink-0 transition-colors">
           <ChevronLeft size={18} />
         </button>
-        <p className="flex-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">
+
+        {/* data cliccabile → apre date picker */}
+        <button
+          onClick={() => { try { dateInputRef.current?.showPicker() } catch { dateInputRef.current?.click() } }}
+          className="flex-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate hover:opacity-70 transition-opacity">
           {dateLabel}
-        </p>
+        </button>
+        <input ref={dateInputRef} type="date" className="sr-only"
+          value={selectedDate} max={today}
+          onChange={e => { if (e.target.value) setSelectedDate(e.target.value) }} />
+
         {!isToday && (
           <button onClick={() => setSelectedDate(today)}
             className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold text-white"
@@ -115,7 +169,7 @@ export default function DashboardPage() {
           </button>
         )}
         <button onClick={() => changeDate(1)} disabled={isToday}
-          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors',
+          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 shrink-0 transition-colors',
             isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
           )}>
           <ChevronRight size={18} />
@@ -123,7 +177,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── CARD MACRO ──────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 pt-2 pb-3 shrink-0">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3 shrink-0">
 
         {/* Titolo centrato */}
         <p className="text-center text-[10px] font-bold uppercase tracking-widest mb-1.5"
@@ -135,7 +189,7 @@ export default function DashboardPage() {
             <span className="text-2xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
               {t.calories}
             </span>
-            <span className="text-sm font-medium text-gray-400">/ {tg.calories} kcal</span>
+            <span className="text-sm font-medium text-gray-500">/ {tg.calories} kcal</span>
           </div>
           <span className="text-xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
             {calOver ? `+${t.calories - tg.calories} kcal` : `${calPct}%`}
@@ -144,7 +198,7 @@ export default function DashboardPage() {
 
         {/* Barra calorie */}
         <div className="h-1.5 rounded-full overflow-hidden mb-2.5"
-          style={{ backgroundColor: C.kcal + '20' }}>
+          style={{ backgroundColor: C.kcal + '38' }}>
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
         </div>
@@ -159,10 +213,10 @@ export default function DashboardPage() {
             <div key={m.label}>
               <p className="text-[10px] font-bold mb-0.5" style={{ color: m.color }}>{m.label}</p>
               <p className="text-lg font-bold leading-none" style={{ color: m.color }}>
-                {m.val}<span className="text-xs font-medium text-gray-400"> / {m.tgt} g</span>
+                {m.val}<span className="text-xs font-medium text-gray-500"> / {m.tgt} g</span>
               </p>
               <div className="h-1 rounded-full overflow-hidden mt-1"
-                style={{ backgroundColor: m.color + '22' }}>
+                style={{ backgroundColor: m.color + '40' }}>
                 <div className="h-full rounded-full transition-all"
                   style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
               </div>
@@ -176,25 +230,25 @@ export default function DashboardPage() {
 
         {/* ────────── PASTI ────────── */}
         <button onClick={() => router.push('/food/diary')}
-          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
+          className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
 
           {/* Titolo centrato */}
-          <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <p className="text-center text-[11px] font-bold uppercase tracking-wide"
               style={{ color: C.kcal }}>Pasti</p>
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
-            {MEALS.map(({ name, label, Icon, color }) => {
+            {MEALS.map(({ name, label, renderIcon, color }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               return (
                 <div key={name}>
                   {/* Pillola: icona + nome centrati */}
                   <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl"
-                    style={{ backgroundColor: color + '20' }}>
+                    style={{ backgroundColor: color + '28' }}>
                     <span style={{ color, flexShrink: 0 }}>
-                      <Icon size={20} strokeWidth={1.8} />
+                      {renderIcon(color, 20)}
                     </span>
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
@@ -204,15 +258,15 @@ export default function DashboardPage() {
                     {kcal > 0 ? (
                       <>
                         <span style={{ color: C.kcal }}>kcal {kcal}</span>
-                        <span className="text-gray-300 dark:text-gray-600"> · </span>
+                        <span className="text-gray-400 dark:text-gray-500"> · </span>
                         <span style={{ color: C.protein }}>P {m!.protein}</span>
-                        <span className="text-gray-300 dark:text-gray-600"> · </span>
+                        <span className="text-gray-400 dark:text-gray-500"> · </span>
                         <span style={{ color: C.carbs }}>C {m!.carbs}</span>
-                        <span className="text-gray-300 dark:text-gray-600"> · </span>
+                        <span className="text-gray-400 dark:text-gray-500"> · </span>
                         <span style={{ color: C.fat }}>G {m!.fat}</span>
                       </>
                     ) : (
-                      <span className="text-gray-300 dark:text-gray-600">—</span>
+                      <span className="text-gray-400 dark:text-gray-500">—</span>
                     )}
                   </p>
                 </div>
@@ -223,10 +277,10 @@ export default function DashboardPage() {
 
         {/* ────────── ALLENAMENTO ────────── */}
         <button onClick={() => router.push('/training/diary')}
-          className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
+          className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
 
           {/* Titolo centrato */}
-          <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <p className="text-center text-[11px] font-bold uppercase tracking-wide"
               style={{ color: C.training }}>Allenamento</p>
           </div>
@@ -238,13 +292,13 @@ export default function DashboardPage() {
             <div>
               {data?.workout.hasTennis ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                  style={{ backgroundColor: '#f0ec7020' }}>
+                  style={{ backgroundColor: '#f0ec7030' }}>
                   <TennisIcon size={20} />
                   <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
                 </div>
               ) : data?.workout.exists ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                  style={{ backgroundColor: C.training + '18' }}>
+                  style={{ backgroundColor: C.training + '28' }}>
                   <Dumbbell size={20} color={C.training} strokeWidth={1.8} />
                   <span className="text-[10px] font-bold" style={{ color: C.training }}>
                     {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
@@ -252,7 +306,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                  style={{ backgroundColor: '#b0b8c820' }}>
+                  style={{ backgroundColor: '#b0b8c830' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                     stroke="#b0b8c8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
@@ -272,7 +326,7 @@ export default function DashboardPage() {
               <div className={cn(
                 'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
                 !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
-              )} style={{ backgroundColor: C.training + '18' }}>
+              )} style={{ backgroundColor: C.training + '28' }}>
                 <Dumbbell size={20} color={C.training} strokeWidth={1.8} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
