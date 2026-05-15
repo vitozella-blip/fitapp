@@ -102,25 +102,15 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
           </button>
         </div>
 
-        {/* Filters + add to database */}
-        {!selected && (
-          <div className="flex items-center gap-2 mb-3">
-            {categories.length > 0 && (
-              <div className="relative flex-1">
-                <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSelected(null) }}
-                  className="w-full appearance-none pl-2.5 pr-6 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none">
-                  <option value="">Tutte le categorie</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
-            )}
-            {q.length >= 2 && (
-              <button onClick={goToCreate}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40 text-orange-500 text-xs font-semibold shrink-0 transition-colors">
-                <Plus size={11} /> Database
-              </button>
-            )}
+        {/* Filtro categorie */}
+        {!selected && categories.length > 0 && (
+          <div className="relative mb-3">
+            <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setSelected(null) }}
+              className="w-full appearance-none pl-2.5 pr-6 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none">
+              <option value="">Tutte le categorie</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
         )}
 
