@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef, type ReactElement } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Coffee, Dumbbell } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const C = {
@@ -13,78 +13,18 @@ const C = {
   training: '#7aafc8',
 } as const
 
-/* ── icona pallina da tennis ───────────────────────────────────────────────── */
-const TennisIcon = ({ size = 26 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9" fill="none" stroke="#b0a820" strokeWidth="1.5"/>
-    <path d="M5.5 5.5C8.5 8.5 8.5 15.5 5.5 18.5" stroke="#b0a820" strokeWidth="1.5"/>
-    <path d="M18.5 5.5C15.5 8.5 15.5 15.5 18.5 18.5" stroke="#b0a820" strokeWidth="1.5"/>
-  </svg>
-)
+type MealDef = { name: string; label: string; renderIcon: (size: number) => ReactElement; color: string }
 
-type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
-
-/* ── svg helper ─────────────────────────────────────────────────────────────── */
-const Icon = ({ s, color, children }: { s: number; color: string; children: React.ReactNode }) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    {children}
-  </svg>
+const Em = ({ e, size }: { e: string; size: number }) => (
+  <span style={{ fontSize: size, lineHeight: 1, userSelect: 'none' }}>{e}</span>
 )
 
 const MEALS: MealDef[] = [
-  {
-    /* Lucide Coffee */
-    name: 'Colazione', label: 'Colazione', color: C.carbs,
-    renderIcon: (color, size) => <Coffee size={size} color={color} strokeWidth={1.8} />,
-  },
-  {
-    /* Yogurt jar: bigger, no spoon — wide lid, tapered body, 2 stripes */
-    name: 'Spuntino mattina', label: 'Sp. Mattina', color: C.protein,
-    renderIcon: (color, size) => (
-      <Icon s={size} color={color}>
-        <rect x="3" y="5" width="16" height="3" rx="1.5"/>
-        <path d="M4 8h14l-2 13H6z"/>
-        <line x1="6" y1="14" x2="17" y2="14"/>
-        <line x1="6.5" y1="17.5" x2="16" y2="17.5"/>
-      </Icon>
-    ),
-  },
-  {
-    /* 🍗 drumstick outline */
-    name: 'Pranzo', label: 'Pranzo', color: C.kcal,
-    renderIcon: (color, size) => (
-      <Icon s={size} color={color}>
-        <path d="M7 15C4.5 13 4 9.5 5.5 7C7 4.5 10 3 13 3.5C16 4 18 6 18 8C19.5 7.5 21 8.5 21 10.5C21 12.5 19.5 14 18 14C18 16 16 18 13.5 18C11 18 8.5 17 7 15Z"/>
-        <line x1="14" y1="17.5" x2="19" y2="22"/>
-        <circle cx="19" cy="22" r="1.3"/>
-      </Icon>
-    ),
-  },
-  {
-    /* 🍌 banana outline */
-    name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', color: C.carbs,
-    renderIcon: (color, size) => (
-      <Icon s={size} color={color}>
-        <path d="M5 19C6 14 10 7 17 6C21 5 23 9 22 13"/>
-        <path d="M5 19C9 19 16 17 22 13"/>
-        <line x1="17" y1="6" x2="18.5" y2="3"/>
-      </Icon>
-    ),
-  },
-  {
-    /* 🐟 fish outline */
-    name: 'Cena', label: 'Cena', color: C.fat,
-    renderIcon: (color, size) => (
-      <Icon s={size} color={color}>
-        <path d="M21 12C21 8 17.5 5 12.5 5C7.5 5 5 8 5 12C5 16 7.5 19 12.5 19C17.5 19 21 16 21 12Z"/>
-        <path d="M5 12L2 8.5"/>
-        <path d="M5 12L2 15.5"/>
-        <circle cx="16" cy="11" r="1"/>
-        <path d="M12 5C13 2.5 15.5 2 16.5 5"/>
-      </Icon>
-    ),
-  },
+  { name: 'Colazione',           label: 'Colazione',     color: C.carbs,   renderIcon: (s) => <Em e="☕" size={s} /> },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',   color: C.protein, renderIcon: (s) => <Em e="🍫" size={s} /> },
+  { name: 'Pranzo',              label: 'Pranzo',        color: C.kcal,    renderIcon: (s) => <Em e="🍗" size={s} /> },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio',color: C.carbs,   renderIcon: (s) => <Em e="🍌" size={s} /> },
+  { name: 'Cena',                label: 'Cena',          color: C.fat,     renderIcon: (s) => <Em e="🐟" size={s} /> },
 ]
 
 type DashData = {
@@ -259,8 +199,8 @@ export default function DashboardPage() {
                   {/* Pillola: icona + nome centrati */}
                   <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl"
                     style={{ backgroundColor: color + '28' }}>
-                    <span style={{ color, flexShrink: 0 }}>
-                      {renderIcon(color, 20)}
+                    <span style={{ flexShrink: 0 }}>
+                      {renderIcon(20)}
                     </span>
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
@@ -305,13 +245,13 @@ export default function DashboardPage() {
               {data?.workout.hasTennis ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: '#f0ec7030' }}>
-                  <TennisIcon size={20} />
+                  <Em e="🎾" size={20} />
                   <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
                 </div>
               ) : data?.workout.exists ? (
                 <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
                   style={{ backgroundColor: C.training + '28' }}>
-                  <Dumbbell size={20} color={C.training} strokeWidth={1.8} />
+                  <Em e="🏋🏻" size={20} />
                   <span className="text-[10px] font-bold" style={{ color: C.training }}>
                     {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                   </span>
@@ -339,7 +279,7 @@ export default function DashboardPage() {
                 'w-full flex items-center justify-center gap-2 py-2 rounded-2xl',
                 !(data?.workout.hasTennis && data?.workout.exists) && 'invisible'
               )} style={{ backgroundColor: C.training + '28' }}>
-                <Dumbbell size={20} color={C.training} strokeWidth={1.8} />
+                <Em e="🏋🏻" size={20} />
                 <span className="text-[10px] font-bold" style={{ color: C.training }}>
                   {schedaInfo ? `WO ${schedaInfo.order}` : 'Allenamento'}
                 </span>
