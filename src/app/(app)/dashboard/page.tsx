@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils'
 import { DateNav } from '@/components/shared/DateNav'
 
 const C = {
-  kcal:     '#9d8fcc',
-  protein:  '#7dbf7d',
+  kcal:     '#6abf6a',
+  protein:  '#9d8fcc',
   carbs:    '#f0aa78',
-  fat:      '#c4a0d6',
+  fat:      '#5b9bd5',
   training: '#7aafc8',
 } as const
 

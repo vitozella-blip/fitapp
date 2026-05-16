@@ -10,8 +10,8 @@ type Macro = 'protein' | 'carbs' | 'fat'
 
 const MACROS: { key: Macro; label: string; color: string; bg: string; per: number }[] = [
   { key: 'fat', label: 'Grassi', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800', per: 9 },
-  { key: 'carbs', label: 'Carboidrati', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800', per: 4 },
-  { key: 'protein', label: 'Proteine', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800', per: 4 },
+  { key: 'carbs', label: 'Carboidrati', color: 'text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800', per: 4 },
+  { key: 'protein', label: 'Proteine', color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800', per: 4 },
 ]
 
 type Result = { grams: number; calories: number; protein: number; carbs: number; fat: number }
@@ -131,9 +131,9 @@ export default function MacrosPage() {
                 className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{f.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  P <span className="text-emerald-500 font-medium">{f.protein}g</span> ·
+                  G <span className="text-blue-400 font-medium">{f.fat}g</span> ·
                   C <span className="text-orange-400 font-medium">{f.carbs}g</span> ·
-                  G <span className="text-blue-400 font-medium">{f.fat}g</span>
+                  P <span className="text-purple-400 font-medium">{f.protein}g</span>
                   <span className="text-gray-300"> / 100g</span>
                 </p>
               </button>
@@ -170,10 +170,10 @@ export default function MacrosPage() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Apporto totale</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Calorie', value: result.calories, unit: 'kcal', color: 'text-gray-900 dark:text-gray-100', bg: 'bg-gray-50 dark:bg-gray-800' },
+                  { label: 'Calorie', value: result.calories, unit: 'kcal', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950' },
                   { label: 'Grassi', value: result.fat, unit: 'g', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950' },
-                  { label: 'Carboidrati', value: result.carbs, unit: 'g', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
-                  { label: 'Proteine', value: result.protein, unit: 'g', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950' },
+                  { label: 'Carboidrati', value: result.carbs, unit: 'g', color: 'text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950' },
+                  { label: 'Proteine', value: result.protein, unit: 'g', color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950' },
                 ].map(item => (
                   <div key={item.label} className={cn('rounded-xl p-3 text-center', item.bg)}>
                     <p className="text-xs text-gray-400 mb-1">{item.label}</p>

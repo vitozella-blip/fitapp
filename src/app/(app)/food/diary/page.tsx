@@ -8,10 +8,10 @@ import { AddFoodModal } from '@/components/food/AddFoodModal'
 import { cn } from '@/lib/utils'
 
 const C = {
-  kcal:    '#9d8fcc',
-  protein: '#7dbf7d',
+  kcal:    '#6abf6a',
+  protein: '#9d8fcc',
   carbs:   '#f0aa78',
-  fat:     '#c4a0d6',
+  fat:     '#5b9bd5',
 } as const
 
 const MEALS = ['Colazione', 'Spuntino mattina', 'Pranzo', 'Spuntino pomeriggio', 'Cena']
@@ -68,9 +68,11 @@ export default function FoodDiaryPage() {
     fat:      acc.fat      + calc(e.food.fat,      e.quantity),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
-  const calPct = userProfile.targetCalories > 0
+  const calPct  = userProfile.targetCalories > 0
     ? Math.min(100, Math.round((totals.calories / userProfile.targetCalories) * 100))
     : 0
+  const calOver = totals.calories > userProfile.targetCalories
+  const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
 
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
@@ -78,40 +80,49 @@ export default function FoodDiaryPage() {
 
       <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} />
 
-      {/* Macro summary */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-4 py-3 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-bold" style={{ color: C.kcal }}>{totals.calories}</span>
-            <span className="text-xs text-gray-400">/ {userProfile.targetCalories} kcal</span>
+      {/* Macro summary — same as dashboard */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3">
+        <p className="text-center text-[10px] font-bold uppercase tracking-widest mb-1.5"
+          style={{ color: C.kcal }}>Macro</p>
+
+        <div className="flex items-baseline justify-between mb-1.5">
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
+              {totals.calories}
+            </span>
+            <span className="text-sm font-medium text-gray-500">/ {userProfile.targetCalories} kcal</span>
             {freeMeals.size > 0 && (
               <span className="text-[10px] font-medium ml-1" style={{ color: C.carbs }}>
                 ({freeMeals.size} libero)
               </span>
             )}
           </div>
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg text-white"
-            style={{ backgroundColor: C.kcal + 'bb' }}>
-            {calPct}%
+          <span className="text-xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
+            {calOver ? `+${totals.calories - userProfile.targetCalories} kcal` : `${calPct}%`}
           </span>
         </div>
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: C.kcal + '20' }}>
-          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${calPct}%`, backgroundColor: C.kcal }} />
+
+        <div className="h-1.5 rounded-full overflow-hidden mb-2.5"
+          style={{ backgroundColor: C.kcal + '38' }}>
+          <div className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs pt-0.5">
+
+        <div className="grid grid-cols-3 gap-2 text-center">
           {[
             { label: 'Grassi',      val: totals.fat,     tgt: userProfile.targetFat,     color: C.fat },
             { label: 'Carboidrati', val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
             { label: 'Proteine',    val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
           ].map(m => (
-            <div key={m.label} className="space-y-1">
-              <div className="flex justify-between">
-                <span className="font-semibold" style={{ color: m.color }}>{m.label}</span>
-                <span className="text-gray-400">{m.val}/{m.tgt}g</span>
-              </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '20' }}>
+            <div key={m.label}>
+              <p className="text-[10px] font-bold mb-0.5" style={{ color: m.color }}>{m.label}</p>
+              <p className="text-lg font-bold leading-none" style={{ color: m.color }}>
+                {m.val}<span className="text-xs font-medium text-gray-500"> / {m.tgt} g</span>
+              </p>
+              <div className="h-1 rounded-full overflow-hidden mt-1"
+                style={{ backgroundColor: m.color + '40' }}>
                 <div className="h-full rounded-full transition-all"
-                  style={{ width: `${Math.min(100, m.tgt > 0 ? Math.round((m.val / m.tgt) * 100) : 0)}%`, backgroundColor: m.color }} />
+                  style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
               </div>
             </div>
           ))}
