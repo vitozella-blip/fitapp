@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Menu, X, Check, Pencil, Plus, Upload, LogOut } from 'lucide-react'
+import { LayoutDashboard, Menu, X, Check, Pencil, Plus, Upload, LogOut, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useAppStore } from '@/store/useAppStore'
@@ -29,7 +29,7 @@ const ACTIVE_COLORS: Record<string, string> = {
 export function MobileNav() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const { userId, users, userProfile, addUser, switchUser, updateCurrentUserName, logout } = useAppStore()
+  const { userId, users, userProfile, addUser, switchUser, updateCurrentUserName, logout, removeUser } = useAppStore()
   const [menuOpen, setMenuOpen]       = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput]     = useState(userProfile.name)
@@ -129,13 +129,23 @@ export function MobileNav() {
                 <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-2">Cambia utente</p>
                 <div className="space-y-1">
                   {users.filter(u => u.id !== userId).map(u => (
-                    <button key={u.id} onClick={() => { switchUser(u.id, u.name); close() }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 text-xs font-bold">
-                        {u.name[0]?.toUpperCase()}
-                      </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{u.name}</span>
-                    </button>
+                    <div key={u.id} className="flex items-center gap-1">
+                      <button onClick={() => { switchUser(u.id, u.name); close() }}
+                        className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 text-xs font-bold">
+                          {u.name[0]?.toUpperCase()}
+                        </div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{u.name}</span>
+                      </button>
+                      <button onClick={async () => {
+                        if (!confirm(`Eliminare l'utente "${u.name}"? Tutti i dati verranno persi.`)) return
+                        await fetch(`/api/user?userId=${u.id}`, { method: 'DELETE' })
+                        removeUser(u.id)
+                      }}
+                        className="w-8 h-8 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-400 flex items-center justify-center transition-colors shrink-0">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -169,6 +179,15 @@ export function MobileNav() {
               <button onClick={() => { logout(); close() }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-medium text-red-400 transition-colors mt-1">
                 <LogOut size={15} /> Esci
+              </button>
+              <button onClick={async () => {
+                if (!confirm('Eliminare definitivamente il tuo account e tutti i dati? Questa azione non è reversibile.')) return
+                await fetch(`/api/user?userId=${userId}`, { method: 'DELETE' })
+                logout()
+                close()
+              }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-medium text-red-300 dark:text-red-500 transition-colors">
+                <Trash2 size={15} /> Elimina account
               </button>
             </div>
 

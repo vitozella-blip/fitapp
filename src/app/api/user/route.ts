@@ -32,6 +32,46 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  const userId = req.nextUrl.searchParams.get('userId')
+  if (!userId) return NextResponse.json({ error: 'userId mancante' }, { status: 400 })
+  try {
+    // cascade: children first
+    const { rows: wd } = await pool.query(`SELECT id FROM "WorkoutDiary" WHERE "userId"=$1`, [userId])
+    for (const w of wd) {
+      await pool.query(`DELETE FROM "WorkoutSet" WHERE "workoutDiaryId"=$1`, [w.id])
+    }
+    await pool.query(`DELETE FROM "WorkoutDiary" WHERE "userId"=$1`, [userId])
+
+    const { rows: plans } = await pool.query(`SELECT id FROM "WorkoutPlan" WHERE "userId"=$1`, [userId])
+    for (const p of plans) {
+      const { rows: tmpls } = await pool.query(`SELECT id FROM "WorkoutTemplate" WHERE "planId"=$1`, [p.id])
+      for (const t of tmpls) {
+        await pool.query(`DELETE FROM "WorkoutTemplateExercise" WHERE "templateId"=$1`, [t.id])
+      }
+      await pool.query(`DELETE FROM "WorkoutTemplate" WHERE "planId"=$1`, [p.id])
+    }
+    await pool.query(`DELETE FROM "WorkoutPlan" WHERE "userId"=$1`, [userId])
+
+    const { rows: mps } = await pool.query(`SELECT id FROM "MealPlan" WHERE "userId"=$1`, [userId])
+    for (const m of mps) {
+      await pool.query(`DELETE FROM "MealPlanTarget" WHERE "planId"=$1`, [m.id])
+    }
+    await pool.query(`DELETE FROM "MealPlan" WHERE "userId"=$1`, [userId])
+
+    await pool.query(`DELETE FROM "DiaryEntry" WHERE "userId"=$1`, [userId])
+    await pool.query(`DELETE FROM "Favorite" WHERE "userId"=$1`, [userId])
+    await pool.query(`DELETE FROM "Category" WHERE "userId"=$1`, [userId])
+    await pool.query(`DELETE FROM "Food" WHERE "userId"=$1`, [userId])
+    await pool.query(`DELETE FROM "User" WHERE id=$1`, [userId])
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'Errore eliminazione' }, { status: 500 })
+  }
+}
+
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId')
   if (!userId) return NextResponse.json(null)

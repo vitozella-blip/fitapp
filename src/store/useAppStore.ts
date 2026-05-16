@@ -23,6 +23,7 @@ type AppStore = {
   updateCurrentUserName: (name: string) => void
   login: (user: { id: string; name: string; email: string; targetCalories?: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }) => void
   logout: () => void
+  removeUser: (id: string) => void
 }
 
 const defaultProfile = (id: string, name = 'Utente'): UserProfile => ({
@@ -84,6 +85,9 @@ export const useAppStore = create<AppStore>()(
             userProfile: defaultProfile(newId),
             users: [{ id: newId, name: 'Utente' }],
           })
+        },
+        removeUser: (id) => {
+          set(s => ({ users: s.users.filter(u => u.id !== id) }))
         },
       }
     },
