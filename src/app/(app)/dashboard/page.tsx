@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { DateNav } from '@/components/shared/DateNav'
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
 const C = {
   kcal:     '#6abf6a',
@@ -58,6 +59,7 @@ export default function DashboardPage() {
   }, [userId, selectedDate])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useRefreshOnFocus(fetchData)
 
   const t  = data?.totals  ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
   const tg = data?.targets ?? {

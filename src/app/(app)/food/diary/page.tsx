@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
 import { cn } from '@/lib/utils'
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
 const C = {
   kcal:    '#6abf6a',
@@ -37,6 +38,7 @@ export default function FoodDiaryPage() {
   }, [userId, selectedDate])
 
   useEffect(() => { fetchEntries() }, [fetchEntries])
+  useRefreshOnFocus(fetchEntries)
 
   useEffect(() => {
     fetch('/api/user', {
