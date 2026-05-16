@@ -5,6 +5,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { cn } from '@/lib/utils'
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
 const CT       = '#7aafc8'
 const C_WARM   = '#f0aa78'
@@ -141,6 +142,7 @@ export default function TrainingDiaryPage() {
   }, [userId, selectedDate, userProfile.name])
 
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
+  useRefreshOnFocus(fetchWorkout)
 
   // Load scheda from localStorage when date changes
   useEffect(() => {

@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware'
 export type UserProfile = {
   id: string
   name: string
+  email?: string
   targetCalories: number
   targetProtein: number
   targetCarbs: number
@@ -20,6 +21,9 @@ type AppStore = {
   addUser: (name: string) => string
   switchUser: (id: string, name: string) => void
   updateCurrentUserName: (name: string) => void
+  login: (user: { id: string; name: string; email: string; targetCalories?: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }) => void
+  logout: () => void
+  removeUser: (id: string) => void
 }
 
 const defaultProfile = (id: string, name = 'Utente'): UserProfile => ({
@@ -55,6 +59,35 @@ export const useAppStore = create<AppStore>()(
             userProfile: { ...s.userProfile, name },
             users: s.users.map(u => u.id === userId ? { ...u, name } : u),
           }))
+        },
+        login: (user) => {
+          const profile: UserProfile = {
+            id:             user.id,
+            name:           user.name,
+            email:          user.email,
+            targetCalories: user.targetCalories ?? 2000,
+            targetProtein:  user.targetProtein  ?? 150,
+            targetCarbs:    user.targetCarbs    ?? 220,
+            targetFat:      user.targetFat      ?? 65,
+          }
+          set(s => ({
+            userId: user.id,
+            userProfile: profile,
+            users: s.users.some(u => u.id === user.id)
+              ? s.users
+              : [...s.users, { id: user.id, name: user.name }],
+          }))
+        },
+        logout: () => {
+          const newId = crypto.randomUUID()
+          set({
+            userId: newId,
+            userProfile: defaultProfile(newId),
+            users: [{ id: newId, name: 'Utente' }],
+          })
+        },
+        removeUser: (id) => {
+          set(s => ({ users: s.users.filter(u => u.id !== id) }))
         },
       }
     },
