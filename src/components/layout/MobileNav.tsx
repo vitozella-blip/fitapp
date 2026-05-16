@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Menu, X, Check, Pencil, Plus, Upload, LogIn } from 'lucide-react'
+import { LayoutDashboard, Menu, X, Check, Pencil, Plus, Upload, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useAppStore } from '@/store/useAppStore'
@@ -29,12 +29,12 @@ const ACTIVE_COLORS: Record<string, string> = {
 export function MobileNav() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const { userId, users, userProfile, addUser, switchUser, updateCurrentUserName } = useAppStore()
-  const [menuOpen, setMenuOpen]     = useState(false)
+  const { userId, users, userProfile, addUser, switchUser, updateCurrentUserName, logout } = useAppStore()
+  const [menuOpen, setMenuOpen]       = useState(false)
   const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput]   = useState(userProfile.name)
-  const [newName, setNewName]       = useState('')
-  const [addingUser, setAddingUser] = useState(false)
+  const [nameInput, setNameInput]     = useState(userProfile.name)
+  const [newName, setNewName]         = useState('')
+  const [addingUser, setAddingUser]   = useState(false)
 
   async function saveUserName() {
     if (!nameInput.trim()) return
@@ -160,12 +160,20 @@ export function MobileNav() {
               )}
             </div>
 
+            {/* Account */}
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-2">Account</p>
+              <div className="flex items-center gap-2 px-1 mb-1">
+                <span className="text-xs text-gray-500 truncate flex-1">{userProfile.email}</span>
+              </div>
+              <button onClick={() => { logout(); close() }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-medium text-red-400 transition-colors mt-1">
+                <LogOut size={15} /> Esci
+              </button>
+            </div>
+
             {/* Actions */}
             <div className="px-4 py-3">
-              <Link href="/login" onClick={close}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
-                <LogIn size={15} className="text-gray-400" /> Accedi
-              </Link>
               <Link href="/import" onClick={close}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
                 <Upload size={15} className="text-gray-400" /> Importa
