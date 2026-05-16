@@ -22,13 +22,13 @@ const fmt = (v: number | undefined | null, unit = 'g') =>
   v == null || v === 0 ? '—' : `${v} ${unit}`
 
 const DETAIL_ROWS: { label: string; key: keyof Food; color: string; sub?: boolean }[] = [
-  { label: 'Energia',         key: 'calories',     color: '#6c5ce7' },
-  { label: 'Grassi',          key: 'fat',          color: '#9b59b6' },
-  { label: 'di cui saturi',   key: 'saturatedFat', color: '#c4a0d6', sub: true },
-  { label: 'Carboidrati',     key: 'carbs',        color: '#e8813a' },
-  { label: 'di cui zuccheri', key: 'sugars',       color: '#f0aa78', sub: true },
-  { label: 'Proteine',        key: 'protein',      color: '#5a9e5a' },
-  { label: 'Sale',            key: 'salt',         color: '#94a3b8' },
+  { label: 'Energia',         key: 'calories',     color: '#6abf6a' },
+  { label: 'Grassi',          key: 'fat',          color: '#5b9bd5' },
+  { label: 'di cui saturi',   key: 'saturatedFat', color: '#93c5e8', sub: true },
+  { label: 'Carboidrati',     key: 'carbs',        color: '#f0aa78' },
+  { label: 'di cui zuccheri', key: 'sugars',       color: '#f7cc9e', sub: true },
+  { label: 'Proteine',        key: 'protein',      color: '#9d8fcc' },
+  { label: 'Sale',            key: 'salt',         color: '#f0e080' },
 ]
 
 function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
@@ -47,9 +47,9 @@ function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
           {food.brand && <p className="text-xs text-gray-400 truncate">{food.brand}</p>}
           <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
             <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
-            <span style={{ color: '#9b59b6' }}>G {food.fat}g</span>
-            <span style={{ color: '#e8813a' }}>C {food.carbs}g</span>
-            <span style={{ color: '#5a9e5a' }}>P {food.protein}g</span>
+            <span style={{ color: '#5b9bd5' }}>G {food.fat}g</span>
+            <span style={{ color: '#f0aa78' }}>C {food.carbs}g</span>
+            <span style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
           </div>
         </button>
         <div className="flex items-center gap-1 shrink-0">
@@ -111,20 +111,20 @@ function FoodFormModal({ form, setForm, categories, onSave, onClose, editing, sa
             <label className="text-xs font-semibold text-gray-500 block mb-1">Energia (kcal)</label>
             <input type="number" value={form.calories} onChange={e => f('calories', e.target.value)} placeholder="0" className={inp} />
           </div>
-          <div className="rounded-xl border border-purple-100 dark:border-purple-900/50 p-3 space-y-2">
-            <label className="text-xs font-bold block" style={{ color: '#9b59b6' }}>Grassi (g)</label>
+          <div className="rounded-xl border border-blue-100 dark:border-blue-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#5b9bd5' }}>Grassi (g)</label>
             <input type="number" value={form.fat} onChange={e => f('fat', e.target.value)} placeholder="0" className={inp} />
             <label className="text-xs text-gray-400 block">di cui saturi (g)</label>
             <input type="number" value={form.saturatedFat} onChange={e => f('saturatedFat', e.target.value)} placeholder="0" className={inp} />
           </div>
           <div className="rounded-xl border border-orange-100 dark:border-orange-900/50 p-3 space-y-2">
-            <label className="text-xs font-bold block" style={{ color: '#e8813a' }}>Carboidrati (g)</label>
+            <label className="text-xs font-bold block" style={{ color: '#f0aa78' }}>Carboidrati (g)</label>
             <input type="number" value={form.carbs} onChange={e => f('carbs', e.target.value)} placeholder="0" className={inp} />
             <label className="text-xs text-gray-400 block">di cui zuccheri (g)</label>
             <input type="number" value={form.sugars} onChange={e => f('sugars', e.target.value)} placeholder="0" className={inp} />
           </div>
-          <div className="rounded-xl border border-green-100 dark:border-green-900/50 p-3 space-y-2">
-            <label className="text-xs font-bold block" style={{ color: '#5a9e5a' }}>Proteine (g)</label>
+          <div className="rounded-xl border border-purple-100 dark:border-purple-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#9d8fcc' }}>Proteine (g)</label>
             <input type="number" value={form.protein} onChange={e => f('protein', e.target.value)} placeholder="0" className={inp} />
           </div>
           <div>

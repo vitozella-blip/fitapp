@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 const MEALS = ['Colazione', 'Pranzo', 'Spuntino', 'Cena']
 const TOTALE_KEY = '__TOTALE__'
 
-const FCOL = { fat: '#c4a0d6', carbs: '#f0aa78', protein: '#7dbf7d', kcal: '#9d8fcc' }
+const FCOL = { fat: '#5b9bd5', carbs: '#f0aa78', protein: '#9d8fcc', kcal: '#6abf6a' }
 // 4 note rows: Grassi, Carboidrati, Proteine, neutro
 const NOTE_COLORS: (string | null)[] = [FCOL.fat, FCOL.carbs, FCOL.protein, null]
 
