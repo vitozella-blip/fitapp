@@ -1,30 +1,35 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Search, Target, Loader2, X } from 'lucide-react'
+import { Search, Target, Loader2, X, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 
 type Food = { id: string; name: string; calories: number; protein: number; carbs: number; fat: number }
 type Macro = 'protein' | 'carbs' | 'fat'
+type ActiveStep = 1 | 2 | 3 | 0
 
-const MACROS: { key: Macro; label: string; color: string; bg: string; per: number }[] = [
-  { key: 'fat', label: 'Grassi', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800', per: 9 },
-  { key: 'carbs', label: 'Carboidrati', color: 'text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800', per: 4 },
-  { key: 'protein', label: 'Proteine', color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800', per: 4 },
+const MACROS: { key: Macro; label: string; color: string; hex: string; bg: string; per: number }[] = [
+  { key: 'fat',     label: 'Grassi',      color: 'text-blue-500',   hex: '#5b9bd5', bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',     per: 9 },
+  { key: 'carbs',   label: 'Carboidrati', color: 'text-orange-400', hex: '#f0aa78', bg: 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800', per: 4 },
+  { key: 'protein', label: 'Proteine',    color: 'text-purple-500', hex: '#9d8fcc', bg: 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800', per: 4 },
 ]
 
 type Result = { grams: number; calories: number; protein: number; carbs: number; fat: number }
 
+const KCAL_COLOR = '#6abf6a'
+
 export default function MacrosPage() {
   const userId = useAppStore((s) => s.userId)
-  const [macro, setMacro] = useState<Macro>('protein')
-  const [amount, setAmount] = useState('')
-  const [q, setQ] = useState('')
-  const [results, setResults] = useState<Food[]>([])
-  const [selected, setSelected] = useState<Food | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<Result | null>(null)
+
+  const [macro, setMacro]         = useState<Macro | null>(null)
+  const [activeStep, setActiveStep] = useState<ActiveStep>(1)
+  const [amount, setAmount]       = useState('')
+  const [q, setQ]                 = useState('')
+  const [results, setResults]     = useState<Food[]>([])
+  const [selected, setSelected]   = useState<Food | null>(null)
+  const [loading, setLoading]     = useState(false)
+  const [result, setResult]       = useState<Result | null>(null)
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
@@ -39,7 +44,7 @@ export default function MacrosPage() {
   }, [q, userId])
 
   useEffect(() => {
-    if (!selected || !amount || Number(amount) <= 0) { setResult(null); return }
+    if (!selected || !amount || Number(amount) <= 0 || !macro) { setResult(null); return }
     const macroValue = selected[macro]
     if (!macroValue || macroValue === 0) { setResult(null); return }
     const grams = Math.round((Number(amount) / macroValue) * 100)
@@ -47,137 +52,202 @@ export default function MacrosPage() {
     setResult({
       grams,
       calories: Math.round(selected.calories * ratio),
-      protein: Math.round(selected.protein * ratio),
-      carbs: Math.round(selected.carbs * ratio),
-      fat: Math.round(selected.fat * ratio),
+      protein:  Math.round(selected.protein  * ratio),
+      carbs:    Math.round(selected.carbs    * ratio),
+      fat:      Math.round(selected.fat      * ratio),
     })
   }, [selected, amount, macro])
 
+  // editing = food already selected (result was shown before)
+  const editing = selected !== null
+
+  function chooseMacro(m: Macro) {
+    setMacro(m)
+    if (editing) {
+      setActiveStep(0) // keep amount & food, recalculate result
+    } else {
+      setAmount(''); setSelected(null); setQ(''); setResults([]); setResult(null)
+      setActiveStep(2)
+    }
+  }
+
+  function confirmAmount() {
+    if (!amount || Number(amount) <= 0) return
+    setActiveStep(editing ? 0 : 3)
+  }
+
+  function onAmountBlur() {
+    if (amount && Number(amount) > 0) setActiveStep(editing ? 0 : 3)
+  }
+
   function selectFood(food: Food) {
-    setSelected(food)
-    setQ(food.name)
-    setResults([])
+    setSelected(food); setQ(food.name); setResults([])
+    setActiveStep(0)
   }
 
   function clearFood() {
-    setSelected(null)
-    setQ('')
-    setResults([])
-    setResult(null)
+    setSelected(null); setQ(''); setResults([]); setResult(null)
+    setActiveStep(3)
   }
 
-  const selectedMacro = MACROS.find(m => m.key === macro)!
+  const sm = macro ? MACROS.find(m => m.key === macro)! : null
+
+  // ── collapsed row shared style ────────────────────────────────────────────
+  const collapsedRow = (label: string, content: React.ReactNode, onReopen: () => void) => (
+    <button onClick={onReopen}
+      className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 w-16 shrink-0">{label}</span>
+      <span className="flex-1 min-w-0">{content}</span>
+      <ChevronRight size={13} className="shrink-0 text-gray-300" />
+    </button>
+  )
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto md:max-w-none pb-2">
+    <div className="space-y-2 max-w-2xl mx-auto md:max-w-none pb-4">
       <PageHeader title="Completa i Macro" icon={Target} accent="food" />
 
-      {/* Step 1 - select macro */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">1. Scegli il macro da completare</p>
-        <div className="grid grid-cols-3 gap-2">
-          {MACROS.map(m => (
-            <button key={m.key} onClick={() => { setMacro(m.key); setResult(null) }}
-              className={cn('py-3 rounded-xl border text-sm font-bold transition-all', macro === m.key ? m.bg + ' ' + m.color : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Step 2 - amount */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">2. Quanti grammi ti mancano?</p>
-        <div className="relative">
-          <input
-            type="number"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            placeholder="Es. 30"
-            className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 text-center"
-          />
-          <span className={cn('absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold', selectedMacro.color)}>g</span>
-        </div>
-        {amount && Number(amount) > 0 && (
-          <p className="text-xs text-gray-400 text-center">
-            Equivale a circa <span className="font-bold text-gray-700 dark:text-gray-300">{Math.round(Number(amount) * selectedMacro.per)} kcal</span> da {selectedMacro.label.toLowerCase()}
-          </p>
-        )}
-      </div>
-
-      {/* Step 3 - food search */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">3. Scegli un alimento</p>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={q}
-            onChange={e => { setQ(e.target.value); if (selected) setSelected(null) }}
-            placeholder="Cerca alimento..."
-            className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
-          />
-          {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
-          {selected && !loading && (
-            <button onClick={clearFood} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={15} />
-            </button>
-          )}
-        </div>
-
-        {results.length > 0 && !selected && (
-          <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-50 dark:divide-gray-800">
-            {results.map(f => (
-              <button key={f.id} onClick={() => selectFood(f)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{f.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  G <span className="text-blue-400 font-medium">{f.fat}g</span> ·
-                  C <span className="text-orange-400 font-medium">{f.carbs}g</span> ·
-                  P <span className="text-purple-400 font-medium">{f.protein}g</span>
-                  <span className="text-gray-300"> / 100g</span>
-                </p>
+      {/* ── Step 1: Macro ───────────────────────────────────────────────────── */}
+      {activeStep === 1 ? (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Macro</p>
+          <div className="grid grid-cols-3 gap-2">
+            {MACROS.map(m => (
+              <button key={m.key} onClick={() => chooseMacro(m.key)}
+                className={cn('py-3 rounded-xl border text-sm font-bold transition-all',
+                  macro === m.key ? m.bg + ' ' + m.color : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}>
+                {m.label}
               </button>
             ))}
           </div>
-        )}
+        </div>
+      ) : macro && collapsedRow(
+        'Macro',
+        <span className={cn('text-sm font-bold', sm!.color)}>{sm!.label}</span>,
+        () => setActiveStep(1)
+      )}
 
-        {selected && (
-          <div className={cn('px-4 py-3 rounded-xl border', selectedMacro.bg)}>
-            <p className={cn('font-bold text-sm', selectedMacro.color)}>{selected.name}</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              G {selected.fat}g · C {selected.carbs}g · P {selected.protein}g / 100g
-            </p>
+      {/* ── Step 2: Quantità ────────────────────────────────────────────────── */}
+      {macro && (
+        activeStep === 2 ? (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantità</p>
+            <div className="relative">
+              <input
+                type="number"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && confirmAmount()}
+                onBlur={onAmountBlur}
+                placeholder="–"
+                autoFocus
+                className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-gray-400 text-center"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold" style={{ color: sm!.hex }}>g</span>
+            </div>
+            {amount && Number(amount) > 0 && (
+              <p className="text-xs text-gray-400 text-center">
+                Circa <span className="font-bold text-gray-700 dark:text-gray-300">{Math.round(Number(amount) * sm!.per)} kcal</span> da {sm!.label.toLowerCase()}
+              </p>
+            )}
           </div>
-        )}
-      </div>
+        ) : amount && collapsedRow(
+          'Quantità',
+          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+            {amount}<span className="font-bold ml-0.5" style={{ color: sm!.hex }}>g</span>
+          </span>,
+          () => setActiveStep(2)
+        )
+      )}
 
-      {/* Result */}
+      {/* ── Step 3: Fonte ───────────────────────────────────────────────────── */}
+      {macro && amount && Number(amount) > 0 && (
+        activeStep === 3 ? (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fonte</p>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={q}
+                onChange={e => { setQ(e.target.value); if (selected) setSelected(null) }}
+                placeholder="Cerca alimento..."
+                autoFocus
+                className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-gray-400"
+              />
+              {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+              {selected && !loading && (
+                <button onClick={clearFood} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+
+            {results.length > 0 && !selected && (
+              <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-50 dark:divide-gray-800">
+                {results.map(f => (
+                  <button key={f.id} onClick={() => selectFood(f)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{f.name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      G <span style={{ color: '#5b9bd5' }} className="font-medium">{f.fat}g</span> ·
+                      C <span style={{ color: '#f0aa78' }} className="font-medium">{f.carbs}g</span> ·
+                      P <span style={{ color: '#9d8fcc' }} className="font-medium">{f.protein}g</span>
+                      <span className="text-gray-300"> / 100g</span>
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selected && (
+              <div className={cn('px-4 py-3 rounded-xl border', sm!.bg)}>
+                <p className={cn('font-bold text-sm', sm!.color)}>{selected.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  G {selected.fat}g · C {selected.carbs}g · P {selected.protein}g / 100g
+                </p>
+              </div>
+            )}
+          </div>
+        ) : selected && activeStep !== 3 && collapsedRow(
+          'Fonte',
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">{selected.name}</span>,
+          () => setActiveStep(3)
+        )
+      )}
+
+      {/* ── Result ──────────────────────────────────────────────────────────── */}
       {result && selected && amount && (
-        <div className="bg-white dark:bg-gray-900 border-2 border-orange-300 dark:border-orange-700 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 bg-orange-50 dark:bg-orange-950 border-b border-orange-200 dark:border-orange-800">
-            <p className="text-xs font-semibold text-orange-500 uppercase tracking-wide">Risultato</p>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden"
+          style={{ border: `2px solid ${KCAL_COLOR}66` }}>
+          <div className="px-4 py-3 border-b" style={{ backgroundColor: KCAL_COLOR + '18', borderColor: KCAL_COLOR + '40' }}>
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: KCAL_COLOR }}>Risultato</p>
           </div>
           <div className="p-4 space-y-4">
             <div className="text-center">
-              <p className="text-xs text-gray-400 mb-1">Per ottenere <span className={cn('font-bold', selectedMacro.color)}>{amount}g di {selectedMacro.label}</span></p>
-              <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{result.grams}<span className="text-lg text-gray-400 ml-1">g</span></p>
+              <p className="text-xs text-gray-400 mb-1">
+                Per ottenere <span className={cn('font-bold', sm!.color)}>{amount}g di {sm!.label}</span>
+              </p>
+              <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+                {result.grams}<span className="text-lg text-gray-400 ml-1">g</span>
+              </p>
               <p className="text-base font-semibold text-gray-600 dark:text-gray-300 mt-1">{selected.name}</p>
             </div>
 
             <div className="h-px bg-gray-100 dark:bg-gray-800" />
 
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Apporto totale</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Apporto totale</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Calorie', value: result.calories, unit: 'kcal', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950' },
-                  { label: 'Grassi', value: result.fat, unit: 'g', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950' },
-                  { label: 'Carboidrati', value: result.carbs, unit: 'g', color: 'text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950' },
-                  { label: 'Proteine', value: result.protein, unit: 'g', color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950' },
+                  { label: 'Calorie',     value: result.calories, unit: 'kcal', color: KCAL_COLOR,  bg: KCAL_COLOR + '18' },
+                  { label: 'Grassi',      value: result.fat,      unit: 'g',    color: '#5b9bd5',   bg: '#5b9bd518' },
+                  { label: 'Carboidrati', value: result.carbs,    unit: 'g',    color: '#f0aa78',   bg: '#f0aa7818' },
+                  { label: 'Proteine',    value: result.protein,  unit: 'g',    color: '#9d8fcc',   bg: '#9d8fcc18' },
                 ].map(item => (
-                  <div key={item.label} className={cn('rounded-xl p-3 text-center', item.bg)}>
+                  <div key={item.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: item.bg }}>
                     <p className="text-xs text-gray-400 mb-1">{item.label}</p>
-                    <p className={cn('text-xl font-bold', item.color)}>{item.value}<span className="text-sm font-normal ml-0.5">{item.unit}</span></p>
+                    <p className="text-xl font-bold" style={{ color: item.color }}>
+                      {item.value}<span className="text-sm font-normal ml-0.5">{item.unit}</span>
+                    </p>
                   </div>
                 ))}
               </div>
@@ -186,11 +256,11 @@ export default function MacrosPage() {
         </div>
       )}
 
-      {/* Empty state for missing macro */}
-      {selected && amount && Number(amount) > 0 && !result && (
+      {/* ── No-macro-in-food warning ─────────────────────────────────────────── */}
+      {selected && amount && Number(amount) > 0 && !result && sm && (
         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-center">
           <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
-            {selected.name} non contiene {selectedMacro.label.toLowerCase()} sufficienti per il calcolo.
+            {selected.name} non contiene {sm.label.toLowerCase()} sufficienti per il calcolo.
           </p>
           <p className="text-xs text-amber-500 mt-1">Prova con un alimento diverso o scegli un altro macro.</p>
         </div>

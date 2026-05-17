@@ -1,11 +1,11 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Settings, Check } from 'lucide-react'
+import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Apple } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 type Food = {
   id: string; name: string; brand?: string; calories: number
@@ -31,18 +31,44 @@ const DETAIL_ROWS: { label: string; key: keyof Food; color: string; sub?: boolea
   { label: 'Sale',            key: 'salt',         color: '#f0e080' },
 ]
 
-function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
+function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete, selecting, selected, onSelect, onLongPress }: {
   food: Food; isFav: boolean
   onToggleFav: () => void; onEdit: () => void; onDelete: () => void
+  selecting: boolean; selected: boolean
+  onSelect: () => void; onLongPress: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const lpTimer = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  function handlePointerDown() {
+    lpTimer.current = setTimeout(() => onLongPress(), 500)
+  }
+  function clearLp() { clearTimeout(lpTimer.current) }
+
+  function handleRowClick() {
+    if (selecting) { onSelect(); return }
+    setOpen(o => !o)
+  }
+
   return (
-    <div className="border-b border-gray-50 dark:border-gray-800 last:border-0">
+    <div className={cn('border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors', selected && 'bg-orange-50 dark:bg-orange-950/20')}>
       <div className="flex items-center gap-2 px-4 py-3">
-        <button onClick={onToggleFav} className="shrink-0">
-          <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
-        </button>
-        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
+        {selecting ? (
+          <button onClick={onSelect} className={cn('shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors', selected ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
+            {selected && <Check size={11} className="text-white" />}
+          </button>
+        ) : (
+          <button onClick={onToggleFav} className="shrink-0">
+            <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
+          </button>
+        )}
+        <button
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearLp}
+          onPointerLeave={clearLp}
+          onContextMenu={e => e.preventDefault()}
+          onClick={handleRowClick}
+          className="flex-1 min-w-0 text-left select-none">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{food.name}</p>
           {food.brand && <p className="text-xs text-gray-400 truncate">{food.brand}</p>}
           <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
@@ -52,17 +78,19 @@ function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
             <span style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
           </div>
         </button>
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors">
-            <Pencil size={13} />
-          </button>
-          <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
-            <Trash2 size={13} />
-          </button>
-        </div>
+        {!selecting && (
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors">
+              <Pencil size={13} />
+            </button>
+            <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {open && (
+      {open && !selecting && (
         <div className="px-4 pb-3 space-y-0.5">
           <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Valori per 100g</p>
           {DETAIL_ROWS.map(r => {
@@ -83,12 +111,242 @@ function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete }: {
   )
 }
 
-function FoodFormModal({ form, setForm, categories, onSave, onClose, editing, saving }: {
+function CategoryFilterDropdown({ values, cats, userId, onChange, onCatsChanged }: {
+  values: string[]; cats: Category[]; userId: string
+  onChange: (ids: string[]) => void
+  onCatsChanged: (cats: Category[]) => void
+}) {
+  const [open, setOpen]         = useState(false)
+  const [newName, setNewName]   = useState('')
+  const [saving, setSaving]     = useState(false)
+  const [editId, setEditId]     = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  async function create() {
+    const n = newName.trim(); if (!n) return
+    setSaving(true)
+    const r = await fetch('/api/categories', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, name: n }),
+    })
+    const cat: Category = await r.json()
+    const next = [...cats, cat].sort((a, b) => a.name.localeCompare(b.name, 'it'))
+    onCatsChanged(next)
+    onChange([...values, cat.id])
+    setNewName(''); setSaving(false)
+  }
+
+  async function saveEdit(id: string) {
+    const n = editName.trim(); if (!n) return
+    await fetch(`/api/categories/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: n }),
+    })
+    onCatsChanged(cats.map(c => c.id === id ? { ...c, name: n } : c).sort((a, b) => a.name.localeCompare(b.name, 'it')))
+    setEditId(null); setEditName('')
+  }
+
+  async function deleteCat(id: string) {
+    await fetch(`/api/categories/${id}`, { method: 'DELETE' })
+    onCatsChanged(cats.filter(c => c.id !== id))
+    if (values.includes(id)) onChange(values.filter(v => v !== id))
+  }
+
+  function toggle(id: string) {
+    onChange(values.includes(id) ? values.filter(v => v !== id) : [...values, id])
+  }
+
+  const label = values.length === 0
+    ? 'Tutte le categorie'
+    : values.length === 1
+      ? (cats.find(c => c.id === values[0])?.name ?? 'Categoria')
+      : `${values.length} categorie`
+
+  return (
+    <div ref={ref} className="relative flex-1">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm outline-none">
+        <div className="flex items-center gap-2 min-w-0">
+          {values.length > 0 && <Filter size={12} className="text-orange-400 shrink-0" />}
+          <span className={values.length > 0 ? 'text-orange-400 font-semibold truncate' : 'text-gray-400'}>
+            {label}
+          </span>
+        </div>
+        <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-40 overflow-hidden">
+          <div className="max-h-56 overflow-y-auto">
+            {/* clear all */}
+            <button type="button"
+              onClick={() => onChange([])}
+              className={cn('w-full text-left px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
+                values.length === 0 ? 'font-semibold text-orange-400' : 'text-gray-500 dark:text-gray-400')}>
+              Tutte le categorie
+            </button>
+            {cats.map(c => (
+              <div key={c.id} className="flex items-center gap-1 px-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                {editId === c.id ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(c.id); if (e.key === 'Escape') { setEditId(null) } }}
+                      className="flex-1 text-sm py-2.5 bg-transparent outline-none text-gray-900 dark:text-gray-100"
+                    />
+                    <button onClick={() => saveEdit(c.id)}
+                      className="w-6 h-6 rounded-lg bg-orange-400 text-white flex items-center justify-center shrink-0">
+                      <Check size={11} />
+                    </button>
+                    <button onClick={() => setEditId(null)}
+                      className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center shrink-0">
+                      <X size={11} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => toggle(c.id)}
+                      className="flex items-center gap-2.5 flex-1 py-2.5 text-sm text-left">
+                      <span className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                        values.includes(c.id) ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
+                        {values.includes(c.id) && <Check size={10} className="text-white" />}
+                      </span>
+                      <span className={values.includes(c.id) ? 'font-semibold text-orange-400' : 'text-gray-700 dark:text-gray-300'}>
+                        {c.name}
+                      </span>
+                    </button>
+                    <button onClick={() => { setEditId(c.id); setEditName(c.name) }}
+                      className="w-6 h-6 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                      <Pencil size={11} />
+                    </button>
+                    <button onClick={() => deleteCat(c.id)}
+                      className="w-6 h-6 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                      <Trash2 size={11} />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* inline create */}
+          <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
+            <Plus size={13} className="text-gray-400 shrink-0" />
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') create(); if (e.key === 'Escape') setOpen(false) }}
+              placeholder="Nuova categoria..."
+              className="flex-1 text-sm bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400"
+            />
+            {newName.trim() && (
+              <button onClick={create} disabled={saving}
+                className="w-6 h-6 rounded-lg bg-orange-400 text-white flex items-center justify-center shrink-0 disabled:opacity-50">
+                {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CategorySelect({ value, cats, userId, onChange, onCreated }: {
+  value: string; cats: Category[]; userId: string
+  onChange: (id: string) => void; onCreated: (cat: Category) => void
+}) {
+  const [open, setOpen]     = useState(false)
+  const [name, setName]     = useState('')
+  const [saving, setSaving] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  async function create() {
+    const n = name.trim(); if (!n) return
+    setSaving(true)
+    const r = await fetch('/api/categories', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, name: n }),
+    })
+    const cat: Category = await r.json()
+    onCreated(cat); onChange(cat.id)
+    setName(''); setOpen(false); setSaving(false)
+  }
+
+  const selected = cats.find(c => c.id === value)
+  const btnCls = "w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none flex items-center justify-between"
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)} className={btnCls}>
+        <span className={selected ? '' : 'text-gray-400'}>{selected ? selected.name : '–'}</span>
+        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="max-h-44 overflow-y-auto">
+            {cats.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-3">Nessuna categoria ancora</p>
+            ) : (
+              cats.map(c => (
+                <button key={c.id} type="button"
+                  onClick={() => { onChange(c.id); setOpen(false) }}
+                  className={cn('w-full text-left px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
+                    c.id === value ? 'font-semibold text-orange-400' : 'text-gray-700 dark:text-gray-300')}>
+                  {c.name}
+                </button>
+              ))
+            )}
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
+            <Plus size={13} className="text-gray-400 shrink-0" />
+            <input
+              autoFocus={cats.length === 0}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') create(); if (e.key === 'Escape') setOpen(false) }}
+              placeholder="Nuova categoria..."
+              className="flex-1 text-sm bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400"
+            />
+            {name.trim() && (
+              <button onClick={create} disabled={saving}
+                className="w-6 h-6 rounded-lg bg-orange-400 text-white flex items-center justify-center shrink-0 disabled:opacity-50">
+                {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onCategoryCreated, editing, saving }: {
   form: FoodForm; setForm: (f: FoodForm) => void; categories: Category[]
-  onSave: () => void; onClose: () => void; editing: boolean; saving: boolean
+  userId: string; onSave: () => void; onClose: () => void
+  onCategoryCreated: (cat: Category) => void
+  editing: boolean; saving: boolean
 }) {
   const f = (k: keyof FoodForm, v: string) => setForm({ ...form, [k]: v })
   const inp = "w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+  const [cats, setCats] = useState<Category[]>(categories)
+
+  function handleCreated(cat: Category) {
+    setCats(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name, 'it')))
+    onCategoryCreated(cat)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
@@ -107,8 +365,8 @@ function FoodFormModal({ form, setForm, categories, onSave, onClose, editing, sa
             <input value={form.brand} onChange={e => f('brand', e.target.value)} placeholder="Es. Lidl o GENERICO" className={inp} />
           </div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wide pt-1">Valori per 100g</p>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1">Energia (kcal)</label>
+          <div className="rounded-xl border border-green-100 dark:border-green-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#6abf6a' }}>Energia (kcal)</label>
             <input type="number" value={form.calories} onChange={e => f('calories', e.target.value)} placeholder="0" className={inp} />
           </div>
           <div className="rounded-xl border border-blue-100 dark:border-blue-900/50 p-3 space-y-2">
@@ -127,19 +385,19 @@ function FoodFormModal({ form, setForm, categories, onSave, onClose, editing, sa
             <label className="text-xs font-bold block" style={{ color: '#9d8fcc' }}>Proteine (g)</label>
             <input type="number" value={form.protein} onChange={e => f('protein', e.target.value)} placeholder="0" className={inp} />
           </div>
-          <div>
-            <label className="text-xs text-gray-400 block mb-1">Sale (g)</label>
+          <div className="rounded-xl border border-yellow-100 dark:border-yellow-900/50 p-3 space-y-2">
+            <label className="text-xs font-bold block" style={{ color: '#c8b800' }}>Sale (g)</label>
             <input type="number" value={form.salt} onChange={e => f('salt', e.target.value)} placeholder="0" className={inp} />
           </div>
-          <div className="pt-1 border-t border-gray-100 dark:border-gray-800">
-            <label className="text-xs text-gray-400 block mb-1">Categoria</label>
-            <div className="relative">
-              <select value={form.categoryId} onChange={e => f('categoryId', e.target.value)} className={inp + ' appearance-none pr-8'}>
-                <option value="">Nessuna categoria</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
+          <div className="pt-1 border-t border-gray-100 dark:border-gray-800 space-y-2">
+            <label className="text-xs text-gray-400 block">Categoria</label>
+            <CategorySelect
+              value={form.categoryId}
+              cats={cats}
+              userId={userId}
+              onChange={id => f('categoryId', id)}
+              onCreated={handleCreated}
+            />
           </div>
         </div>
         <div className="p-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
@@ -154,37 +412,57 @@ function FoodFormModal({ form, setForm, categories, onSave, onClose, editing, sa
   )
 }
 
+const PAGE = 100
+
 function FoodDatabasePage() {
   const userId = useAppStore((s) => s.userId)
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [foods, setFoods] = useState<Food[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [q, setQ] = useState(searchParams.get('q') ?? '')
-  const [catFilter, setCatFilter] = useState('')
+  const [catFilter, setCatFilter] = useState<string[]>([])
   const [favOnly, setFavOnly] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [offset, setOffset] = useState(0)
   const [showForm, setShowForm] = useState(searchParams.get('new') === '1')
   const [editFood, setEditFood] = useState<Food | null>(null)
   const [form, setForm] = useState<FoodForm>({ ...emptyForm(), name: searchParams.get('q') ?? '' })
   const [saving, setSaving] = useState(false)
-  const [showCatManager, setShowCatManager] = useState(false)
-  const [catInput, setCatInput] = useState('')
-  const [editCat, setEditCat] = useState<Category | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const fetchAll = useCallback(async (query = q, cat = catFilter, fav = favOnly) => {
     setLoading(true)
-    const p = new URLSearchParams({ q: query || '', userId, ...(cat ? { categoryId: cat } : {}), ...(fav ? { fav: '1' } : {}) })
+    setOffset(0)
+    const catStr = Array.isArray(cat) ? cat.join(',') : cat
+    const p = new URLSearchParams({ q: query || '', userId, limit: String(PAGE), offset: '0', ...(catStr ? { categoryId: catStr } : {}), ...(fav ? { fav: '1' } : {}) })
     const [fr, favr] = await Promise.all([
       fetch(`/api/food?${p}`).then(r => r.json()),
       fetch(`/api/favorites?userId=${userId}`).then(r => r.json()),
     ])
-    setFoods(Array.isArray(fr) ? fr : [])
+    const list = Array.isArray(fr) ? fr : []
+    setFoods(list)
+    setHasMore(list.length === PAGE)
     setFavorites(new Set(Array.isArray(favr) ? favr : []))
     setLoading(false)
   }, [userId, q, catFilter, favOnly])
+
+  async function loadMore() {
+    const next = offset + PAGE
+    setLoadingMore(true)
+    const catStr = catFilter.join(',')
+    const p = new URLSearchParams({ q: q || '', userId, limit: String(PAGE), offset: String(next), ...(catStr ? { categoryId: catStr } : {}), ...(favOnly ? { fav: '1' } : {}) })
+    const fr = await fetch(`/api/food?${p}`).then(r => r.json())
+    const list = Array.isArray(fr) ? fr : []
+    setFoods(prev => [...prev, ...list])
+    setHasMore(list.length === PAGE)
+    setOffset(next)
+    setLoadingMore(false)
+  }
 
   const fetchCats = useCallback(async () => {
     const r = await fetch(`/api/categories?userId=${userId}`)
@@ -196,6 +474,10 @@ function FoodDatabasePage() {
   function handleSearch(val: string) {
     setQ(val); clearTimeout(timer.current)
     timer.current = setTimeout(() => fetchAll(val, catFilter, favOnly), 300)
+  }
+
+  function handleCatChange(ids: string[]) {
+    setCatFilter(ids); fetchAll(q, ids, favOnly)
   }
 
   async function toggleFav(foodId: string) {
@@ -228,17 +510,30 @@ function FoodDatabasePage() {
     setFoods(f => f.filter(x => x.id !== id))
   }
 
-  async function saveCat() {
-    if (!catInput.trim()) return
-    if (editCat) await fetch(`/api/categories/${editCat.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: catInput }) })
-    else await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: catInput }) })
-    setCatInput(''); setEditCat(null); fetchCats()
+  function startSelecting(foodId: string) {
+    setSelecting(true)
+    setSelectedIds(new Set([foodId]))
   }
 
-  async function deleteCat(id: string) {
-    await fetch(`/api/categories/${id}`, { method: 'DELETE' })
-    if (catFilter === id) { setCatFilter(''); fetchAll(q, '', favOnly) }
-    fetchCats()
+  function toggleSelect(foodId: string) {
+    setSelectedIds(prev => {
+      const n = new Set(prev)
+      n.has(foodId) ? n.delete(foodId) : n.add(foodId)
+      return n
+    })
+  }
+
+  function cancelSelecting() {
+    setSelecting(false)
+    setSelectedIds(new Set())
+  }
+
+  async function deleteSelected() {
+    const count = selectedIds.size
+    if (!confirm(`Eliminare ${count} aliment${count === 1 ? 'o' : 'i'}?`)) return
+    await Promise.all([...selectedIds].map(id => fetch(`/api/food/${id}`, { method: 'DELETE' })))
+    setFoods(f => f.filter(x => !selectedIds.has(x.id)))
+    cancelSelecting()
   }
 
   function openNew(prefill = '') {
@@ -264,21 +559,16 @@ function FoodDatabasePage() {
       </div>
 
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <select value={catFilter} onChange={e => { setCatFilter(e.target.value); fetchAll(q, e.target.value, favOnly) }}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none">
-            <option value="">Tutte le categorie</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-        </div>
+        <CategoryFilterDropdown
+          values={catFilter}
+          cats={categories}
+          userId={userId}
+          onChange={handleCatChange}
+          onCatsChanged={setCategories}
+        />
         <button onClick={() => { const n = !favOnly; setFavOnly(n); fetchAll(q, catFilter, n) }}
           className={cn('px-3 py-2 rounded-xl border text-sm font-medium flex items-center gap-1.5 transition-colors', favOnly ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-yellow-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500')}>
           <Star size={14} fill={favOnly ? 'currentColor' : 'none'} />
-        </button>
-        <button onClick={() => setShowCatManager(true)}
-          className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500">
-          <Settings size={14} />
         </button>
       </div>
 
@@ -288,14 +578,25 @@ function FoodDatabasePage() {
             onToggleFav={() => toggleFav(f.id)}
             onEdit={() => openEdit(f)}
             onDelete={() => handleDelete(f.id)}
+            selecting={selecting}
+            selected={selectedIds.has(f.id)}
+            onSelect={() => toggleSelect(f.id)}
+            onLongPress={() => startSelecting(f.id)}
           />
         ))}
         {foods.length === 0 && !loading && (
           <p className="text-sm text-gray-400 text-center py-6">Nessun alimento trovato</p>
         )}
+        {hasMore && (
+          <button onClick={loadMore} disabled={loadingMore}
+            className="w-full flex items-center justify-center gap-2 py-3 border-t border-gray-50 dark:border-gray-800 text-sm font-semibold text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors disabled:opacity-50">
+            {loadingMore ? <Loader2 size={14} className="animate-spin" /> : null}
+            {loadingMore ? 'Caricamento...' : 'Carica altri'}
+          </button>
+        )}
       </div>
 
-      {q.trim() && (
+      {q.trim() && !selecting && (
         <button onClick={() => openNew(q)}
           className="w-full flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors">
           <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-900 flex items-center justify-center shrink-0">
@@ -306,32 +607,23 @@ function FoodDatabasePage() {
       )}
 
       {showForm && (
-        <FoodFormModal form={form} setForm={setForm} categories={categories}
+        <FoodFormModal form={form} setForm={setForm} categories={categories} userId={userId}
           onSave={handleSave} onClose={() => { setShowForm(false); setEditFood(null) }}
+          onCategoryCreated={cat => setCategories(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name, 'it')))}
           editing={!!editFood} saving={saving} />
       )}
 
-      {showCatManager && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={() => setShowCatManager(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md p-5 shadow-xl space-y-3 max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between shrink-0">
-              <p className="font-bold text-gray-900 dark:text-gray-100">Categorie</p>
-              <button onClick={() => { setShowCatManager(false); setEditCat(null); setCatInput('') }} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={14} /></button>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <input value={catInput} onChange={e => setCatInput(e.target.value)} placeholder={editCat ? 'Modifica...' : 'Nuova categoria...'}
-                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-              <button onClick={saveCat} className="px-4 py-2 rounded-xl bg-orange-400 text-white text-sm font-semibold">{editCat ? 'Salva' : 'Aggiungi'}</button>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-1">
-              {categories.map(c => (
-                <div key={c.id} className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                  <p className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{c.name}</p>
-                  <button onClick={() => { setEditCat(c); setCatInput(c.name) }} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center"><Pencil size={13} /></button>
-                  <button onClick={() => deleteCat(c.id)} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center"><Trash2 size={13} /></button>
-                </div>
-              ))}
-            </div>
+      {selecting && (
+        <div className="fixed bottom-20 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+          <div className="bg-gray-900 dark:bg-white rounded-2xl shadow-2xl flex items-center gap-3 px-4 py-3 text-sm font-semibold max-w-sm w-full pointer-events-auto">
+            <span className="flex-1 text-white dark:text-gray-900">{selectedIds.size} selezionat{selectedIds.size === 1 ? 'o' : 'i'}</span>
+            <button onClick={deleteSelected}
+              className="flex items-center gap-1.5 text-red-400 dark:text-red-500 disabled:opacity-50"
+              disabled={selectedIds.size === 0}>
+              <Trash2 size={15} /> Elimina
+            </button>
+            <span className="text-gray-600 dark:text-gray-400">·</span>
+            <button onClick={cancelSelecting} className="text-gray-400 dark:text-gray-500">Annulla</button>
           </div>
         </div>
       )}

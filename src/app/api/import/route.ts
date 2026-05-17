@@ -11,9 +11,24 @@ type FoodRow = {
 type ExerciseRow = {
   name?: unknown; muscleGroup?: unknown; equipment?: unknown; instructions?: unknown
 }
-type PlanExercise = { name: string; noteOp: string; noteEx: string; sets: string; reps: string; rec: string }
-type PlanSection  = { name: string; focus: string; exercises: PlanExercise[] }
-type PlanData     = { planName: string; sections: PlanSection[] }
+type WeekParam    = { sets: string; reps: string; rec: string }
+type PlanExercise = {
+  name: string
+  noteScheda?: string; notePersonali?: string
+  weekParams?: WeekParam[]
+}
+type PlanSection  = { name: string; focus: string; weeks?: string[]; exercises: PlanExercise[] }
+type PlanData     = { planName: string; startDate?: string | null; endDate?: string | null; sections: PlanSection[] }
+
+function parseRest(rec: string): number {
+  if (!rec) return 90
+  const ms = rec.match(/^(\d+)'(?:(\d+)''?)?$/)
+  if (ms) return parseInt(ms[1]) * 60 + parseInt(ms[2] || '0')
+  const s = rec.match(/^(\d+)''$/)
+  if (s) return parseInt(s[1])
+  const n = parseInt(rec)
+  return isNaN(n) ? 90 : n
+}
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
@@ -118,12 +133,25 @@ export async function POST(req: NextRequest) {
     if (!data?.sections?.length)
       return NextResponse.json({ error: 'Nessuna sezione nel piano' }, { status: 400 })
 
+    // Ensure WorkoutWeek + WorkoutWeekParam tables exist
+    await pool.query(`CREATE TABLE IF NOT EXISTS "WorkoutWeek" (
+      id TEXT PRIMARY KEY, "templateId" TEXT NOT NULL, name TEXT NOT NULL,
+      "order" INTEGER DEFAULT 0, "createdAt" TIMESTAMP DEFAULT NOW()
+    )`)
+    await pool.query(`CREATE TABLE IF NOT EXISTS "WorkoutWeekParam" (
+      id TEXT PRIMARY KEY, "weekId" TEXT NOT NULL, "templateExId" TEXT NOT NULL,
+      sets INTEGER DEFAULT 3, reps TEXT, "restSeconds" INTEGER DEFAULT 90,
+      notes TEXT, "suggestedWeight" FLOAT, UNIQUE("weekId","templateExId")
+    )`)
+    await pool.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "startDate" TEXT`)
+    await pool.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "endDate" TEXT`)
+
     try {
       // 1. Crea WorkoutPlan
       const planRes = await pool.query(
-        `INSERT INTO "WorkoutPlan" (id, name, "userId", "createdAt")
-         VALUES (gen_random_uuid(), $1, $2, now()) RETURNING id`,
-        [data.planName, userId]
+        `INSERT INTO "WorkoutPlan" (id, name, "userId", "startDate", "endDate", "createdAt")
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, now()) RETURNING id`,
+        [data.planName, userId, data.startDate || null, data.endDate || null]
       )
       const planId = planRes.rows[0].id
 
@@ -135,12 +163,13 @@ export async function POST(req: NextRequest) {
           [`${section.name}${section.focus ? ` — ${section.focus}` : ''}`, planId]
         )
         const dayId = dayRes.rows[0].id
+        const templateExIds: string[] = []
 
         for (let i = 0; i < section.exercises.length; i++) {
           const ex = section.exercises[i]
-          if (!ex.name?.trim()) continue
+          if (!ex.name?.trim()) { templateExIds.push(''); continue }
 
-          // 3. Cerca o crea l'esercizio nel DB
+          // 3. Cerca o crea Exercise
           const existing = await pool.query(
             `SELECT id FROM "Exercise" WHERE LOWER(name) = LOWER($1) LIMIT 1`,
             [ex.name.trim()]
@@ -152,20 +181,49 @@ export async function POST(req: NextRequest) {
             const newEx = await pool.query(
               `INSERT INTO "Exercise" (id, name, "muscleGroup", equipment, instructions, "userId")
                VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING id`,
-              [ex.name.trim(), section.focus || 'Vari', null,
-               ex.noteEx?.trim() || null, userId]
+              [ex.name.trim(), section.focus || 'Vari', null, ex.noteScheda?.trim() || null, userId]
             )
             exId = newEx.rows[0].id
           }
 
-          // 4. Crea WorkoutPlanExercise
-          const notes = [ex.noteOp, ex.noteEx].filter(Boolean).join(' | ') || null
-          await pool.query(
-            `INSERT INTO "WorkoutPlanExercise" (id, sets, reps, weight, notes, "order", "dayId", "exerciseId")
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
-            [Number(ex.sets) || 3, ex.reps || null, null, notes, i, dayId, exId]
+          // 4. Crea WorkoutPlanExercise usando parametri week 1 come default
+          const wp0   = ex.weekParams?.[0]
+          const defSets = Number(wp0?.sets) || 3
+          const defReps = wp0?.reps || null
+          const defRest = parseRest(wp0?.rec || '')
+          const notes   = ex.noteScheda?.trim() || null
+
+          const { rows: texRows } = await pool.query(
+            `INSERT INTO "WorkoutPlanExercise" (id, sets, reps, "restSeconds", notes, "order", "dayId", "exerciseId")
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+            [defSets, defReps, defRest, notes, i, dayId, exId]
           )
+          templateExIds.push(texRows[0].id)
           imported++
+        }
+
+        // 5. Crea WorkoutWeek + WorkoutWeekParam
+        if (section.weeks?.length) {
+          for (let wi = 0; wi < section.weeks.length; wi++) {
+            const { rows: wkRows } = await pool.query(
+              `INSERT INTO "WorkoutWeek" (id,"templateId",name,"order","createdAt") VALUES ($1,$2,$3,$4,NOW()) RETURNING id`,
+              [`ww-${Date.now()}-${wi}`, dayId, section.weeks[wi], wi]
+            )
+            const weekId = wkRows[0].id
+
+            for (let ei = 0; ei < section.exercises.length; ei++) {
+              const wp = section.exercises[ei].weekParams?.[wi]
+              if (!wp || !templateExIds[ei] || (!wp.sets && !wp.reps)) continue
+              await pool.query(
+                `INSERT INTO "WorkoutWeekParam" (id,"weekId","templateExId",sets,reps,"restSeconds",notes,"suggestedWeight")
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                 ON CONFLICT ("weekId","templateExId") DO UPDATE SET
+                   sets=EXCLUDED.sets, reps=EXCLUDED.reps, "restSeconds"=EXCLUDED."restSeconds"`,
+                [`wwp-${Date.now()}-${wi}-${ei}`, weekId, templateExIds[ei],
+                 Number(wp.sets) || 3, wp.reps || null, parseRest(wp.rec), null, null]
+              )
+            }
+          }
         }
       }
     } catch (e) {

@@ -3,10 +3,11 @@ import { useRef } from 'react'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function DateNav({ selectedDate, onChange, accent }: {
+export function DateNav({ selectedDate, onChange, accent, schedaColor }: {
   selectedDate: string
   onChange: (d: string) => void
   accent: string
+  schedaColor?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const today    = new Date().toISOString().split('T')[0]
@@ -29,7 +30,9 @@ export function DateNav({ selectedDate, onChange, accent }: {
   return (
     <div className="flex items-center gap-2">
       {/* Date band */}
-      <div className="flex-1 h-9 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-2 flex items-center gap-1">
+      <div className={cn("flex-1 h-9 rounded-2xl px-2 flex items-center gap-1 border transition-colors",
+          !schedaColor && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
+        style={schedaColor ? { backgroundColor: schedaColor + '18', borderColor: schedaColor + '50' } : undefined}>
         <button onClick={() => changeDate(-1)}
           className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
           <ChevronLeft size={17} />
@@ -48,7 +51,7 @@ export function DateNav({ selectedDate, onChange, accent }: {
         className="w-9 h-9 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl flex items-center justify-center shrink-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
         <Calendar size={16} style={{ color: accent }} />
       </button>
-      <input ref={inputRef} type="date" value={selectedDate} max={today}
+      <input ref={inputRef} type="date" value={selectedDate}
         onChange={e => e.target.value && onChange(e.target.value)}
         className="sr-only" />
 

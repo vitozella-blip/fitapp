@@ -51,65 +51,86 @@ function findHeaderRow(rows: string[][]): number {
 
 // ── Piano Allenamento ─────────────────────────────────────────────────────────
 
-type PlanExercise = { name: string; noteOp: string; noteEx: string; sets: string; reps: string; rec: string }
-type PlanSection  = { name: string; focus: string; exercises: PlanExercise[] }
-type PlanData     = { planName: string; sections: PlanSection[] }
+type WeekParam    = { sets: string; reps: string; rec: string }
+type PlanExercise = { name: string; noteScheda: string; notePersonali: string; weekParams: WeekParam[] }
+type PlanSection  = { name: string; focus: string; weeks: string[]; exercises: PlanExercise[] }
+type PlanData     = { planName: string; startDate: string | null; endDate: string | null; sections: PlanSection[] }
 
 function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
   const ws   = wb.Sheets[wb.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' }) as string[][]
 
-  const firstCell = String(rows[0]?.[0] ?? '')
-  const planName  = firstCell.trim()
-    ? firstCell.replace('DATA:', '').trim()
-    : wb.SheetNames[0]
-
+  let planName  = ''
+  let startDate: string | null = null
+  let endDate:   string | null = null
   const sections: PlanSection[] = []
   let current: PlanSection | null = null
+  let skipColHeaders = false
 
   for (const row of rows) {
     const c0 = String(row[0] ?? '').trim()
     const c1 = String(row[1] ?? '').trim()
-    const c2 = String(row[2] ?? '').trim()
 
-    if (/^WORKOUT\s+\d+/i.test(c0)) {
-      current = { name: c0, focus: c2, exercises: [] }
+    if (/^piano:?$/i.test(c0))  { planName  = c1; continue }
+    if (/^inizio:?$/i.test(c0)) { startDate = c1 || null; continue }
+    if (/^fine:?$/i.test(c0))   { endDate   = c1 || null; continue }
+
+    // Section header: SCHEDA N or WORKOUT N (backward compat)
+    if (/^(SCHEDA|WORKOUT)\s+\d+/i.test(c0)) {
+      const weeks: string[] = []
+      for (let col = 4; col < row.length; col += 3) {
+        const w = String(row[col] ?? '').trim().replace(/^VOLUME[\s\n]*/i, '').trim()
+        if (w) weeks.push(w); else break
+      }
+      current = { name: c0, focus: String(row[2] ?? '').trim(), weeks, exercises: [] }
       sections.push(current)
+      skipColHeaders = true
       continue
     }
-    if (!current || c0 === 'Esercizio' || c0 === '') continue
 
-    const num = parseFloat(c0)
-    if (!isNaN(num) && num > 0 && c1) {
+    if (skipColHeaders) { skipColHeaders = false; continue }
+    if (!current) continue
+
+    const num    = parseFloat(c0)
+    const exName = String(row[1] ?? '').trim()
+    if (!isNaN(num) && num > 0 && exName) {
+      const weekCount = current.weeks.length || 1
+      const weekParams: WeekParam[] = []
+      for (let w = 0; w < weekCount; w++) {
+        const base = 4 + w * 3
+        weekParams.push({
+          sets: String(row[base]     ?? '').trim(),
+          reps: String(row[base + 1] ?? '').trim(),
+          rec:  String(row[base + 2] ?? '').trim(),
+        })
+      }
       current.exercises.push({
-        name:   c1,
-        noteOp: c2,
-        noteEx: String(row[3] ?? '').trim(),
-        sets:   String(row[4] ?? '3').trim(),
-        reps:   String(row[5] ?? '').trim(),
-        rec:    String(row[6] ?? '').trim(),
+        name: exName,
+        noteScheda:    String(row[2] ?? '').trim(),
+        notePersonali: String(row[3] ?? '').trim(),
+        weekParams,
       })
     }
   }
-  return { planName, sections }
+
+  if (!planName) planName = wb.SheetNames[0]
+  return { planName, startDate, endDate, sections }
 }
 
 // ── Download template ─────────────────────────────────────────────────────────
 
-const WEEK_HEADERS = ['VOLUME\nWEEK 1', '', '', 'VOLUME\nWEEK 2', '', '', 'VOLUME\nWEEK 3', '', '',
-  'VOLUME\nWEEK 4', '', '', 'VOLUME\nWEEK 5', '', '', 'VOLUME\nWEEK 6', '', '']
-const COL_HEADERS  = ['Esercizio', '', 'Note', '',
-  'Set', 'Reps', 'Rec', 'Set', 'Reps', 'Rec', 'Set', 'Reps', 'Rec',
-  'Set', 'Reps', 'Rec', 'Set', 'Reps', 'Rec', 'Set', 'Reps', 'Rec']
+// col layout: [N, Esercizio, Note scheda, Note personali, W1Set,W1Reps,W1Rec, W2Set,..., W6Rec]
+const W_HDR: (string|number)[] = ['Week 1','','','Week 2','','','Week 3','','','Week 4','','','Week 5','','','Week 6','','']
+const COL_HDR: (string|number)[] = ['Esercizio','','Note scheda','Note personali','Set','Reps','Rec','Set','Reps','Rec','Set','Reps','Rec','Set','Reps','Rec','Set','Reps','Rec','Set','Reps','Rec']
+const SEP: (string|number)[] = Array(22).fill('')
 
-function makeWoRows(n: number, focus: string, exercises: (string | number)[][]): (string | number)[][] {
-  return [
-    [`WORKOUT ${n}`, '', focus, 'Note operative', ...WEEK_HEADERS],
-    COL_HEADERS,
-    ...exercises,
-    Array(22).fill(''), // riga separatore
-  ]
+function sHdr(n: number, focus: string): (string|number)[] {
+  return [`SCHEDA ${n}`, '', focus, '', ...W_HDR]
 }
+function eRow(n: number, name: string, ns: string, np: string, ...wp: (string|number)[]): (string|number)[] {
+  return [n, name, ns, np, ...wp, ...Array(Math.max(0, 18 - wp.length)).fill('')]
+}
+function eBlank(n: number): (string|number)[] { return [n,'','','','','','','','','','','','','','','','','','','','',''] }
 
 function downloadTemplate(type: ImportType) {
   const wb = XLSX.utils.book_new()
@@ -125,51 +146,31 @@ function downloadTemplate(type: ImportType) {
     XLSX.utils.book_append_sheet(wb, ws, 'Alimenti')
     XLSX.writeFile(wb, 'template_alimenti.xlsx')
   } else {
-    // Template multi-WO — stesso formato di template_piano_allenamento.xlsx
-    const rows: (string | number)[][] = [
-      ['DATA: gg/mm/aa - gg/mm/aa'],
-      [],
-      [],
-      ...makeWoRows(1, 'CHEST - BACK', [
-        [1, 'Spinte su piana al MP',  'Progressione onde',   'Bilanciere sotto capezzoli',  4, 6, "3'", 4, 7, "3'", 4, 8, "3'", 4, 6, "3'", 4, 7, "3'", 4, 8, "3'"],
-        [2, 'Chest Press Incline',    'Progressione onde',   '',                            3, 8, "2'", 3, 9, "2'", 4, 8, "2'", 4, 9, "2'", 3, 8, "2'", 3, 8, "2'"],
-        [3, 'Croci ai cavi',          "3-4'' in eccentrica", 'Petto sempre aperto',          3,12, "90''",3,12,"90''",3,12,"90''",3,12,"90''",3,12,"90''",3,12,"90''"],
-        [4, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [5, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [6, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [7, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [8, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ]),
-      ...makeWoRows(2, 'LEGS', [
-        [1, 'Pressa 45',       'Progressione onde', '', 4, 6, "3'", 4, 7, "3'", 3, 8, "3'", 3, 8, "3'", 4, 7, "3'", 4, 6, "3'"],
-        [2, 'Leg Curl seduta', 'Progressione onde', '', 3, 8, "2'", 3, 9, "2'", 4, 8, "2'", 4, 9, "2'", 3, 8, "2'", 3, 8, "2'"],
-        [3, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [4, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [5, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [6, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [7, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [8, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ]),
-      ...makeWoRows(3, 'SHOULDERS + MIX', [
-        [1, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [2, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [3, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [4, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [5, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [6, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [7, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [8, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ]),
-      ...makeWoRows(4, '', [
-        [1, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [2, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [3, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [4, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [5, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [6, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [7, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        [8, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ]),
+    const rows: (string|number)[][] = [
+      ['Piano:', 'Nome del piano'],
+      ['Inizio:', 'gg/mm/aaaa'],
+      ['Fine:', 'gg/mm/aaaa'],
+      SEP,
+      sHdr(1, 'CHEST - BACK'),
+      COL_HDR,
+      eRow(1,'Spinte su piana al MP','Progressione onde','Bilanciere sotto capezzoli', 4,'6',"3'",4,'7',"3'",4,'8',"3'",4,'6',"3'",4,'7',"3'",4,'8',"3'"),
+      eRow(2,'Chest Press Incline','Progressione onde','', 3,'8',"2'",3,'9',"2'",4,'8',"2'",4,'9',"2'",3,'8',"2'",3,'8',"2'"),
+      eRow(3,'Croci ai cavi',"3-4'' in eccentrica",'Petto sempre aperto', 3,'12',"90''",3,'12',"90''",3,'12',"90''",3,'12',"90''",3,'12',"90''",3,'12',"90''"),
+      eBlank(4),eBlank(5),eBlank(6),eBlank(7),eBlank(8),
+      SEP,
+      sHdr(2, 'LEGS'),
+      COL_HDR,
+      eRow(1,'Pressa 45','Progressione onde','', 4,'6',"3'",4,'7',"3'",3,'8',"3'",3,'8',"3'",4,'7',"3'",4,'6',"3'"),
+      eRow(2,'Leg Curl seduta','Progressione onde','', 3,'8',"2'",3,'9',"2'",4,'8',"2'",4,'9',"2'",3,'8',"2'",3,'8',"2'"),
+      eBlank(3),eBlank(4),eBlank(5),eBlank(6),eBlank(7),eBlank(8),
+      SEP,
+      sHdr(3, 'SHOULDERS + MIX'),
+      COL_HDR,
+      eBlank(1),eBlank(2),eBlank(3),eBlank(4),eBlank(5),eBlank(6),eBlank(7),eBlank(8),
+      SEP,
+      sHdr(4, ''),
+      COL_HDR,
+      eBlank(1),eBlank(2),eBlank(3),eBlank(4),eBlank(5),eBlank(6),eBlank(7),eBlank(8),
     ]
     const ws = XLSX.utils.aoa_to_sheet(rows)
     XLSX.utils.book_append_sheet(wb, ws, 'Allenamento')
@@ -340,13 +341,13 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* ── Esercizi: anteprima piano ── */}
+      {/* ── Piano: anteprima ── */}
       {step === 'plan-preview' && planData && (
         <div className="space-y-3">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">📄 {fileName}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{planData.sections.length} workout · {totalExercises} esercizi</p>
+              <p className="text-xs text-gray-400 mt-0.5">{planData.sections.length} schede · {totalExercises} esercizi</p>
             </div>
             <button onClick={reset} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 px-3 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               Cambia file
@@ -355,23 +356,39 @@ export default function ImportPage() {
 
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Piano rilevato</p>
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">{planData.planName}</p>
+            <p className="text-base font-bold text-gray-800 dark:text-gray-100 mb-1">{planData.planName}</p>
+            {(planData.startDate || planData.endDate) && (
+              <p className="text-xs text-gray-400 mb-3">
+                {planData.startDate ?? '–'} → {planData.endDate ?? '–'}
+              </p>
+            )}
             <div className="space-y-2">
               {planData.sections.map((s, i) => (
                 <div key={i} className="rounded-2xl px-3 py-2.5" style={{ backgroundColor: accent + '18' }}>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-bold" style={{ color: accent }}>{s.name}</span>
                     {s.focus && <span className="text-xs text-gray-500">{s.focus}</span>}
-                    <span className="text-xs text-gray-400">{s.exercises.length} esercizi</span>
+                    <span className="text-xs text-gray-400">{s.exercises.length} es.</span>
                   </div>
+                  {s.weeks.length > 0 && (
+                    <div className="flex gap-1 flex-wrap mb-1.5">
+                      {s.weeks.map((w, wi) => (
+                        <span key={wi} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                          style={{ backgroundColor: accent + '30', color: accent }}>{w}</span>
+                      ))}
+                    </div>
+                  )}
                   <div className="space-y-1">
-                    {s.exercises.slice(0, 3).map((ex, j) => (
-                      <div key={j} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                        <span className="text-gray-300 dark:text-gray-600 w-3 text-right shrink-0">{j + 1}.</span>
-                        <span className="flex-1 truncate">{ex.name}</span>
-                        {ex.sets && ex.reps && <span className="shrink-0 text-gray-400">{ex.sets}×{ex.reps}</span>}
-                      </div>
-                    ))}
+                    {s.exercises.slice(0, 3).map((ex, j) => {
+                      const wp0 = ex.weekParams[0]
+                      return (
+                        <div key={j} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                          <span className="text-gray-300 dark:text-gray-600 w-3 text-right shrink-0">{j + 1}.</span>
+                          <span className="flex-1 truncate">{ex.name}</span>
+                          {wp0?.sets && wp0?.reps && <span className="shrink-0 text-gray-400">{wp0.sets}×{wp0.reps}</span>}
+                        </div>
+                      )
+                    })}
                     {s.exercises.length > 3 && (
                       <p className="text-xs text-gray-300 dark:text-gray-600 pl-5">+{s.exercises.length - 3} altri…</p>
                     )}
