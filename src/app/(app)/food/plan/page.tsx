@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Check, X, MoreVertical, ChevronDown, ChevronUp, Trash2, Pencil, Copy } from 'lucide-react'
+import { Plus, Check, X, MoreVertical, Trash2, Pencil, Copy } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
@@ -370,25 +370,15 @@ export default function FoodPlanPage() {
           const eL = fmtDate(plan.endDate)
           const dt = getDailyTotal(plan.targets)
           return (
-            <div key={plan.id} className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
+            <div key={plan.id} className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors',
               plan.isActive ? 'border-orange-300 dark:border-orange-700' : 'border-gray-200 dark:border-gray-800')}>
               {/* Pill header — no icons */}
               <div className="flex items-start gap-3 px-4 py-3">
                 <button onClick={() => setExpanded(isExpanded ? null : plan.id)} className="flex-1 min-w-0 text-left">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{plan.name}</p>
-                    {plan.isActive && (
-                      <span className="shrink-0 text-[10px] bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                        Corrente
-                      </span>
-                    )}
                   </div>
-                  {(sL || eL) && (
-                    <div className="mt-1 text-xs text-gray-400 leading-tight">
-                      {sL && <p>{sL}</p>}
-                      {eL && <p>{eL}</p>}
-                    </div>
-                  )}
+                  {(sL || eL) && <p className="mt-1 text-xs text-gray-400">{sL ?? '–'} – {eL ?? '–'}</p>}
                   {dt && (
                     <p className="text-xs mt-1">
                       <span style={{ color: FCOL.fat }}>G {dt.fat}</span>
@@ -406,10 +396,6 @@ export default function FoodPlanPage() {
                     onEdit={() => isEditing ? cancelEdit() : openEdit(plan)}
                     onDuplicate={() => handleDuplicate(plan.id)}
                     onDelete={() => handleDelete(plan.id)} />
-                  <button onClick={() => setExpanded(isExpanded ? null : plan.id)}
-                    className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center transition-colors">
-                    {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                  </button>
                 </div>
               </div>
 
