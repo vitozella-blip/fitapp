@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   try {
     await ensureSchema()
     const { rows } = await pool.query(
-      `SELECT * FROM "WorkoutPlan" WHERE "userId"=$1 ORDER BY "order" ASC, "createdAt" ASC`,
+      `SELECT * FROM "WorkoutPlan" WHERE "userId"=$1 ORDER BY "createdAt" DESC`,
       [userId]
     )
     return NextResponse.json(rows)

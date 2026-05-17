@@ -32,16 +32,29 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(data) || data.length === 0)
       return NextResponse.json({ error: 'Nessun dato' }, { status: 400 })
 
-    // Ensure optional columns exist (idempotent)
+    // Ensure optional columns and unique constraint exist (idempotent)
     await pool.query(`
       ALTER TABLE "Food"
         ADD COLUMN IF NOT EXISTS "saturatedFat" FLOAT,
         ADD COLUMN IF NOT EXISTS "sugars" FLOAT,
         ADD COLUMN IF NOT EXISTS "salt" FLOAT
     `)
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Food_name_brand_key"
+      ON "Food" (LOWER(name), LOWER(COALESCE(brand, '')))
+    `)
 
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i]
+    const sorted = [...data].sort((a, b) => {
+      const nameA = String(a.name ?? '').trim().toLowerCase()
+      const nameB = String(b.name ?? '').trim().toLowerCase()
+      if (nameA !== nameB) return nameA.localeCompare(nameB, 'it')
+      const brandA = String(a.brand ?? '').trim().toLowerCase() || 'generico'
+      const brandB = String(b.brand ?? '').trim().toLowerCase() || 'generico'
+      return brandA.localeCompare(brandB, 'it')
+    })
+
+    for (let i = 0; i < sorted.length; i++) {
+      const row = sorted[i]
       const name     = String(row.name ?? '').trim()
       const calories = Number(row.calories)
       if (!name || isNaN(calories)) {
@@ -53,14 +66,19 @@ export async function POST(req: NextRequest) {
       const saturatedFat = row.saturatedFat != null && String(row.saturatedFat).trim() !== '' ? Number(row.saturatedFat) : null
       const sugars       = row.sugars       != null && String(row.sugars).trim()       !== '' ? Number(row.sugars)       : null
       const salt         = row.salt         != null && String(row.salt).trim()         !== '' ? Number(row.salt)         : null
-      const brand        = row.brand ? String(row.brand).trim() || null : null
+      const brand        = String(row.brand ?? '').trim() || 'Generico'
       const per100g      = row.per100g == null ? true
         : typeof row.per100g === 'boolean' ? row.per100g
         : !['false', '0', 'no'].includes(String(row.per100g).toLowerCase())
       try {
         await pool.query(
           `INSERT INTO "Food" (id, name, brand, calories, protein, carbs, fat, "saturatedFat", "sugars", "salt", "per100g", "userId")
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (LOWER(name), LOWER(COALESCE(brand, '')))
+           DO UPDATE SET
+             calories=EXCLUDED.calories, protein=EXCLUDED.protein, carbs=EXCLUDED.carbs, fat=EXCLUDED.fat,
+             "saturatedFat"=EXCLUDED."saturatedFat", "sugars"=EXCLUDED."sugars", "salt"=EXCLUDED."salt",
+             "per100g"=EXCLUDED."per100g", "userId"=EXCLUDED."userId"`,
           [name, brand, calories, protein, carbs, fat, saturatedFat, sugars, salt, per100g, userId]
         )
         imported++

@@ -37,10 +37,8 @@ export function DateNav({ selectedDate, onChange, accent }: {
         <span className="flex-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">
           {dateLabel}
         </span>
-        <button onClick={() => changeDate(1)} disabled={isToday}
-          className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors',
-            isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-          )}>
+        <button onClick={() => changeDate(1)}
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
           <ChevronRight size={17} />
         </button>
       </div>
