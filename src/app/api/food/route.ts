@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
+let schemaReady = false
 async function ensureSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS "FoodCategory" (
-      "foodId" TEXT NOT NULL,
-      "categoryId" TEXT NOT NULL,
-      PRIMARY KEY ("foodId", "categoryId")
-    )
-  `)
-  // migrate legacy single categoryId → junction table (idempotent)
-  await pool.query(`
-    INSERT INTO "FoodCategory" ("foodId", "categoryId")
-    SELECT id, "categoryId" FROM "Food"
-    WHERE "categoryId" IS NOT NULL
-    ON CONFLICT DO NOTHING
-  `)
+  if (schemaReady) return
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "FoodCategory" (
+        "foodId" TEXT NOT NULL,
+        "categoryId" TEXT NOT NULL,
+        PRIMARY KEY ("foodId", "categoryId")
+      )
+    `)
+    await pool.query(`
+      INSERT INTO "FoodCategory" ("foodId", "categoryId")
+      SELECT id, "categoryId" FROM "Food"
+      WHERE "categoryId" IS NOT NULL
+      ON CONFLICT DO NOTHING
+    `)
+    schemaReady = true
+  } catch (e) { console.error('ensureSchema error:', e) }
 }
 
 export async function GET(req: NextRequest) {
@@ -62,8 +66,19 @@ export async function GET(req: NextRequest) {
   query += ` ORDER BY f.name LIMIT $${idx++} OFFSET $${idx++}`
   params.push(limit, offset)
 
-  const { rows } = await pool.query(query, params)
-  return NextResponse.json(rows)
+  try {
+    const { rows } = await pool.query(query, params)
+    return NextResponse.json(rows)
+  } catch (e) {
+    console.error('GET /api/food error:', e)
+    // FoodCategory table may not exist yet — fall back to simple query without categoryIds
+    const fallback = `SELECT f.*, ARRAY[]::text[] AS "categoryIds" FROM "Food" f
+      WHERE (LOWER(f.name) LIKE LOWER($1) OR LOWER(COALESCE(f.brand,'')) LIKE LOWER($1))
+        AND (f."userId" IS NULL OR f."userId"=$2)
+      ORDER BY f.name LIMIT $3 OFFSET $4`
+    const { rows } = await pool.query(fallback, [`%${q}%`, userId, limit, offset])
+    return NextResponse.json(rows)
+  }
 }
 
 export async function POST(req: NextRequest) {
