@@ -526,15 +526,9 @@ export default function TrainingDiaryPage() {
                   </div>
                   <div>
                     <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
-                    <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                      <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                        onClick={() => setFormWeight(v => { const n = Math.max(0, (Number(v) || 0) - 2.5); return n === 0 && !v ? '' : String(n) })}>–</button>
-                      <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {formWeight || '—'}
-                      </span>
-                      <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                        onClick={() => setFormWeight(v => String((Number(v) || 0) + 2.5))}>+</button>
-                    </div>
+                    <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
+                      placeholder="—"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                   </div>
                 </div>
               </div>
