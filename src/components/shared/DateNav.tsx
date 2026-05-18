@@ -20,17 +20,18 @@ function buildWorkoutColors(): Record<string, string> {
   return map
 }
 
-function CalendarModal({ selectedDate, onChange, onClose, accent }: {
+function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkoutColors = false }: {
   selectedDate: string
   onChange: (d: string) => void
   onClose: () => void
   accent: string
+  disableWorkoutColors?: boolean
 }) {
   const today = new Date().toISOString().split('T')[0]
   const initial = new Date(selectedDate + 'T12:00:00')
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
 
-  const workoutColors = useMemo(() => buildWorkoutColors(), [view])
+  const workoutColors = useMemo(() => disableWorkoutColors ? {} : buildWorkoutColors(), [view, disableWorkoutColors])
 
   const { year, month } = view
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // Mon-first
@@ -137,11 +138,12 @@ function CalendarModal({ selectedDate, onChange, onClose, accent }: {
   )
 }
 
-export function DateNav({ selectedDate, onChange, accent, schedaColor }: {
+export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorkoutColors = true }: {
   selectedDate: string
   onChange: (d: string) => void
   accent: string
   schedaColor?: string
+  showWorkoutColors?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const today    = new Date().toISOString().split('T')[0]
@@ -201,6 +203,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor }: {
           onChange={onChange}
           onClose={() => setOpen(false)}
           accent={accent}
+          disableWorkoutColors={!showWorkoutColors}
         />
       )}
     </>

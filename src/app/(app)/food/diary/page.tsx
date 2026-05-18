@@ -80,7 +80,7 @@ export default function FoodDiaryPage() {
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
       <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
 
-      <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} />
+      <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} showWorkoutColors={false} />
 
       {/* Macro summary — same as dashboard */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3">
