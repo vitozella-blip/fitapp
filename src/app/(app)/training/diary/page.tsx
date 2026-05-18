@@ -53,7 +53,7 @@ function fmtRest(s: number | null): string | null {
 // ── Scheda + Week picker (bottom sheet) ───────────────────────────────────────
 function SchedaPickerPanel({ userId, onPick, onClose }: {
   userId: string
-  onPick: (t: Template, idx: number, weekId: string | null, weekName: string | null) => void
+  onPick: (t: Template, idx: number, weekId: string | null, weekName: string | null, weekOrder: number | null) => void
   onClose: () => void
 }) {
   const [step, setStep]         = useState<'scheda' | 'week'>('scheda')
@@ -89,9 +89,9 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
     setStep('week')
   }
 
-  function confirm(weekId: string | null, weekName: string | null) {
+  function confirm(weekId: string | null, weekName: string | null, weekOrder: number | null) {
     if (!picked) return
-    onPick(picked.t, picked.idx, weekId, weekName)
+    onPick(picked.t, picked.idx, weekId, weekName, weekOrder)
   }
 
   return (
@@ -152,7 +152,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
             {!loadingWeeks && weeks.length === 0 && (
               <div className="text-center py-6 space-y-3">
                 <p className="text-sm text-gray-400">Nessuna week definita per questa scheda</p>
-                <button onClick={() => confirm(null, null)}
+                <button onClick={() => confirm(null, null, null)}
                   className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
                   style={{ backgroundColor: CT }}>
                   Usa parametri scheda
@@ -163,7 +163,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
               <>
                 <p className="text-xs text-gray-400 pb-1">Seleziona la settimana</p>
                 {weeks.map(w => (
-                  <button key={w.id} onClick={() => confirm(w.id, w.name)}
+                  <button key={w.id} onClick={() => confirm(w.id, w.name, w.order + 1)}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                       style={{ backgroundColor: CT }}>
@@ -173,7 +173,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
                     <ChevronRight size={15} className="text-gray-300 shrink-0" />
                   </button>
                 ))}
-                <button onClick={() => confirm(null, null)}
+                <button onClick={() => confirm(null, null, null)}
                   className="w-full py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors mt-1">
                   Senza week — usa default scheda
                 </button>
@@ -255,9 +255,9 @@ export default function TrainingDiaryPage() {
     })()
   }, [selectedDate])
 
-  async function pickScheda(t: Template, idx: number, weekId: string | null, weekName: string | null) {
+  async function pickScheda(t: Template, idx: number, weekId: string | null, weekName: string | null, weekOrder: number | null) {
     const color = SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
-    localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify({ templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName }))
+    localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify({ templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder }))
     const merged = await mergeWeekParams(t.exercises, weekId)
     setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged })
     setShowPicker(false)
