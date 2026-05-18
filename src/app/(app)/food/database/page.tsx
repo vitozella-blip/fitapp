@@ -11,12 +11,12 @@ type Food = {
   id: string; name: string; brand?: string; calories: number
   protein: number; carbs: number; fat: number
   saturatedFat?: number; sugars?: number; salt?: number
-  userId?: string | null; categoryId?: string | null
+  userId?: string | null; categoryId?: string | null; categoryIds?: string[]
 }
 type Category = { id: string; name: string }
-type FoodForm = { name: string; brand: string; calories: string; protein: string; carbs: string; fat: string; saturatedFat: string; sugars: string; salt: string; categoryId: string }
+type FoodForm = { name: string; brand: string; calories: string; protein: string; carbs: string; fat: string; saturatedFat: string; sugars: string; salt: string; categoryIds: string[] }
 
-const emptyForm = (): FoodForm => ({ name: '', brand: '', calories: '', protein: '', carbs: '', fat: '', saturatedFat: '', sugars: '', salt: '', categoryId: '' })
+const emptyForm = (): FoodForm => ({ name: '', brand: '', calories: '', protein: '', carbs: '', fat: '', saturatedFat: '', sugars: '', salt: '', categoryIds: [] })
 
 const fmt = (v: number | undefined | null, unit = 'g') =>
   v == null || v === 0 ? '—' : `${v} ${unit}`
@@ -31,8 +31,8 @@ const DETAIL_ROWS: { label: string; key: keyof Food; color: string; sub?: boolea
   { label: 'Sale',            key: 'salt',         color: '#f0e080' },
 ]
 
-function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete, selecting, selected, onSelect, onLongPress }: {
-  food: Food; isFav: boolean
+function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, selecting, selected, onSelect, onLongPress }: {
+  food: Food; isFav: boolean; categories: Category[]
   onToggleFav: () => void; onEdit: () => void; onDelete: () => void
   selecting: boolean; selected: boolean
   onSelect: () => void; onLongPress: () => void
@@ -77,6 +77,15 @@ function FoodCard({ food, isFav, onToggleFav, onEdit, onDelete, selecting, selec
             <span style={{ color: '#f0aa78' }}>C {food.carbs}g</span>
             <span style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
           </div>
+          {food.categoryIds && food.categoryIds.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {food.categoryIds.map(cid => {
+                const name = categories.find(c => c.id === cid)?.name
+                if (!name) return null
+                return <span key={cid} className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-400">{name}</span>
+              })}
+            </div>
+          )}
         </button>
         {!selecting && (
           <div className="flex items-center gap-1 shrink-0">
@@ -259,9 +268,9 @@ function CategoryFilterDropdown({ values, cats, userId, onChange, onCatsChanged 
   )
 }
 
-function CategorySelect({ value, cats, userId, onChange, onCreated }: {
-  value: string; cats: Category[]; userId: string
-  onChange: (id: string) => void; onCreated: (cat: Category) => void
+function CategoryMultiSelect({ values, cats, userId, onChange, onCreated }: {
+  values: string[]; cats: Category[]; userId: string
+  onChange: (ids: string[]) => void; onCreated: (cat: Category) => void
 }) {
   const [open, setOpen]     = useState(false)
   const [name, setName]     = useState('')
@@ -281,17 +290,22 @@ function CategorySelect({ value, cats, userId, onChange, onCreated }: {
       body: JSON.stringify({ userId, name: n }),
     })
     const cat: Category = await r.json()
-    onCreated(cat); onChange(cat.id)
-    setName(''); setOpen(false); setSaving(false)
+    onCreated(cat); onChange([...values, cat.id])
+    setName(''); setSaving(false)
   }
 
-  const selected = cats.find(c => c.id === value)
-  const btnCls = "w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none flex items-center justify-between"
+  function toggle(id: string) {
+    onChange(values.includes(id) ? values.filter(v => v !== id) : [...values, id])
+  }
+
+  const selectedNames = cats.filter(c => values.includes(c.id)).map(c => c.name)
+  const label = selectedNames.length === 0 ? '–' : selectedNames.join(', ')
 
   return (
     <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)} className={btnCls}>
-        <span className={selected ? '' : 'text-gray-400'}>{selected ? selected.name : '–'}</span>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm outline-none flex items-center justify-between gap-2">
+        <span className={cn('truncate', values.length === 0 ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100')}>{label}</span>
         <ChevronDown size={14} className="text-gray-400 shrink-0" />
       </button>
       {open && (
@@ -301,11 +315,13 @@ function CategorySelect({ value, cats, userId, onChange, onCreated }: {
               <p className="text-xs text-gray-400 text-center py-3">Nessuna categoria ancora</p>
             ) : (
               cats.map(c => (
-                <button key={c.id} type="button"
-                  onClick={() => { onChange(c.id); setOpen(false) }}
-                  className={cn('w-full text-left px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
-                    c.id === value ? 'font-semibold text-orange-400' : 'text-gray-700 dark:text-gray-300')}>
-                  {c.name}
+                <button key={c.id} type="button" onClick={() => toggle(c.id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <span className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                    values.includes(c.id) ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
+                    {values.includes(c.id) && <Check size={10} className="text-white" />}
+                  </span>
+                  <span className={values.includes(c.id) ? 'font-semibold text-orange-400' : 'text-gray-700 dark:text-gray-300'}>{c.name}</span>
                 </button>
               ))
             )}
@@ -313,7 +329,6 @@ function CategorySelect({ value, cats, userId, onChange, onCreated }: {
           <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
             <Plus size={13} className="text-gray-400 shrink-0" />
             <input
-              autoFocus={cats.length === 0}
               value={name}
               onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') create(); if (e.key === 'Escape') setOpen(false) }}
@@ -390,12 +405,12 @@ function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onC
             <input type="number" value={form.salt} onChange={e => f('salt', e.target.value)} placeholder="0" className={inp} />
           </div>
           <div className="pt-1 border-t border-gray-100 dark:border-gray-800 space-y-2">
-            <label className="text-xs text-gray-400 block">Categoria</label>
-            <CategorySelect
-              value={form.categoryId}
+            <label className="text-xs text-gray-400 block">Categorie</label>
+            <CategoryMultiSelect
+              values={form.categoryIds}
               cats={cats}
               userId={userId}
-              onChange={id => f('categoryId', id)}
+              onChange={ids => setForm({ ...form, categoryIds: ids })}
               onCreated={handleCreated}
             />
           </div>
@@ -488,14 +503,14 @@ function FoodDatabasePage() {
 
   function openEdit(food: Food) {
     setEditFood(food)
-    setForm({ name: food.name, brand: food.brand ?? '', calories: String(food.calories), protein: String(food.protein), carbs: String(food.carbs), fat: String(food.fat), saturatedFat: String(food.saturatedFat ?? 0), sugars: String(food.sugars ?? 0), salt: String(food.salt ?? 0), categoryId: food.categoryId ?? '' })
+    setForm({ name: food.name, brand: food.brand ?? '', calories: String(food.calories), protein: String(food.protein), carbs: String(food.carbs), fat: String(food.fat), saturatedFat: String(food.saturatedFat ?? 0), sugars: String(food.sugars ?? 0), salt: String(food.salt ?? 0), categoryIds: food.categoryIds ?? (food.categoryId ? [food.categoryId] : []) })
     setShowForm(true)
   }
 
   async function handleSave() {
     if (!form.name.trim() || !form.calories) return
     setSaving(true)
-    const payload = { name: form.name, brand: form.brand, calories: Number(form.calories), protein: Number(form.protein), carbs: Number(form.carbs), fat: Number(form.fat), saturatedFat: Number(form.saturatedFat), sugars: Number(form.sugars), salt: Number(form.salt), categoryId: form.categoryId || null, userId }
+    const payload = { name: form.name, brand: form.brand, calories: Number(form.calories), protein: Number(form.protein), carbs: Number(form.carbs), fat: Number(form.fat), saturatedFat: Number(form.saturatedFat), sugars: Number(form.sugars), salt: Number(form.salt), categoryIds: form.categoryIds, userId }
     if (editFood) {
       await fetch(`/api/food/${editFood.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     } else {
@@ -574,7 +589,7 @@ function FoodDatabasePage() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
         {foods.map(f => (
-          <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)}
+          <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)} categories={categories}
             onToggleFav={() => toggleFav(f.id)}
             onEdit={() => openEdit(f)}
             onDelete={() => handleDelete(f.id)}
