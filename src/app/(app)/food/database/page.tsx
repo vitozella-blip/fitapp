@@ -469,7 +469,7 @@ function FoodDatabasePage() {
     setCategories(await r.json())
   }, [userId])
 
-  useEffect(() => { fetchAll('', '', false); fetchCats() }, [userId])
+  useEffect(() => { fetchAll('', [], false); fetchCats() }, [userId])
 
   function handleSearch(val: string) {
     setQ(val); clearTimeout(timer.current)
