@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     COALESCE((
       SELECT array_agg(fc."categoryId")
       FROM "FoodCategory" fc WHERE fc."foodId" = f.id
-    ), '{}') AS "categoryIds"
+    ), ARRAY[]::text[]) AS "categoryIds"
     FROM "Food" f`
   const params: unknown[] = []
   let idx = 1
