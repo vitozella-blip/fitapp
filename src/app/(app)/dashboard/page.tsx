@@ -169,15 +169,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
-            {MEALS.map(({ name, label, renderIcon, color }) => {
+            {MEALS.map(({ name, label, renderIcon }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               return (
                 <div key={name}>
-                  <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl"
-                    style={{ backgroundColor: color + '28' }}>
-                    <span style={{ flexShrink: 0 }}>{renderIcon(color, 20)}</span>
-                    <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
+                  <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800">
+                    <span style={{ flexShrink: 0 }}>{renderIcon('', 20)}</span>
+                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{label}</span>
                   </div>
                   <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
                     {kcal > 0 ? (
@@ -252,7 +251,7 @@ export default function DashboardPage() {
             {/* Scheda name */}
             {hasWorkout && schedaInfo && (
               <p className="text-xs font-semibold px-0.5 mb-0.5 truncate" style={{ color: C.training }}>
-                {schedaInfo.name.toUpperCase()}
+                {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
               </p>
             )}
 
