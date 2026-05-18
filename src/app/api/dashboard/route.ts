@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       exerciseCount: Number(workoutRes.rows[0].exerciseCount),
       setCount: Number(workoutRes.rows[0].setCount),
       hasTennis: tennisRes.rows.length > 0,
-      exercises: exercisesRes.rows.map((r: { name: string }) => r.name),
+      exercises: exercisesRes.rows.map((r: { exerciseId: string; name: string }) => ({ id: r.exerciseId, name: r.name })),
     } : { exists: false, hasTennis: tennisRes.rows.length > 0, exercises: [] }
 
     return NextResponse.json({
