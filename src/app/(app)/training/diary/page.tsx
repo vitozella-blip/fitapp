@@ -220,6 +220,11 @@ export default function TrainingDiaryPage() {
   const [formWeight, setFormWeight] = useState('')
   const [formSaving, setFormSaving] = useState(false)
 
+  const [editSetId,     setEditSetId]     = useState<string | null>(null)
+  const [editReps,      setEditReps]      = useState('')
+  const [editWeight,    setEditWeight]    = useState('')
+  const [editSaving,    setEditSaving]    = useState(false)
+
   useEffect(() => {
     setWarmups(loadSet(WARMUP_KEY))
     setCompleted(loadSet(COMPLETED_KEY))
@@ -296,8 +301,35 @@ export default function TrainingDiaryPage() {
     bumpWorkoutVersion()
   }
 
+  function openEdit(s: WorkoutSet) {
+    setEditSetId(s.id)
+    setEditReps(String(s.reps))
+    setEditWeight(s.weight != null ? String(s.weight) : '')
+  }
+
+  async function updateSet() {
+    if (!editSetId || !editReps.trim()) return
+    setEditSaving(true)
+    try {
+      await fetch(`/api/workout/set/${editSetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reps: Number(editReps), weight: editWeight ? Number(editWeight) : null }),
+      })
+      setWorkout(w => w ? {
+        ...w,
+        sets: w.sets.map(s => s.id === editSetId
+          ? { ...s, reps: Number(editReps), weight: editWeight ? Number(editWeight) : null }
+          : s
+        ),
+      } : null)
+      setEditSetId(null)
+      bumpWorkoutVersion()
+    } finally { setEditSaving(false) }
+  }
+
   function handleDateChange(d: string) {
-    setSelectedDate(d); setExpandedExId(null); setAddExId(null)
+    setSelectedDate(d); setExpandedExId(null); setAddExId(null); setEditSetId(null)
   }
 
   function toggleCompleted(exerciseId: string) {
@@ -476,20 +508,58 @@ export default function TrainingDiaryPage() {
                     {exSets.map(s => {
                       const isW  = warmups.has(s.id)
                       const label = isW ? `R${++warmIdx}` : String(++workIdx)
+                      const isEditing = editSetId === s.id
                       return (
-                        <div key={s.id} className="flex items-center gap-2 px-4 py-2">
-                          <span className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
-                            style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
-                            {label}
-                          </span>
-                          {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
-                          <p className="flex-1 text-sm text-gray-900 dark:text-gray-100">
-                            {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                          </p>
-                          <button onClick={() => deleteSet(s.id)}
-                            className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
-                            <Trash2 size={12} />
-                          </button>
+                        <div key={s.id}>
+                          {isEditing ? (
+                            <div className="px-4 py-2 space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
+                                  <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                                    <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                      onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
+                                    <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{editReps || '—'}</span>
+                                    <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                      onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                                  <input type="number" step="0.5" min="0" value={editWeight}
+                                    onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setEditSetId(null)}
+                                  className="py-1.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800">
+                                  Annulla
+                                </button>
+                                <button onClick={updateSet} disabled={editSaving || !editReps.trim()}
+                                  className="py-1.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
+                                  style={{ backgroundColor: CT }}>
+                                  {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salva
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 px-4 py-2">
+                              <span className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
+                                style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
+                                {label}
+                              </span>
+                              {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                              <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                                onClick={() => openEdit(s)}>
+                                {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                              </button>
+                              <button onClick={() => deleteSet(s.id)}
+                                className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -572,20 +642,58 @@ export default function TrainingDiaryPage() {
                 {sets.map(s => {
                   const isW  = warmups.has(s.id)
                   const label = isW ? `R${++warmIdx}` : String(++workIdx)
+                  const isEditing = editSetId === s.id
                   return (
-                    <div key={s.id} className="flex items-center gap-2 px-4 py-2">
-                      <span className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
-                        style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
-                        {label}
-                      </span>
-                      {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
-                      <p className="flex-1 text-sm text-gray-900 dark:text-gray-100">
-                        {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                      </p>
-                      <button onClick={() => deleteSet(s.id)}
-                        className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
-                        <Trash2 size={12} />
-                      </button>
+                    <div key={s.id}>
+                      {isEditing ? (
+                        <div className="px-4 py-2 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
+                              <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                                <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                  onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
+                                <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{editReps || '—'}</span>
+                                <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                  onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                              <input type="number" step="0.5" min="0" value={editWeight}
+                                onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button onClick={() => setEditSetId(null)}
+                              className="py-1.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800">
+                              Annulla
+                            </button>
+                            <button onClick={updateSet} disabled={editSaving || !editReps.trim()}
+                              className="py-1.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
+                              style={{ backgroundColor: CT }}>
+                              {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salva
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 px-4 py-2">
+                          <span className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
+                            style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
+                            {label}
+                          </span>
+                          {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                          <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                            onClick={() => openEdit(s)}>
+                            {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                          </button>
+                          <button onClick={() => deleteSet(s.id)}
+                            className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
