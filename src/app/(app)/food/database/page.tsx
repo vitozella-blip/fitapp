@@ -39,83 +39,141 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
 }) {
   const [open, setOpen] = useState(false)
   const lpTimer = useRef<NodeJS.Timeout | undefined>(undefined)
+  const [swipeX, setSwipeX] = useState(0)
+  const [swipeAnim, setSwipeAnim] = useState(false)
+  const txStart = useRef(0)
+  const tyStart = useRef(0)
+  const swipeCommitted = useRef<'none' | 'h' | 'v'>('none')
+  const SWIPE_THRESHOLD = 80
 
-  function handlePointerDown() {
-    lpTimer.current = setTimeout(() => onLongPress(), 500)
+  function onTouchStart(e: React.TouchEvent) {
+    if (selecting) return
+    txStart.current = e.touches[0].clientX
+    tyStart.current = e.touches[0].clientY
+    swipeCommitted.current = 'none'
+    setSwipeAnim(false)
   }
-  function clearLp() { clearTimeout(lpTimer.current) }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (selecting) return
+    const dx = e.touches[0].clientX - txStart.current
+    const dy = e.touches[0].clientY - tyStart.current
+    if (swipeCommitted.current === 'none') {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+      swipeCommitted.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    }
+    if (swipeCommitted.current !== 'h') return
+    clearTimeout(lpTimer.current)
+    setSwipeX(dx)
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (selecting || swipeCommitted.current !== 'h') {
+      setSwipeAnim(true); setSwipeX(0); return
+    }
+    const dx = e.changedTouches[0].clientX - txStart.current
+    setSwipeAnim(true)
+    setSwipeX(0)
+    if (Math.abs(dx) >= SWIPE_THRESHOLD) {
+      if (dx < 0) onDelete()
+      else onEdit()
+    }
+  }
 
   function handleRowClick() {
     if (selecting) { onSelect(); return }
+    if (Math.abs(swipeX) > 4) return
     setOpen(o => !o)
   }
 
+  const revealDelete = swipeX < -12
+  const revealEdit = swipeX > 12
+  const revealPct = Math.min(Math.abs(swipeX) / SWIPE_THRESHOLD, 1)
+
   return (
-    <div className={cn('border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors', selected && 'bg-orange-50 dark:bg-orange-950/20')}>
-      <div className="flex items-center gap-2 px-4 py-3">
-        {selecting ? (
-          <button onClick={onSelect} className={cn('shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors', selected ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
-            {selected && <Check size={11} className="text-white" />}
-          </button>
-        ) : (
-          <button onClick={onToggleFav} className="shrink-0">
-            <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
-          </button>
-        )}
-        <button
-          onPointerDown={handlePointerDown}
-          onPointerUp={clearLp}
-          onPointerLeave={clearLp}
-          onContextMenu={e => e.preventDefault()}
-          onClick={handleRowClick}
-          className="flex-1 min-w-0 text-left select-none">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{food.name}</p>
-          {food.brand && <p className="text-xs text-gray-400 truncate">{food.brand}</p>}
-          <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
-            <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
-            <span style={{ color: '#5b9bd5' }}>G {food.fat}g</span>
-            <span style={{ color: '#f0aa78' }}>C {food.carbs}g</span>
-            <span style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
-          </div>
-          {food.categoryIds && food.categoryIds.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {food.categoryIds.map(cid => {
-                const name = categories.find(c => c.id === cid)?.name
-                if (!name) return null
-                return <span key={cid} className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-400">{name}</span>
-              })}
-            </div>
+    <div
+      className={cn('border-b border-gray-50 dark:border-gray-800 last:border-0 relative overflow-hidden', selected && 'bg-orange-50 dark:bg-orange-950/20')}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Edit background (swipe right) */}
+      {revealEdit && (
+        <div className="absolute inset-0 flex items-center pl-5 gap-2"
+          style={{ backgroundColor: `rgba(59,130,246,${0.08 + revealPct * 0.15})` }}>
+          <Pencil size={16} style={{ color: `rgba(59,130,246,${0.4 + revealPct * 0.6})` }} />
+          <span className="text-sm font-bold" style={{ color: `rgba(59,130,246,${0.4 + revealPct * 0.6})` }}>Modifica</span>
+        </div>
+      )}
+      {/* Delete background (swipe left) */}
+      {revealDelete && (
+        <div className="absolute inset-0 flex items-center justify-end pr-5 gap-2"
+          style={{ backgroundColor: `rgba(239,68,68,${0.08 + revealPct * 0.15})` }}>
+          <span className="text-sm font-bold" style={{ color: `rgba(239,68,68,${0.4 + revealPct * 0.6})` }}>Elimina</span>
+          <Trash2 size={16} style={{ color: `rgba(239,68,68,${0.4 + revealPct * 0.6})` }} />
+        </div>
+      )}
+
+      {/* Sliding card content */}
+      <div style={{
+        transform: `translateX(${swipeX}px)`,
+        transition: swipeAnim ? 'transform 250ms cubic-bezier(0.25,0.46,0.45,0.94)' : 'none',
+      }}>
+        <div className="flex items-center gap-2 px-4 py-3">
+          {selecting ? (
+            <button onClick={onSelect} className={cn('shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors', selected ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
+              {selected && <Check size={11} className="text-white" />}
+            </button>
+          ) : (
+            <button onClick={onToggleFav} className="shrink-0">
+              <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
+            </button>
           )}
-        </button>
-        {!selecting && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onEdit} className="w-7 h-7 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-500 flex items-center justify-center transition-colors">
-              <Pencil size={13} />
-            </button>
-            <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
-              <Trash2 size={13} />
-            </button>
+          <button
+            onPointerDown={() => { lpTimer.current = setTimeout(() => onLongPress(), 500) }}
+            onPointerUp={() => clearTimeout(lpTimer.current)}
+            onPointerLeave={() => clearTimeout(lpTimer.current)}
+            onContextMenu={e => e.preventDefault()}
+            onClick={handleRowClick}
+            className="flex-1 min-w-0 text-left select-none">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{food.name}</p>
+            {food.brand && <p className="text-xs text-gray-400 truncate">{food.brand}</p>}
+            <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
+              <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
+              <span style={{ color: '#5b9bd5' }}>G {food.fat}g</span>
+              <span style={{ color: '#f0aa78' }}>C {food.carbs}g</span>
+              <span style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
+            </div>
+            {food.categoryIds && food.categoryIds.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {food.categoryIds.map(cid => {
+                  const name = categories.find(c => c.id === cid)?.name
+                  if (!name) return null
+                  return <span key={cid} className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-400">{name}</span>
+                })}
+              </div>
+            )}
+          </button>
+        </div>
+
+        {open && !selecting && (
+          <div className="px-4 pb-3 space-y-0.5">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Valori per 100g</p>
+            {DETAIL_ROWS.map(r => {
+              const raw = food[r.key] as number | undefined | null
+              const val = r.key === 'calories'
+                ? (raw ? `${raw} kcal` : '—')
+                : fmt(raw)
+              return (
+                <div key={r.label} className={cn('flex items-center justify-between py-1', r.sub ? 'pl-4' : '')}>
+                  <span className={cn('text-xs', r.sub ? 'font-normal' : 'font-semibold')} style={{ color: r.color }}>{r.label}</span>
+                  <span className={cn('text-xs', r.sub ? 'font-medium' : 'font-bold')} style={{ color: r.color }}>{val}</span>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
-
-      {open && !selecting && (
-        <div className="px-4 pb-3 space-y-0.5">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Valori per 100g</p>
-          {DETAIL_ROWS.map(r => {
-            const raw = food[r.key] as number | undefined | null
-            const val = r.key === 'calories'
-              ? (raw ? `${raw} kcal` : '—')
-              : fmt(raw)
-            return (
-              <div key={r.label} className={cn('flex items-center justify-between py-1', r.sub ? 'pl-4' : '')}>
-                <span className={cn('text-xs', r.sub ? 'font-normal' : 'font-semibold')} style={{ color: r.color }}>{r.label}</span>
-                <span className={cn('text-xs', r.sub ? 'font-medium' : 'font-bold')} style={{ color: r.color }}>{val}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }

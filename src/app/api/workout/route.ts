@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
     const { rows } = await pool.query(
-      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e)) as sets
+      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e) ORDER BY s.id ASC) as sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
        LEFT JOIN "Exercise" e ON e.id = s."exerciseId"
