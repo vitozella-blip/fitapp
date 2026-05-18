@@ -145,6 +145,8 @@ export async function POST(req: NextRequest) {
     )`)
     await pool.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "startDate" TEXT`)
     await pool.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "endDate" TEXT`)
+    await pool.query(`ALTER TABLE "WorkoutPlanExercise" ADD COLUMN IF NOT EXISTS "restSeconds" INTEGER`)
+    await pool.query(`ALTER TABLE "WorkoutPlanExercise" ADD COLUMN IF NOT EXISTS notes TEXT`)
 
     try {
       // 1. Crea WorkoutPlan
