@@ -45,10 +45,12 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
     if (q.length < 2 && !hasFilter) { setResults([]); setSearched(false); return }
     timer.current = setTimeout(async () => {
       setLoading(true)
-      const p = new URLSearchParams({ q: q || '', userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
-      const r = await fetch(`/api/food?${p}`)
-      const data = await r.json()
-      setResults(Array.isArray(data) ? data : [])
+      try {
+        const p = new URLSearchParams({ q: q || '', userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
+        const r = await fetch(`/api/food?${p}`)
+        const data = await r.json()
+        setResults(Array.isArray(data) ? data : [])
+      } catch { setResults([]) }
       setSearched(true)
       setLoading(false)
     }, 300)
@@ -71,14 +73,17 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
   async function handleSave() {
     if (cart.length === 0) return
     setSaving(true)
-    await Promise.all(cart.map(item =>
-      fetch('/api/diary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date, meal, foodId: item.food.id, quantity: Number(item.qty) }),
-      })
-    ))
-    setSaving(false); onAdded(); onClose()
+    try {
+      await Promise.all(cart.map(item =>
+        fetch('/api/diary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, date, meal, foodId: item.food.id, quantity: Number(item.qty) }),
+        })
+      ))
+      onAdded(); onClose()
+    } catch { /* keep modal open on error */ }
+    setSaving(false)
   }
 
   function goToCreate() {
