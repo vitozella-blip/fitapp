@@ -20,6 +20,13 @@ type PlanExercise = {
 type PlanSection  = { name: string; focus: string; weeks?: string[]; exercises: PlanExercise[] }
 type PlanData     = { planName: string; startDate?: string | null; endDate?: string | null; sections: PlanSection[] }
 
+function normalizeDate(d: string | null | undefined): string | null {
+  if (!d) return null
+  const m = d.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  return d
+}
+
 function parseRest(rec: string): number {
   if (!rec) return 90
   const ms = rec.match(/^(\d+)'(?:(\d+)''?)?$/)
@@ -145,26 +152,25 @@ export async function POST(req: NextRequest) {
     )`)
     await pool.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "startDate" TEXT`)
     await pool.query(`ALTER TABLE "WorkoutPlan" ADD COLUMN IF NOT EXISTS "endDate" TEXT`)
-    await pool.query(`ALTER TABLE "WorkoutPlanExercise" ADD COLUMN IF NOT EXISTS "restSeconds" INTEGER`)
-    await pool.query(`ALTER TABLE "WorkoutPlanExercise" ADD COLUMN IF NOT EXISTS notes TEXT`)
 
     try {
       // 1. Crea WorkoutPlan
       const planRes = await pool.query(
         `INSERT INTO "WorkoutPlan" (id, name, "userId", "startDate", "endDate", "createdAt")
          VALUES (gen_random_uuid(), $1, $2, $3, $4, now()) RETURNING id`,
-        [data.planName, userId, data.startDate || null, data.endDate || null]
+        [data.planName, userId, normalizeDate(data.startDate), normalizeDate(data.endDate)]
       )
       const planId = planRes.rows[0].id
 
+      let templateOrder = 0
       for (const section of data.sections) {
-        // 2. Crea WorkoutPlanDay
-        const dayRes = await pool.query(
-          `INSERT INTO "WorkoutPlanDay" (id, "dayName", "planId")
-           VALUES (gen_random_uuid(), $1, $2) RETURNING id`,
-          [`${section.name}${section.focus ? ` — ${section.focus}` : ''}`, planId]
+        // 2. Crea WorkoutTemplate (una per sezione/scheda)
+        const tmplRes = await pool.query(
+          `INSERT INTO "WorkoutTemplate" (id, "planId", name, "userId", "order", "createdAt")
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW()) RETURNING id`,
+          [planId, `${section.name}${section.focus ? ` — ${section.focus}` : ''}`, userId, templateOrder++]
         )
-        const dayId = dayRes.rows[0].id
+        const templateId = tmplRes.rows[0].id
         const templateExIds: string[] = []
 
         for (let i = 0; i < section.exercises.length; i++) {
@@ -188,17 +194,18 @@ export async function POST(req: NextRequest) {
             exId = newEx.rows[0].id
           }
 
-          // 4. Crea WorkoutPlanExercise usando parametri week 1 come default
-          const wp0   = ex.weekParams?.[0]
+          // 4. Crea WorkoutTemplateExercise con parametri week 1 come default
+          const wp0     = ex.weekParams?.[0]
           const defSets = Number(wp0?.sets) || 3
           const defReps = wp0?.reps || null
           const defRest = parseRest(wp0?.rec || '')
-          const notes   = ex.noteScheda?.trim() || null
+          const noteScheda = ex.noteScheda?.trim() || null
 
           const { rows: texRows } = await pool.query(
-            `INSERT INTO "WorkoutPlanExercise" (id, sets, reps, "restSeconds", notes, "order", "dayId", "exerciseId")
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            [defSets, defReps, defRest, notes, i, dayId, exId]
+            `INSERT INTO "WorkoutTemplateExercise"
+               (id, "templateId", "exerciseId", sets, reps, "restSeconds", "noteScheda", "notePersonali", "order")
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+            [templateId, exId, defSets, defReps, defRest, noteScheda, null, i]
           )
           templateExIds.push(texRows[0].id)
           imported++
@@ -209,7 +216,7 @@ export async function POST(req: NextRequest) {
           for (let wi = 0; wi < section.weeks.length; wi++) {
             const { rows: wkRows } = await pool.query(
               `INSERT INTO "WorkoutWeek" (id,"templateId",name,"order","createdAt") VALUES ($1,$2,$3,$4,NOW()) RETURNING id`,
-              [`ww-${Date.now()}-${wi}`, dayId, section.weeks[wi], wi]
+              [`ww-${Date.now()}-${wi}`, templateId, section.weeks[wi], wi]
             )
             const weekId = wkRows[0].id
 
