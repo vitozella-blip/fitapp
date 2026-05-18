@@ -156,13 +156,13 @@ export default function ShoppingListPage() {
             value={qty}
             onChange={e => setQty(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Quantità (es. 1 kg, 3 pz)"
-            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+            placeholder="Qtà (es. 1 kg)"
+            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
           />
           <button
             onClick={handleAdd}
             disabled={adding || !q.trim()}
-            className="px-4 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5 disabled:opacity-40 transition-opacity"
+            className="flex-1 py-2 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40 transition-opacity"
             style={{ backgroundColor: ACCENT }}>
             {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={15} />}
             Aggiungi
