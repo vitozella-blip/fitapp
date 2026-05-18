@@ -207,7 +207,7 @@ export default function MacrosPage() {
               </div>
             )}
           </div>
-        ) : selected && activeStep !== 3 && collapsedRow(
+        ) : selected && collapsedRow(
           'Fonte',
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">{selected.name}</span>,
           () => setActiveStep(3)
