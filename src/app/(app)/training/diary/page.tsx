@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -16,7 +16,7 @@ const WARMUP_KEY    = 'workout_warmup_v1'
 const COMPLETED_KEY = 'workout_completed_v1'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
-type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null }
+type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }
 type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[] }
 type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
@@ -127,6 +127,9 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
             )}
             {templates.map((t, i) => {
               const color = SCHEDA_COLORS[i % SCHEDA_COLORS.length]
+              const sepIdx = t.name.indexOf(' — ')
+              const label1 = sepIdx >= 0 ? t.name.slice(0, sepIdx) : t.name
+              const label2 = sepIdx >= 0 ? t.name.slice(sepIdx + 3) : null
               return (
                 <button key={t.id} onClick={() => selectTemplate(t, i)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
@@ -135,7 +138,8 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
                     {String(i + 1).padStart(2, '0')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
+                    <p className="text-[10px] font-semibold text-gray-400 truncate">{label1}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{label2 ?? label1}</p>
                     <p className="text-[10px] text-gray-400">{t.exercises?.length ?? 0} esercizi</p>
                   </div>
                   <ChevronRight size={15} className="text-gray-300 shrink-0" />
@@ -214,6 +218,10 @@ export default function TrainingDiaryPage() {
   const [completed,  setCompleted]  = useState<Set<string>>(new Set())
   const [tennisLoading, setTennisLoading] = useState(false)
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
+  const [openNote, setOpenNote] = useState<{ exId: string; type: 'scheda' | 'personali' } | null>(null)
+  const [recTimer,  setRecTimer]  = useState<{ mode: 'countdown' | 'stopwatch'; rem: number; init: number; on: boolean } | null>(null)
+  const [timerPicker, setTimerPicker] = useState<string | null>(null)
+  const recRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const [addExId,    setAddExId]    = useState<string | null>(null)
   const [formReps,   setFormReps]   = useState('')
@@ -224,6 +232,7 @@ export default function TrainingDiaryPage() {
   const [editReps,      setEditReps]      = useState('')
   const [editWeight,    setEditWeight]    = useState('')
   const [editSaving,    setEditSaving]    = useState(false)
+  const [labelMenuSetId, setLabelMenuSetId] = useState<string | null>(null)
 
   const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
   const [absExId,    setAbsExId]    = useState<string | null>(null)
@@ -244,6 +253,21 @@ export default function TrainingDiaryPage() {
 
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
   useRefreshOnFocus(fetchWorkout)
+
+  useEffect(() => {
+    clearInterval(recRef.current)
+    if (!recTimer?.on) return
+    recRef.current = setInterval(() => {
+      setRecTimer(t => {
+        if (!t) { clearInterval(recRef.current); return null }
+        if (t.mode === 'stopwatch') return { ...t, rem: t.rem + 1 }
+        if (t.rem <= 1) { clearInterval(recRef.current); return { ...t, rem: 0, on: false } }
+        return { ...t, rem: t.rem - 1 }
+      })
+    }, 1000)
+    return () => clearInterval(recRef.current)
+  }, [recTimer?.on])
+
 
   // Load scheda + week params from localStorage when date changes
   useEffect(() => {
@@ -561,8 +585,7 @@ export default function TrainingDiaryPage() {
             {isOpen && (
               <div className="border-t border-gray-50 dark:border-gray-800">
                 {/* Target table */}
-                <div className="px-4 py-2.5 flex items-start gap-3">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-0.5 shrink-0">Target</span>
+                <div className="px-4 py-2.5">
                   <div className="grid gap-x-2 items-center" style={{ gridTemplateColumns: '2rem 7rem 3rem auto' }}>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Set</p>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Rep</p>
@@ -570,20 +593,58 @@ export default function TrainingDiaryPage() {
                     <div />
                     <p className="text-xs font-bold text-center" style={{ color: CT }}>{te.sets}</p>
                     <p className="text-xs font-bold text-center" style={{ color: CT }}>{te.reps || '—'}</p>
-                    <p className="text-xs font-bold text-center" style={{ color: CT }}>{rest || '—'}</p>
-                    <div className="flex gap-1 justify-center items-center">
-                      <FileText size={13} style={{ color: te.noteScheda ? '#f0aa78' : '#d1d5db' }} />
-                      <StickyNote size={13} style={{ color: '#9d8fcc' }} />
+                    <button
+                      className="text-xs font-bold text-center w-full"
+                      style={{ color: CT }}
+                      disabled={!te.restSeconds}
+                      onClick={() => te.restSeconds && setRecTimer({ mode: 'countdown', rem: te.restSeconds, init: te.restSeconds, on: true })}
+                    >{rest || '—'}</button>
+                    <div className="flex gap-2.5 justify-center items-center">
+                      <button onClick={() => setOpenNote(n => n?.exId === te.id && n.type === 'scheda' ? null : { exId: te.id, type: 'scheda' })}
+                        title="Note scheda" disabled={!te.noteScheda}>
+                        <StickyNote size={16} style={{ color: te.noteScheda ? (openNote?.exId === te.id && openNote.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
+                      </button>
+                      <button onClick={() => setOpenNote(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, type: 'personali' })}
+                        title="Note personali" disabled={!te.notePersonali}>
+                        <StickyNote size={16} style={{ color: te.notePersonali ? (openNote?.exId === te.id && openNote.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
+                      </button>
+                      <button onClick={() => setTimerPicker(p => p === te.id ? null : te.id)}
+                        title="Cronometro / Timer">
+                        <Clock size={16} style={{ color: timerPicker === te.id || recTimer ? CT : '#d1d5db' }} />
+                      </button>
                       <button onClick={() => toggleHistory(te.id, exId)}
                         className="transition-colors"
                         title="Carichi sessione precedente">
-                        <Dumbbell size={13} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
+                        <Dumbbell size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
                       </button>
                     </div>
                   </div>
                 </div>
-                {te.noteScheda && (
-                  <p className="text-[10px] text-gray-400 italic px-4 pb-2 truncate">{te.noteScheda}</p>
+                {openNote?.exId === te.id && openNote.type === 'scheda' && te.noteScheda && (
+                  <p className="text-[10px] italic px-4 pb-2" style={{ color: '#f0aa78' }}>{te.noteScheda}</p>
+                )}
+                {openNote?.exId === te.id && openNote.type === 'personali' && te.notePersonali && (
+                  <p className="text-[10px] italic px-4 pb-2" style={{ color: '#9d8fcc' }}>{te.notePersonali}</p>
+                )}
+
+                {/* Timer picker */}
+                {timerPicker === te.id && (
+                  <div className="mx-4 mb-2 flex gap-2">
+                    {te.restSeconds && (
+                      <button
+                        onClick={() => { setRecTimer({ mode: 'countdown', rem: te.restSeconds!, init: te.restSeconds!, on: true }); setTimerPicker(null) }}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                        style={{ backgroundColor: CT }}>
+                        <Clock size={12} /> Timer {fmtRest(te.restSeconds)}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setRecTimer({ mode: 'stopwatch', rem: 0, init: 0, on: true }); setTimerPicker(null) }}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold border"
+                      style={{ borderColor: CT, color: CT }}>
+                      Cronometro
+                    </button>
+                  </div>
                 )}
 
                 {/* Previous session history */}
@@ -629,7 +690,7 @@ export default function TrainingDiaryPage() {
                       <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
                         className="py-2 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
                         style={{ backgroundColor: CT }}>
-                        {formSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Set
+                        {formSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Serie
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -697,20 +758,38 @@ export default function TrainingDiaryPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 px-4 py-2">
-                              <span className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
-                                style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
-                                {label}
-                              </span>
-                              {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
-                              <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
-                                onClick={() => openEdit(s)}>
-                                {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                              </button>
-                              <button onClick={() => deleteSet(s.id)}
-                                className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
-                                <Trash2 size={12} />
-                              </button>
+                            <div>
+                              <div className="flex items-center gap-2 px-4 py-2">
+                                <button
+                                  onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
+                                  className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0 transition-opacity"
+                                  style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
+                                  {label}
+                                </button>
+                                {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                                <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                                  onClick={() => openEdit(s)}>
+                                  {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                </button>
+                                <button onClick={() => deleteSet(s.id)}
+                                  className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                              {labelMenuSetId === s.id && (
+                                <div className="flex gap-1.5 px-4 pb-2">
+                                  {['D', 'S', 'DS', 'BO'].map(opt => (
+                                    <button key={opt}
+                                      onClick={() => setLabelMenuSetId(null)}
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors hover:text-white"
+                                      style={{ borderColor: CT, color: CT }}
+                                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = CT)}
+                                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -796,20 +875,38 @@ export default function TrainingDiaryPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 px-4 py-2">
-                          <span className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
-                            style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
-                            {label}
-                          </span>
-                          {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
-                          <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
-                            onClick={() => openEdit(s)}>
-                            {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                          </button>
-                          <button onClick={() => deleteSet(s.id)}
-                            className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
-                            <Trash2 size={12} />
-                          </button>
+                        <div>
+                          <div className="flex items-center gap-2 px-4 py-2">
+                            <button
+                              onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
+                              className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
+                              style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
+                              {label}
+                            </button>
+                            {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                            <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                              onClick={() => openEdit(s)}>
+                              {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                            </button>
+                            <button onClick={() => deleteSet(s.id)}
+                              className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          {labelMenuSetId === s.id && (
+                            <div className="flex gap-1.5 px-4 pb-2">
+                              {['D', 'S', 'DS', 'BO'].map(opt => (
+                                <button key={opt}
+                                  onClick={() => setLabelMenuSetId(null)}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors hover:text-white"
+                                  style={{ borderColor: CT, color: CT }}
+                                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = CT)}
+                                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -825,6 +922,47 @@ export default function TrainingDiaryPage() {
       {showPicker && (
         <SchedaPickerPanel userId={userId} onPick={pickScheda} onClose={() => setShowPicker(false)} />
       )}
+
+      {/* Timer bar */}
+      {recTimer && (() => {
+        const isCountdown = recTimer.mode === 'countdown'
+        const done = isCountdown && recTimer.rem === 0
+        const m = Math.floor(recTimer.rem / 60), sec = recTimer.rem % 60
+        const label = `${m > 0 ? m + '\'' : ''}${String(sec).padStart(m > 0 ? 2 : 1, '0')}''`
+        const pct = isCountdown && recTimer.init > 0 ? recTimer.rem / recTimer.init : 0
+        return (
+          <div className="fixed bottom-20 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+            <div className="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-2xl px-4 py-3 pointer-events-auto max-w-sm w-full">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CT }}>
+                  {isCountdown ? 'Timer' : 'Cronometro'}
+                </span>
+                <button onClick={() => { clearInterval(recRef.current); setRecTimer(null) }}
+                  className="text-gray-500 hover:text-gray-300"><X size={11} /></button>
+              </div>
+              <div className="text-2xl font-bold text-white tabular-nums">{done ? 'FINE!' : label}</div>
+              {isCountdown && (
+                <div className="mt-1.5 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.round(pct * 100)}%`, backgroundColor: done ? '#6abf6a' : CT }} />
+                </div>
+              )}
+              <div className="flex items-center gap-3 mt-2">
+                <button onClick={() => setRecTimer(t => t ? { ...t, on: !t.on } : null)}
+                  className="text-[10px] font-bold text-white/60 hover:text-white transition-colors">
+                  {done ? '↺ Riavvia' : recTimer.on ? '⏸ Pausa' : '▶ Riprendi'}
+                </button>
+                {!isCountdown && (
+                  <button onClick={() => setRecTimer(t => t ? { ...t, rem: 0, on: false } : null)}
+                    className="text-[10px] font-bold text-white/40 hover:text-white transition-colors">
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

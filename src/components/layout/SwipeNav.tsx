@@ -111,6 +111,7 @@ export function SwipeNav({ children }: { children: React.ReactNode }) {
           transform: `translateX(${offset}px)`,
           transition: animated ? `transform ${ANIM_MS}ms cubic-bezier(0.25,0.46,0.45,0.94)` : 'none',
           willChange: 'transform',
+          minHeight: '100vh',
         }}
       >
         {children}
