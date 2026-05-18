@@ -101,13 +101,12 @@ export function SwipeNav({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="h-full overflow-hidden"
+      className="overflow-x-hidden"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       <div
-        className="h-full"
         style={{
           transform: `translateX(${offset}px)`,
           transition: animated ? `transform ${ANIM_MS}ms cubic-bezier(0.25,0.46,0.45,0.94)` : 'none',
