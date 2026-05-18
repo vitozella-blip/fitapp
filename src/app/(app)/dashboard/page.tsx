@@ -37,7 +37,7 @@ type DashData = {
 }
 
 export default function DashboardPage() {
-  const { userId, selectedDate, setSelectedDate, userProfile } = useAppStore()
+  const { userId, selectedDate, setSelectedDate, userProfile, workoutDataVersion } = useAppStore()
   const router = useRouter()
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
@@ -76,6 +76,8 @@ export default function DashboardPage() {
   }, [fetchData, refreshCompleted])
 
   useEffect(() => { fetchData() }, [fetchData])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (workoutDataVersion > 0) refreshAll() }, [workoutDataVersion])
   useRefreshOnFocus(refreshAll)
 
   const t  = data?.totals  ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
