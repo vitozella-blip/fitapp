@@ -108,7 +108,7 @@ export default function ShoppingListPage() {
       <PageHeader title="Lista della Spesa" icon={ShoppingCart} accent="food" />
 
       {/* Add form */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 space-y-2">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 space-y-2 overflow-hidden">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input

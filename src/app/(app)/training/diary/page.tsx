@@ -364,6 +364,28 @@ export default function TrainingDiaryPage() {
     bumpWorkoutVersion()
   }
 
+  function removeScheda() {
+    localStorage.removeItem(`workout_scheda_${selectedDate}`)
+    setSchedaInfo(null)
+    setAbsOptions([])
+    setAbsExId(null)
+    bumpWorkoutVersion()
+  }
+
+  async function deleteExerciseSets(exerciseId: string, sets: WorkoutSet[]) {
+    await Promise.all(sets.map(s => fetch(`/api/workout/set/${s.id}`, { method: 'DELETE' })))
+    const setIds = new Set(sets.map(s => s.id))
+    setWorkout(w => w ? { ...w, sets: w.sets.filter(s => !setIds.has(s.id)) } : null)
+    const newWarmups = new Set(warmups)
+    sets.forEach(s => newWarmups.delete(s.id))
+    if (newWarmups.size !== warmups.size) { setWarmups(newWarmups); saveSet(WARMUP_KEY, newWarmups) }
+    const compKey = `${selectedDate}_${exerciseId}`
+    if (completed.has(compKey)) {
+      const nc = new Set(completed); nc.delete(compKey); setCompleted(nc); saveSet(COMPLETED_KEY, nc)
+    }
+    bumpWorkoutVersion()
+  }
+
   function openAdd(exId: string, targetReps: string | null) {
     const isSame = addExId === exId
     setAddExId(isSame ? null : exId)
@@ -451,12 +473,16 @@ export default function TrainingDiaryPage() {
       {schedaInfo && (
         <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2" style={{ backgroundColor: schedaColor + '22' }}>
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
-          <span className="text-sm font-bold truncate" style={{ color: schedaColor }}>{schedaInfo.name}</span>
+          <span className="text-sm font-bold truncate flex-1" style={{ color: schedaColor }}>{schedaInfo.name}</span>
           {schedaInfo.weekName && (
-            <span className="text-xs font-semibold ml-auto shrink-0" style={{ color: schedaColor + 'cc' }}>
+            <span className="text-xs font-semibold shrink-0" style={{ color: schedaColor + 'cc' }}>
               {schedaInfo.weekName}
             </span>
           )}
+          <button onClick={removeScheda}
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
+            <X size={13} />
+          </button>
         </div>
       )}
 
@@ -506,6 +532,12 @@ export default function TrainingDiaryPage() {
                 )}
               </button>
 
+              {exSets.length > 0 && (
+                <button onClick={() => deleteExerciseSets(exId, exSets)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50">
+                  <Trash2 size={15} />
+                </button>
+              )}
               <button onClick={() => openAdd(exId, te.reps)}
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-white"
                 style={{ backgroundColor: addOpen ? CT : CT + '99' }}>
@@ -671,6 +703,10 @@ export default function TrainingDiaryPage() {
               <span className="text-xs font-semibold px-2 py-0.5 rounded-lg shrink-0" style={{ color: CT, backgroundColor: CT + '18' }}>
                 {sets.length} set
               </span>
+              <button onClick={() => deleteExerciseSets(exId, sets)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50">
+                <Trash2 size={13} />
+              </button>
             </div>
             {isOpen && (
               <div className="border-t border-gray-50 dark:border-gray-800 divide-y divide-gray-50 dark:divide-gray-800">
