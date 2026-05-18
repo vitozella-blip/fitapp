@@ -238,13 +238,9 @@ export default function TrainingDiaryPage() {
   }, [])
 
   const fetchWorkout = useCallback(async () => {
-    await fetch('/api/user', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, name: userProfile.name }),
-    })
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     setWorkout(await r.json())
-  }, [userId, selectedDate, userProfile.name])
+  }, [userId, selectedDate])
 
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
   useRefreshOnFocus(fetchWorkout)
