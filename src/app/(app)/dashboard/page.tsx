@@ -1,8 +1,8 @@
 'use client'
 import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
+import { Check } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
 import { DateNav } from '@/components/shared/DateNav'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
@@ -28,11 +28,12 @@ const MEALS: MealDef[] = [
   { name: 'Cena',                label: 'Cena',           color: C.fat,     renderIcon: (_, s) => <Em e="🐟" size={s} /> },
 ]
 
+type Exercise = { id: string; name: string }
 type DashData = {
   totals:  { calories: number; protein: number; carbs: number; fat: number }
   targets: { calories: number; protein: number; carbs: number; fat: number }
   meals:   { name: string; calories: number; protein: number; carbs: number; fat: number }[]
-  workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean; exercises?: string[] }
+  workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean; exercises?: Exercise[] }
 }
 
 export default function DashboardPage() {
@@ -41,6 +42,7 @@ export default function DashboardPage() {
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number; color?: string; weekOrder?: number | null } | null>(null)
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     try {
@@ -48,6 +50,16 @@ export default function DashboardPage() {
       setSchedaInfo(raw ? JSON.parse(raw) : null)
     } catch { setSchedaInfo(null) }
   }, [selectedDate])
+
+  const refreshCompleted = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('workout_completed_v1')
+      const arr: string[] = raw ? JSON.parse(raw) : []
+      setCompletedIds(new Set(arr))
+    } catch { setCompletedIds(new Set()) }
+  }, [])
+
+  useEffect(() => { refreshCompleted() }, [refreshCompleted, selectedDate])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -58,8 +70,13 @@ export default function DashboardPage() {
     setLoading(false)
   }, [userId, selectedDate])
 
+  const refreshAll = useCallback(() => {
+    fetchData()
+    refreshCompleted()
+  }, [fetchData, refreshCompleted])
+
   useEffect(() => { fetchData() }, [fetchData])
-  useRefreshOnFocus(fetchData)
+  useRefreshOnFocus(refreshAll)
 
   const t  = data?.totals  ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
   const tg = data?.targets ?? {
@@ -76,6 +93,10 @@ export default function DashboardPage() {
   const pillLabel = schedaInfo
     ? (schedaInfo.weekOrder != null ? `WO ${schedaInfo.order} - W ${schedaInfo.weekOrder}` : `WO ${schedaInfo.order}`)
     : 'Allenamento'
+
+  const completedExercises = (data?.workout.exercises ?? []).filter(ex =>
+    completedIds.has(`${selectedDate}_${ex.id}`)
+  )
 
   if (loading) return (
     <div className="flex items-center justify-center h-48">
@@ -155,12 +176,9 @@ export default function DashboardPage() {
                 <div key={name}>
                   <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl"
                     style={{ backgroundColor: color + '28' }}>
-                    <span style={{ flexShrink: 0 }}>
-                      {renderIcon(color, 20)}
-                    </span>
+                    <span style={{ flexShrink: 0 }}>{renderIcon(color, 20)}</span>
                     <span className="text-[10px] font-bold truncate" style={{ color }}>{label}</span>
                   </div>
-
                   <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
                     {kcal > 0 ? (
                       <>
@@ -195,65 +213,56 @@ export default function DashboardPage() {
               style={{ color: C.training }}>Allenamento</p>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
+          <div className="flex-1 overflow-y-auto px-2 pt-1.5 pb-2">
 
-            {/* Slot 0: pill + scheda name */}
-            <div>
-              {data?.workout.hasTennis && data?.workout.exists ? (
-                <div className="flex gap-1">
-                  <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
-                    style={{ backgroundColor: '#7aaa4028' }}>
-                    <Em e="🎾" size={14} />
-                    <span className="text-[9px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
-                  </div>
-                  <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
-                    style={{ backgroundColor: C.training + '28' }}>
-                    <img src="/icon-training.png" alt="" style={{ width: 14, height: 14, objectFit: 'contain' }} />
-                    <span className="text-[9px] font-bold" style={{ color: C.training }}>{pillLabel}</span>
-                  </div>
-                </div>
-              ) : data?.workout.hasTennis ? (
-                <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
+            {/* Pill */}
+            {data?.workout.hasTennis && data?.workout.exists ? (
+              <div className="flex gap-1 mb-1">
+                <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
                   style={{ backgroundColor: '#7aaa4028' }}>
-                  <Em e="🎾" size={20} />
-                  <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
+                  <Em e="🎾" size={13} />
+                  <span className="text-[9px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
                 </div>
-              ) : data?.workout.exists ? (
-                <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
+                <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
                   style={{ backgroundColor: C.training + '28' }}>
-                  <img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
-                  <span className="text-[10px] font-bold" style={{ color: C.training }}>{pillLabel}</span>
+                  <img src="/icon-training.png" alt="" style={{ width: 13, height: 13, objectFit: 'contain' }} />
+                  <span className="text-[9px] font-bold" style={{ color: C.training }}>{pillLabel}</span>
                 </div>
-              ) : (
-                <div className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl"
-                  style={{ backgroundColor: '#b0b8c830' }}>
-                  <Em e="🛋️" size={20} />
-                  <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
-                </div>
-              )}
-              <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex items-center justify-center">
-                {hasWorkout && schedaInfo ? (
-                  <p className="text-xs font-semibold truncate" style={{ color: C.training }}>
-                    {schedaInfo.name.toUpperCase()}
-                  </p>
-                ) : <p className="text-xs">&nbsp;</p>}
               </div>
-            </div>
+            ) : data?.workout.hasTennis ? (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
+                style={{ backgroundColor: '#7aaa4028' }}>
+                <Em e="🎾" size={18} />
+                <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
+              </div>
+            ) : data?.workout.exists ? (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
+                style={{ backgroundColor: C.training + '28' }}>
+                <img src="/icon-training.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+                <span className="text-[10px] font-bold" style={{ color: C.training }}>{pillLabel}</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
+                style={{ backgroundColor: '#b0b8c830' }}>
+                <Em e="🛋️" size={18} />
+                <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
+              </div>
+            )}
 
-            {/* Slots 1-4: esercizi */}
-            {[0, 1, 2, 3].map(i => {
-              const ex = (data?.workout.exercises ?? [])[i]
-              return (
-                <div key={i}>
-                  <div className="flex items-center justify-center min-h-9 px-1">
-                    {ex && (
-                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate text-center leading-tight">{ex}</p>
-                    )}
-                  </div>
-                  <p className="text-xs mt-0.5 h-[1.875rem]">&nbsp;</p>
-                </div>
-              )
-            })}
+            {/* Scheda name */}
+            {hasWorkout && schedaInfo && (
+              <p className="text-xs font-semibold px-0.5 mb-0.5 truncate" style={{ color: C.training }}>
+                {schedaInfo.name.toUpperCase()}
+              </p>
+            )}
+
+            {/* Completed exercises */}
+            {completedExercises.map(ex => (
+              <div key={ex.id} className="flex items-center gap-1 px-0.5 py-0.5">
+                <Check size={9} className="shrink-0" style={{ color: C.training }} />
+                <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
+              </div>
+            ))}
 
           </div>
         </button>
