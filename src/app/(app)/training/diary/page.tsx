@@ -225,6 +225,9 @@ export default function TrainingDiaryPage() {
   const [editWeight,    setEditWeight]    = useState('')
   const [editSaving,    setEditSaving]    = useState(false)
 
+  const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
+  const [absExId,    setAbsExId]    = useState<string | null>(null)
+
   useEffect(() => {
     setWarmups(loadSet(WARMUP_KEY))
     setCompleted(loadSet(COMPLETED_KEY))
@@ -259,6 +262,27 @@ export default function TrainingDiaryPage() {
       } catch {}
     })()
   }, [selectedDate])
+
+  useEffect(() => {
+    if (!schedaInfo) { setAbsOptions([]); setAbsExId(null); return }
+    const defaultAbsId = schedaInfo.exercises[schedaInfo.exercises.length - 1]?.exercise.id ?? null
+    setAbsExId(defaultAbsId)
+    ;(async () => {
+      try {
+        const plans: Plan[] = await fetch(`/api/workout-plans?userId=${userId}`).then(r => r.json())
+        const active = plans.find(p => p.isActive) ?? plans[0]
+        if (!active) return
+        const tmps: Template[] = await fetch(`/api/workout-templates?planId=${active.id}`).then(r => r.json())
+        const seen = new Set<string>()
+        const opts = tmps
+          .map(t => t.exercises[t.exercises.length - 1])
+          .filter(Boolean)
+          .map(te => ({ id: te.exercise.id, name: te.exercise.name }))
+          .filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true })
+        setAbsOptions(opts)
+      } catch {}
+    })()
+  }, [schedaInfo, userId])
 
   async function pickScheda(t: Template, idx: number, weekId: string | null, weekName: string | null, weekOrder: number | null) {
     const color = SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
@@ -437,8 +461,9 @@ export default function TrainingDiaryPage() {
       )}
 
       {/* Scheda exercises */}
-      {schedaInfo && schedaInfo.exercises.map(te => {
-        const exId    = te.exercise.id
+      {schedaInfo && schedaInfo.exercises.map((te, teIdx) => {
+        const isLastEx = teIdx === schedaInfo.exercises.length - 1
+        const exId    = isLastEx && absExId ? absExId : te.exercise.id
         const exSets  = workoutSets.filter(s => s.exerciseId === exId)
         const compKey = `${selectedDate}_${exId}`
         const isDone  = completed.has(compKey)
@@ -463,9 +488,19 @@ export default function TrainingDiaryPage() {
 
               <button className="flex-1 min-w-0 text-left"
                 onClick={() => { setExpandedExId(id => id === exId ? null : exId); setAddExId(null) }}>
-                <p className={cn('font-semibold text-sm truncate', isDone ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100')}>
-                  {te.exercise.name}
-                </p>
+                {isLastEx && absOptions.length > 1 ? (
+                  <select
+                    value={absExId ?? te.exercise.id}
+                    onChange={e => { setAbsExId(e.target.value); setAddExId(null); setExpandedExId(null); setEditSetId(null) }}
+                    onClick={e => e.stopPropagation()}
+                    className="font-semibold text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-900 bg-transparent outline-none w-full cursor-pointer">
+                    {absOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  </select>
+                ) : (
+                  <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">
+                    {te.exercise.name}
+                  </p>
+                )}
                 {exSets.length > 0 && (
                   <p className="text-[10px] mt-0.5" style={{ color: CT }}>{exSets.length} eseguiti</p>
                 )}
@@ -630,7 +665,7 @@ export default function TrainingDiaryPage() {
               </button>
               <button className="flex-1 min-w-0 text-left"
                 onClick={() => setExpandedExId(id => id === exId ? null : exId)}>
-                <p className={cn('font-semibold text-sm truncate', isDone ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100')}>{name}</p>
+                <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">{name}</p>
                 {group && <p className="text-[10px] text-gray-400 mt-0.5">{group}</p>}
               </button>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-lg shrink-0" style={{ color: CT, backgroundColor: CT + '18' }}>
