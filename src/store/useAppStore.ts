@@ -24,6 +24,8 @@ type AppStore = {
   login: (user: { id: string; name: string; email: string; targetCalories?: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }) => void
   logout: () => void
   removeUser: (id: string) => void
+  workoutDataVersion: number
+  bumpWorkoutVersion: () => void
 }
 
 const defaultProfile = (id: string, name = 'Utente'): UserProfile => ({
@@ -43,6 +45,8 @@ export const useAppStore = create<AppStore>()(
         users: [{ id: initialId, name: 'Utente' }],
         selectedDate: new Date().toISOString().split('T')[0],
         setSelectedDate: (d) => set({ selectedDate: d }),
+        workoutDataVersion: 0,
+        bumpWorkoutVersion: () => set(s => ({ workoutDataVersion: s.workoutDataVersion + 1 })),
         userProfile: defaultProfile(initialId),
         setUserProfile: (p) => set((s) => ({ userProfile: { ...s.userProfile, ...p } })),
         addUser: (name) => {
@@ -91,6 +95,6 @@ export const useAppStore = create<AppStore>()(
         },
       }
     },
-    { name: 'fitapp-store' }
+    { name: 'fitapp-store', partialize: (s) => ({ userId: s.userId, users: s.users, selectedDate: s.selectedDate, userProfile: s.userProfile }) }
   )
 )

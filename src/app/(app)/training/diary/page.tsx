@@ -206,7 +206,7 @@ async function mergeWeekParams(exercises: TemplateEx[], weekId: string | null): 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function TrainingDiaryPage() {
-  const { userId, selectedDate, setSelectedDate, userProfile } = useAppStore()
+  const { userId, selectedDate, setSelectedDate, userProfile, bumpWorkoutVersion } = useAppStore()
   const [workout,    setWorkout]    = useState<Workout | null>(null)
   const [schedaInfo, setSchedaInfo] = useState<SchedaInfo | null>(null)
   const [showPicker, setShowPicker] = useState(false)
@@ -261,6 +261,7 @@ export default function TrainingDiaryPage() {
     const merged = await mergeWeekParams(t.exercises, weekId)
     setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged })
     setShowPicker(false)
+    bumpWorkoutVersion()
   }
 
   async function addSet(exId: string, isWarmup: boolean) {
@@ -283,6 +284,7 @@ export default function TrainingDiaryPage() {
     setWorkout(w)
     setFormReps(''); setFormWeight('')
     setFormSaving(false)
+    bumpWorkoutVersion()
   }
 
   async function deleteSet(id: string) {
@@ -291,6 +293,7 @@ export default function TrainingDiaryPage() {
     if (warmups.has(id)) {
       const nw = new Set(warmups); nw.delete(id); setWarmups(nw); saveSet(WARMUP_KEY, nw)
     }
+    bumpWorkoutVersion()
   }
 
   function handleDateChange(d: string) {
@@ -302,6 +305,7 @@ export default function TrainingDiaryPage() {
     const nc  = new Set(completed)
     nc.has(key) ? nc.delete(key) : nc.add(key)
     setCompleted(nc); saveSet(COMPLETED_KEY, nc)
+    bumpWorkoutVersion()
   }
 
   function openAdd(exId: string, targetReps: string | null) {
@@ -351,7 +355,7 @@ export default function TrainingDiaryPage() {
         body: JSON.stringify({ userId, date: selectedDate, exerciseId: ex.id, sets: 1, reps: 1, weight: null }),
       })
     }
-    await fetchWorkout(); setTennisLoading(false)
+    await fetchWorkout(); setTennisLoading(false); bumpWorkoutVersion()
   }
 
   const schedaColor = getSchedaColor(selectedDate) ?? CT
