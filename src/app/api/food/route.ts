@@ -22,9 +22,19 @@ export async function GET(req: NextRequest) {
   query += ` AND (f."userId" IS NULL OR f."userId"=$${idx++})`
   params.push(userId)
 
-  if (categoryId) { query += ` AND f."categoryId"=$${idx++}`; params.push(categoryId) }
+  if (categoryId) {
+    const ids = categoryId.split(',').filter(Boolean)
+    if (ids.length === 1) {
+      query += ` AND f."categoryId"=$${idx++}`; params.push(ids[0])
+    } else if (ids.length > 1) {
+      query += ` AND f."categoryId" = ANY($${idx++}::text[])`; params.push(ids)
+    }
+  }
 
-  query += ` ORDER BY f.name LIMIT 50`
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '100')
+  const offset = parseInt(req.nextUrl.searchParams.get('offset') ?? '0')
+  query += ` ORDER BY f.name LIMIT $${idx++} OFFSET $${idx++}`
+  params.push(limit, offset)
   const { rows } = await pool.query(query, params)
   return NextResponse.json(rows)
 }

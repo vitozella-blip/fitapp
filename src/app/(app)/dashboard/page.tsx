@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
-  const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number } | null>(null)
+  const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number; color?: string } | null>(null)
 
   useEffect(() => {
     try {
@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
       {/* ── HEADER DATA ─────────────────────────────────────────────────────── */}
       <div className="shrink-0">
-        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} />
+        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} />
       </div>
 
       {/* ── CARD MACRO ──────────────────────────────────────────────────────── */}
