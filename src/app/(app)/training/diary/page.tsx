@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -228,6 +228,10 @@ export default function TrainingDiaryPage() {
   const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
   const [absExId,    setAbsExId]    = useState<string | null>(null)
 
+  const [historyExId,   setHistoryExId]   = useState<string | null>(null)
+  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { reps: number; weight: number | null; isWarmup: boolean }[] } | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
+
   useEffect(() => {
     setWarmups(loadSet(WARMUP_KEY))
     setCompleted(loadSet(COMPLETED_KEY))
@@ -384,6 +388,18 @@ export default function TrainingDiaryPage() {
       const nc = new Set(completed); nc.delete(compKey); setCompleted(nc); saveSet(COMPLETED_KEY, nc)
     }
     bumpWorkoutVersion()
+  }
+
+  async function toggleHistory(exId: string, exerciseId: string) {
+    if (historyExId === exId) { setHistoryExId(null); setHistoryData(null); return }
+    setHistoryExId(exId)
+    setHistoryData(null)
+    setHistoryLoading(true)
+    try {
+      const r = await fetch(`/api/workout/exercise-history?userId=${userId}&exerciseId=${exerciseId}&beforeDate=${selectedDate}`)
+      setHistoryData(await r.json())
+    } catch {}
+    setHistoryLoading(false)
   }
 
   function openAdd(exId: string, targetReps: string | null) {
@@ -548,26 +564,100 @@ export default function TrainingDiaryPage() {
             {/* Expanded: target + logged sets */}
             {isOpen && (
               <div className="border-t border-gray-50 dark:border-gray-800">
-                {/* Target pills */}
-                <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 shrink-0">Target</span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ backgroundColor: CT + '18', color: CT }}>
-                    {te.sets} set
-                  </span>
-                  {te.reps && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ backgroundColor: CT + '18', color: CT }}>
-                      {te.reps} reps
-                    </span>
-                  )}
-                  {rest && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ backgroundColor: CT + '18', color: CT }}>
-                      rec {rest}
-                    </span>
-                  )}
-                  {te.noteScheda && (
-                    <span className="text-[10px] text-gray-400 italic truncate max-w-full">{te.noteScheda}</span>
-                  )}
+                {/* Target table */}
+                <div className="px-4 py-2.5 flex items-start gap-3">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-0.5 shrink-0">Target</span>
+                  <div className="grid gap-x-2 items-center" style={{ gridTemplateColumns: '2rem 7rem 3rem auto' }}>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Set</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Rep</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Rec</p>
+                    <div />
+                    <p className="text-xs font-bold text-center" style={{ color: CT }}>{te.sets}</p>
+                    <p className="text-xs font-bold text-center" style={{ color: CT }}>{te.reps || '—'}</p>
+                    <p className="text-xs font-bold text-center" style={{ color: CT }}>{rest || '—'}</p>
+                    <div className="flex gap-1 justify-center items-center">
+                      <FileText size={13} style={{ color: te.noteScheda ? '#f0aa78' : '#d1d5db' }} />
+                      <StickyNote size={13} style={{ color: '#9d8fcc' }} />
+                      <button onClick={() => toggleHistory(te.id, exId)}
+                        className="transition-colors"
+                        title="Carichi sessione precedente">
+                        <Dumbbell size={13} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                {te.noteScheda && (
+                  <p className="text-[10px] text-gray-400 italic px-4 pb-2 truncate">{te.noteScheda}</p>
+                )}
+
+                {/* Previous session history */}
+                {historyExId === te.id && (
+                  <div className="mx-4 mb-2 rounded-xl px-3 py-2 text-[11px]" style={{ backgroundColor: CT + '10', border: `1px solid ${CT}30` }}>
+                    {historyLoading ? (
+                      <div className="flex justify-center py-1"><Loader2 size={12} className="animate-spin" style={{ color: CT }} /></div>
+                    ) : historyData ? (
+                      <>
+                        <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: CT }}>
+                          {new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                        <div className="space-y-1">
+                          {historyData.sets.map((s, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
+                                style={s.isWarmup ? { backgroundColor: '#f0aa7820', color: '#f0aa78' } : { backgroundColor: CT + '18', color: CT }}>
+                                {s.isWarmup ? 'R' : i + 1}
+                              </span>
+                              {s.isWarmup && <Flame size={9} style={{ color: '#f0aa78' }} className="shrink-0" />}
+                              <span className="text-gray-700 dark:text-gray-300">
+                                {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-gray-400 text-center py-0.5">Nessuna sessione precedente</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Add set form */}
+                {addOpen && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
+                        className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                        style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
+                        <Flame size={12} /> Risc.
+                      </button>
+                      <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
+                        className="py-2 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                        style={{ backgroundColor: CT }}>
+                        {formSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Set
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
+                        <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                          <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                            onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
+                          <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
+                            {formReps || '—'}
+                          </span>
+                          <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                            onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                        <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
+                          placeholder="—"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Logged sets */}
                 {exSets.length > 0 && (
@@ -635,45 +725,6 @@ export default function TrainingDiaryPage() {
               </div>
             )}
 
-            {/* Add set form */}
-            {addOpen && (
-              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-2">
-                {/* Buttons on top */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
-                    className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
-                    style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
-                    <Flame size={12} /> Risc.
-                  </button>
-                  <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
-                    className="py-2 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
-                    style={{ backgroundColor: CT }}>
-                    {formSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Set
-                  </button>
-                </div>
-                {/* Steppers below */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
-                    <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                      <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                        onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
-                      <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {formReps || '—'}
-                      </span>
-                      <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                        onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
-                    <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                      placeholder="—"
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )
       })}

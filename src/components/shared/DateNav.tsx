@@ -66,7 +66,7 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-xs p-4 shadow-xl"
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-xs p-4 shadow-xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -162,7 +162,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
     <>
       <div className="flex items-center gap-2">
         {/* Date band */}
-        <div className={cn("flex-1 h-9 rounded-2xl px-2 flex items-center gap-1 border transition-colors",
+        <div className={cn("flex-1 min-w-0 h-9 rounded-2xl px-2 flex items-center gap-1 border transition-colors",
             !schedaColor && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
           style={schedaColor ? { backgroundColor: schedaColor + '18', borderColor: schedaColor + '50' } : undefined}>
           <button onClick={() => changeDate(-1)}
