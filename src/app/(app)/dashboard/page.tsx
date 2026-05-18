@@ -90,7 +90,7 @@ export default function DashboardPage() {
   const calOver = t.calories > tg.calories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
 
-  const hasWorkout = data?.workout.exists || data?.workout.hasTennis
+  const hasWorkout = data?.workout.exists || data?.workout.hasTennis || !!schedaInfo
 
   const pillLabel = schedaInfo
     ? (schedaInfo.weekOrder != null ? `WO ${schedaInfo.order} - W ${schedaInfo.weekOrder}` : `WO ${schedaInfo.order}`)
@@ -217,7 +217,7 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto px-2 pt-1.5 pb-2">
 
             {/* Pill */}
-            {data?.workout.hasTennis && data?.workout.exists ? (
+            {data?.workout.hasTennis && (data?.workout.exists || !!schedaInfo) ? (
               <div className="flex gap-1 mb-1">
                 <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
                   style={{ backgroundColor: '#7aaa4028' }}>
@@ -236,7 +236,7 @@ export default function DashboardPage() {
                 <Em e="🎾" size={18} />
                 <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
               </div>
-            ) : data?.workout.exists ? (
+            ) : (data?.workout.exists || !!schedaInfo) ? (
               <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
                 style={{ backgroundColor: C.training + '28' }}>
                 <img src="/icon-training.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
