@@ -5,7 +5,7 @@ import { LayoutDashboard, Menu, X, Check, Pencil, Plus, Download, LogOut, Trash2
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useAppStore } from '@/store/useAppStore'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { formatDate } from '@/lib/utils'
 
 type Tab = {
@@ -36,12 +36,6 @@ export function MobileNav() {
   const [newName,    setNewName]    = useState('')
   const [addingUser, setAddingUser] = useState(false)
   const isDark = theme === 'dark'
-
-  useEffect(() => {
-    const handler = () => setMenuOpen(true)
-    window.addEventListener('openHamburgerMenu', handler)
-    return () => window.removeEventListener('openHamburgerMenu', handler)
-  }, [])
 
   async function saveUserName() {
     if (!nameInput.trim()) return
