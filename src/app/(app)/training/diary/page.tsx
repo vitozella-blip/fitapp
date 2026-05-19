@@ -301,19 +301,33 @@ export default function TrainingDiaryPage() {
     })
   }
   function addPair(idA: string, nameA: string, idB: string, nameB: string, type: 'SS' | 'JS') {
-    setPairs(prev => ({
-      ...prev,
-      [idA]: { partnerId: idB, partnerName: nameB, type },
-      [idB]: { partnerId: idA, partnerName: nameA, type },
-    }))
+    setPairs(prev => {
+      // Remove any existing pair entries for or pointing to idA / idB
+      const oldPartnerA = prev[idA]?.partnerId
+      const oldPartnerB = prev[idB]?.partnerId
+      const next: Record<string, ExPair> = {}
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === idA || k === idB) continue
+        if (oldPartnerA && k === oldPartnerA) continue
+        if (oldPartnerB && k === oldPartnerB) continue
+        next[k] = v
+      }
+      next[idA] = { partnerId: idB, partnerName: nameB, type }
+      next[idB] = { partnerId: idA, partnerName: nameA, type }
+      return next
+    })
     setPairPickerExId(null)
   }
   function removePair(exId: string) {
     setPairs(prev => {
       const partnerId = prev[exId]?.partnerId
-      const next = { ...prev }
-      delete next[exId]
-      if (partnerId) delete next[partnerId]
+      // Remove all entries for or pointing to exId / partnerId (cleans up stale refs)
+      const next: Record<string, ExPair> = {}
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === exId || k === partnerId) continue
+        if (v.partnerId === exId || (partnerId && v.partnerId === partnerId)) continue
+        next[k] = v
+      }
       return next
     })
   }
