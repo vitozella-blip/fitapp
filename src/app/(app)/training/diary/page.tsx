@@ -571,41 +571,64 @@ export default function TrainingDiaryPage() {
         let workIdx = 0, warmIdx = 0
         const rest = fmtRest(te.restSeconds)
 
-        const showingHistory = historyExId === te.id && historyData != null && !historyLoading
-        const histPrevMap = (() => {
-          if (!showingHistory) return new Map<string, { id: string; reps: number; weight: number | null } | undefined>()
-          const currWarm = exSets.filter(s => warmups.has(s.id))
-          const currWork = exSets.filter(s => !warmups.has(s.id))
-          const hist = historyData!.sets
-          const hWarm = hist.slice(0, currWarm.length)
-          const hWork = hist.slice(currWarm.length)
-          const m = new Map<string, { id: string; reps: number; weight: number | null } | undefined>()
-          currWarm.forEach((s, i) => m.set(s.id, hWarm[i]))
-          currWork.forEach((s, i) => m.set(s.id, hWork[i]))
-          return m
-        })()
-        const historyHeader = (() => {
+        const historyView = (() => {
           if (historyExId !== te.id) return null
           if (historyLoading) return (
-            <div className="border-t border-gray-50 dark:border-gray-800 px-4 py-2 flex justify-center">
+            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1 flex justify-center py-2">
               <Loader2 size={12} className="animate-spin" style={{ color: CT }} />
             </div>
           )
-          if (!historyData) return (
-            <div className="border-t border-gray-50 dark:border-gray-800 px-4 py-1">
+          const currWarm = exSets.filter(s => warmups.has(s.id))
+          const currWork = exSets.filter(s => !warmups.has(s.id))
+          const hist = historyData?.sets ?? []
+          const hWarm = hist.slice(0, currWarm.length)
+          const hWork = hist.slice(currWarm.length)
+          const maxW = Math.max(currWarm.length, hWarm.length)
+          const maxS = Math.max(currWork.length, hWork.length)
+          if (maxW === 0 && maxS === 0 && !historyData) return (
+            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
               <p className="text-[11px] text-gray-400 text-center py-1">Nessuna sessione precedente</p>
             </div>
           )
-          const prevLabel = new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+          const fmt = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? '—'}`
+          const prevLabel = historyData
+            ? new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+            : '—'
+          const currLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
           return (
-            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-1 pb-0">
-              <div className="flex items-center gap-1.5">
-                <div className="w-6" />
-                <span className="flex-1 text-right text-[9px] font-bold uppercase tracking-widest text-gray-400">{prevLabel}</span>
-                <div className="w-px h-2.5 bg-gray-200 dark:bg-gray-700 shrink-0" />
-                <span className="flex-1 text-[9px] font-bold uppercase tracking-widest" style={{ color: CT }}>OGGI</span>
-                <div className="w-7" />
+            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
+              <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 mb-1 items-center">
+                <div />
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{prevLabel}</p>
+                <div className="self-stretch bg-gray-200 dark:bg-gray-700" />
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{currLabel}</p>
               </div>
+              {Array.from({ length: maxW }, (_, i) => {
+                const hS = hWarm[i]; const cS = currWarm[i]
+                const hTag = hS ? setTags[hS.id] : undefined
+                const cTag = cS ? setTags[cS.id] : undefined
+                return (
+                  <div key={`R${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
+                    <span className="text-[10px] font-bold text-center" style={{ color: C_WARM }}>R{i+1}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
+                    <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
+                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}{cTag && <span className="ml-1 text-[9px] font-bold">{cTag}</span>}</span>
+                  </div>
+                )
+              })}
+              {Array.from({ length: maxS }, (_, i) => {
+                const hS = hWork[i]; const cS = currWork[i]
+                const hTag = hS ? setTags[hS.id] : undefined
+                const cTag = cS ? setTags[cS.id] : undefined
+                return (
+                  <div key={`S${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
+                    <span className="text-[10px] font-bold text-center" style={{ color: CT }}>S{i+1}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
+                    <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
+                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}{cTag && <span className="ml-1 text-[9px] font-bold">{cTag}</span>}</span>
+                  </div>
+                )
+              })}
             </div>
           )
         })()
@@ -766,17 +789,13 @@ export default function TrainingDiaryPage() {
                   </div>
                 )}
 
-                {/* History: loading spinner, empty message, or date header */}
-                {historyHeader}
-
-                {/* Logged sets — prev shown inline in each row when history active */}
-                {exSets.length > 0 && (
+                {/* Logged sets — comparison view when history active, normal list otherwise */}
+                {historyView ?? (exSets.length > 0 ? (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
                     {exSets.map(s => {
                       const isW  = warmups.has(s.id)
                       const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
                       const isEditing = editSetId === s.id
-                      const prevSet = histPrevMap.get(s.id)
                       return (
                         <div key={s.id}>
                           {isEditing ? (
@@ -824,23 +843,10 @@ export default function TrainingDiaryPage() {
                                 {setTags[s.id] && (
                                   <span className="text-[10px] font-bold shrink-0" style={{ color: CT }}>{setTags[s.id]}</span>
                                 )}
-                                {showingHistory ? (
-                                  <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                                    <span className="flex-1 text-right text-[11px] text-gray-400 truncate">
-                                      {prevSet ? `${prevSet.reps}×${prevSet.weight ?? '—'}` : ''}
-                                    </span>
-                                    <div className="w-px h-3.5 bg-gray-200 dark:bg-gray-700 shrink-0" />
-                                    <button className="flex-1 text-left text-[12px] font-bold min-w-0 truncate"
-                                      style={{ color: CT }} onClick={() => openEdit(s)}>
-                                      {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
-                                    onClick={() => openEdit(s)}>
-                                    {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                                  </button>
-                                )}
+                                <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                                  onClick={() => openEdit(s)}>
+                                  {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                </button>
                                 <button onClick={() => deleteSet(s.id)}
                                   className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
                                   <Trash2 size={12} />
@@ -876,7 +882,7 @@ export default function TrainingDiaryPage() {
                       )
                     })}
                   </div>
-                )}
+                ) : null)}
               </div>
             )}
 
