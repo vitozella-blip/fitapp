@@ -190,7 +190,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
               const label2 = sepIdx >= 0 ? t.name.slice(sepIdx + 3) : null
               return (
                 <button key={t.id} onClick={() => selectTemplate(t, i)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                     style={{ backgroundColor: color }}>
                     {String(i + 1).padStart(2, '0')}
@@ -226,7 +226,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
                 <p className="text-xs text-gray-400 pb-1">Seleziona la settimana</p>
                 {weeks.map(w => (
                   <button key={w.id} onClick={() => confirm(w.id, w.name, w.order + 1)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                       style={{ backgroundColor: CT }}>
                       {w.order + 1}
@@ -675,7 +675,7 @@ export default function TrainingDiaryPage() {
 
       {/* Empty state */}
       {!hasAny && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 text-center">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center shadow-sm">
           <Dumbbell size={28} className="mx-auto mb-3" style={{ color: CT + '80' }} />
           <p className="text-gray-500 font-medium text-sm">Nessun allenamento oggi</p>
           <p className="text-xs text-gray-400 mt-1">Scegli una scheda o aggiungi Tennis per iniziare</p>
@@ -789,9 +789,9 @@ export default function TrainingDiaryPage() {
 
         return (
           <div key={te.id}
-            className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
-              nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
-              isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+            className={cn('bg-white dark:bg-gray-800 border rounded-2xl overflow-hidden transition-colors shadow-sm',
+              nextUpExId === exId ? 'border-blue-300 dark:border-blue-500' :
+              isDone ? 'border-green-200/60 dark:border-green-800/60' : 'border-gray-200 dark:border-gray-700')}>
 
             {/* Next-up banner (superset/jumpset) */}
             {nextUpExId === exId && (
@@ -1141,7 +1141,7 @@ export default function TrainingDiaryPage() {
             {absCards}
 
             {/* ABS picker */}
-            <div className="bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-2xl overflow-hidden shadow-sm">
               <button className="w-full flex items-center gap-2 px-4 py-3"
                 onClick={() => setAbsPickerOpen(p => !p)}>
                 <span className="text-xs font-bold" style={{ color: schedaColor }}>ABS</span>
@@ -1184,9 +1184,9 @@ export default function TrainingDiaryPage() {
         let workIdx = 0, warmIdx = 0
         return (
           <div key={exId}
-            className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
-              nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
-              isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+            className={cn('bg-white dark:bg-gray-800 border rounded-2xl overflow-hidden transition-colors shadow-sm',
+              nextUpExId === exId ? 'border-blue-300 dark:border-blue-500' :
+              isDone ? 'border-green-200/60 dark:border-green-800/60' : 'border-gray-200 dark:border-gray-700')}>
             {nextUpExId === exId && (
               <div className="px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: CT + '28' }}>
                 <span className="text-[11px] font-bold animate-pulse" style={{ color: CT }}>↑ VAI ORA</span>
