@@ -545,7 +545,9 @@ export default function TrainingDiaryPage() {
       {schedaInfo && schedaInfo.exercises.map((te, teIdx) => {
         const isLastEx = teIdx === schedaInfo.exercises.length - 1
         const exId    = isLastEx && absExId ? absExId : te.exercise.id
-        const exSets  = workoutSets.filter(s => s.exerciseId === exId)
+        const exSets  = workoutSets
+          .filter(s => s.exerciseId === exId)
+          .sort((a, b) => (warmups.has(a.id) ? 0 : 1) - (warmups.has(b.id) ? 0 : 1))
         const compKey = `${selectedDate}_${exId}`
         const isDone  = completed.has(compKey)
         const isOpen  = expandedExId === exId
@@ -581,29 +583,29 @@ export default function TrainingDiaryPage() {
             <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
               <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 mb-1 items-center">
                 <div />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{prevLabel}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{prevLabel}</p>
                 <div className="self-stretch bg-gray-200 dark:bg-gray-700" />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{currLabel}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{currLabel}</p>
               </div>
               {Array.from({ length: maxW }, (_, i) => {
                 const hS = hWarm[i]; const cS = currWarm[i]
                 return (
-                  <div key={`R${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-1 items-center">
+                  <div key={`R${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
                     <span className="text-[10px] font-bold text-center" style={{ color: C_WARM }}>R{i+1}</span>
-                    <span className="text-[11px] font-semibold text-center" style={{ color: hS ? CT : '#9ca3af' }}>{hS ? fmt(hS) : '—'}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                    <span className="text-[11px] font-semibold text-center" style={{ color: cS ? '#6b7280' : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
                   </div>
                 )
               })}
               {Array.from({ length: maxS }, (_, i) => {
                 const hS = hWork[i]; const cS = currWork[i]
                 return (
-                  <div key={`S${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-1 items-center">
+                  <div key={`S${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
                     <span className="text-[10px] font-bold text-center" style={{ color: CT }}>S{i+1}</span>
-                    <span className="text-[11px] font-semibold text-center" style={{ color: hS ? CT : '#9ca3af' }}>{hS ? fmt(hS) : '—'}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                    <span className="text-[11px] font-semibold text-center" style={{ color: cS ? '#6b7280' : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
                   </div>
                 )
               })}
@@ -743,27 +745,30 @@ export default function TrainingDiaryPage() {
 
                 {/* Add set form */}
                 {addOpen && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 flex items-center gap-2">
-                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0">
-                      <button className="px-2 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-bold"
-                        onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
-                      <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{formReps || '—'}</span>
-                      <button className="px-2 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-bold"
-                        onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
+                  <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100 w-5 text-right">{formReps || ''}</span>
+                      <span className="text-[10px] text-gray-400">rep</span>
+                      <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
+                        placeholder="kg"
+                        className="w-16 ml-auto px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                     </div>
-                    <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                      placeholder="kg"
-                      className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 shrink-0" />
-                    <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
-                      className="py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40 shrink-0"
-                      style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
-                      <Flame size={11} /> Risc.
-                    </button>
-                    <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
-                      className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
-                      style={{ backgroundColor: CT }}>
-                      {formSaving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Serie
-                    </button>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <button className="py-2 rounded-lg text-base font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
+                      <button className="py-2 rounded-lg text-base font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
+                      <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
+                        className="py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                        style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
+                        <Flame size={11} /> Risc.
+                      </button>
+                      <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
+                        className="py-2 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                        style={{ backgroundColor: CT }}>
+                        {formSaving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Serie
+                      </button>
+                    </div>
                   </div>
                 )}
 
