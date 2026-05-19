@@ -835,12 +835,12 @@ export default function TrainingDiaryPage() {
                                   {label}
                                 </button>
                                 {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                                {setTags[s.id] && (
+                                  <span className="text-[10px] font-bold shrink-0" style={{ color: CT }}>{setTags[s.id]}</span>
+                                )}
                                 <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                   onClick={() => openEdit(s)}>
                                   {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                                  {setTags[s.id] && (
-                                    <span className="ml-1.5 text-xs font-bold" style={{ color: CT }}>{setTags[s.id]}</span>
-                                  )}
                                 </button>
                                 <button onClick={() => deleteSet(s.id)}
                                   className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
