@@ -558,7 +558,12 @@ export default function TrainingDiaryPage() {
         const exId    = isLastEx && absExId ? absExId : te.exercise.id
         const exSets  = workoutSets
           .filter(s => s.exerciseId === exId)
-          .sort((a, b) => (warmups.has(a.id) ? 0 : 1) - (warmups.has(b.id) ? 0 : 1))
+          .sort((a, b) => {
+            const aW = warmups.has(a.id) ? 0 : 1
+            const bW = warmups.has(b.id) ? 0 : 1
+            if (aW !== bW) return aW - bW
+            return Number(a.id) - Number(b.id)
+          })
         const compKey = `${selectedDate}_${exId}`
         const isDone  = completed.has(compKey)
         const isOpen  = expandedExId === exId
