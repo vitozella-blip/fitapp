@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
     const { rows } = await pool.query(
-      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e) ORDER BY s.id ASC) as sets
+      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e) ORDER BY s."setNumber" ASC) as sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
        LEFT JOIN "Exercise" e ON e.id = s."exerciseId"
@@ -53,10 +53,15 @@ export async function POST(req: NextRequest) {
         [workoutId, userId, date]
       )
     }
+    const { rows: maxRows } = await pool.query(
+      `SELECT COALESCE(MAX("setNumber"), 0) AS max FROM "WorkoutSet" WHERE "workoutDiaryId" = $1 AND "exerciseId" = $2`,
+      [workoutId, exerciseId]
+    )
+    const baseSetNumber = Number(maxRows[0].max)
     for (let i = 0; i < sets; i++) {
       await pool.query(
         `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [crypto.randomUUID(), workoutId, exerciseId, i + 1, reps, weight || null]
+        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null]
       )
     }
     return NextResponse.json({ ok: true, workoutId })

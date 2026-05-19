@@ -18,6 +18,7 @@ type WeekItem = { name: string; exercises?: WeekExercise[] }
 type TemplateExercise = {
   id: string; order: number; sets: number; reps: string
   restSeconds: number; noteScheda?: string; notePersonali?: string
+  isAbs: boolean
   exercise: { id: string; name: string; muscleGroup: string }
 }
 type Template = { id: string; planId: string; name: string; order: number; exercises: TemplateExercise[] }
@@ -773,9 +774,10 @@ function ExerciseFormModal({
 }
 
 // ── Base exercise row ─────────────────────────────────────────────────────────
-function BaseExRow({ ex, isFirst, isLast, onDelete, onReorder }: {
+function BaseExRow({ ex, isFirst, isLast, onDelete, onReorder, onToggleAbs }: {
   ex: TemplateExercise; isFirst: boolean; isLast: boolean
   onDelete: () => void; onReorder: (dir: 'up' | 'down') => void
+  onToggleAbs: () => void
 }) {
   return (
     <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 group">
@@ -785,6 +787,13 @@ function BaseExRow({ ex, isFirst, isLast, onDelete, onReorder }: {
       </div>
       <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.exercise.name}</p>
       {ex.exercise.muscleGroup && <span className="text-[10px] text-gray-400 shrink-0 hidden sm:block">{ex.exercise.muscleGroup}</span>}
+      <button onClick={onToggleAbs} title="Segna come esercizio ABS"
+        className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shrink-0',
+          ex.isAbs
+            ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
+            : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400')}>
+        ABS
+      </button>
       <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors shrink-0"><Trash2 size={12} /></button>
     </div>
   )
@@ -911,6 +920,10 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
     await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reorder', direction: dir }) })
     onRefresh()
   }
+  async function toggleAbsExercise(exId: string) {
+    await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggleAbs' }) })
+    onRefresh()
+  }
   async function addWeek() {
     const n = newWeekName.trim(); if (!n) return
     const r = await fetch('/api/workout-weeks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: tmpl.id, name: n }) })
@@ -994,7 +1007,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                 <div>
                   {exercises.map((ex, ei) => (
                     <BaseExRow key={ex.id} ex={ex} isFirst={ei === 0} isLast={ei === exercises.length - 1}
-                      onDelete={() => deleteExercise(ex.id)} onReorder={dir => reorderExercise(ex.id, dir)} />
+                      onDelete={() => deleteExercise(ex.id)} onReorder={dir => reorderExercise(ex.id, dir)}
+                      onToggleAbs={() => toggleAbsExercise(ex.id)} />
                   ))}
                 </div>
                 <div className="px-3 pb-2 pt-1">

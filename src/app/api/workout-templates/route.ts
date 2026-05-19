@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
             json_build_object(
               'id', te.id, 'order', te."order", 'sets', te.sets, 'reps', te.reps,
               'restSeconds', te."restSeconds", 'noteScheda', te."noteScheda",
-              'notePersonali', te."notePersonali",
+              'notePersonali', te."notePersonali", 'isAbs', te."isAbs",
               'exercise', json_build_object('id', e.id, 'name', e.name, 'muscleGroup', e."muscleGroup")
             ) ORDER BY te."order"
           ) FROM "WorkoutTemplateExercise" te

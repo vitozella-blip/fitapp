@@ -7,7 +7,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     const { rows: [t] } = await pool.query(`SELECT id, name FROM "WorkoutTemplate" WHERE id=$1`, [id])
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const { rows: exs } = await pool.query(
-      `SELECT te.id, te.sets, te.reps, te."restSeconds", te."noteScheda", te."notePersonali",
+      `SELECT te.id, te.sets, te.reps, te."restSeconds", te."noteScheda", te."notePersonali", te."isAbs",
               e.id as "exId", e.name as "exName", e."muscleGroup"
        FROM "WorkoutTemplateExercise" te
        JOIN "Exercise" e ON e.id = te."exerciseId"
@@ -18,7 +18,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       id: t.id, name: t.name,
       exercises: exs.map(r => ({
         id: r.id, sets: r.sets, reps: r.reps, restSeconds: r.restSeconds,
-        noteScheda: r.noteScheda, notePersonali: r.notePersonali,
+        noteScheda: r.noteScheda, notePersonali: r.notePersonali, isAbs: r.isAbs,
         exercise: { id: r.exId, name: r.exName, muscleGroup: r.muscleGroup },
       })),
     })
