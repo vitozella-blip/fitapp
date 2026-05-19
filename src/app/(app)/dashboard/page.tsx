@@ -101,14 +101,14 @@ export default function DashboardPage() {
     completedIds.has(`${selectedDate}_${ex.id}`)
   )
 
+  const swipe = useDateSwipe(selectedDate, setSelectedDate)
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
         style={{ borderColor: C.kcal, borderTopColor: 'transparent' }} />
     </div>
   )
-
-  const swipe = useDateSwipe(selectedDate, setSelectedDate)
 
   return (
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]" {...swipe}>
