@@ -219,7 +219,8 @@ export default function TrainingDiaryPage() {
   const [completed,  setCompleted]  = useState<Set<string>>(new Set())
   const [tennisLoading, setTennisLoading] = useState(false)
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
-  const [openNote, setOpenNote] = useState<{ exId: string; type: 'scheda' | 'personali' } | null>(null)
+  const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
+  const [noteSaving, setNoteSaving] = useState(false)
   const [recTimer,  setRecTimer]  = useState<{ mode: 'countdown' | 'stopwatch'; rem: number; init: number; on: boolean } | null>(null)
   const [timerPicker, setTimerPicker] = useState<string | null>(null)
   const recRef = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -423,6 +424,22 @@ export default function TrainingDiaryPage() {
     setHistoryLoading(false)
   }
 
+  async function saveNote(te: TemplateEx) {
+    if (!noteEdit) return
+    setNoteSaving(true)
+    const isScheda = noteEdit.type === 'scheda'
+    const newNoteScheda     = isScheda ? (noteEdit.text || null) : te.noteScheda
+    const newNotePersonali  = !isScheda ? (noteEdit.text || null) : te.notePersonali
+    await fetch(`/api/template-exercises/${te.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sets: te.sets, reps: te.reps, restSeconds: te.restSeconds, noteScheda: newNoteScheda, notePersonali: newNotePersonali }),
+    })
+    setSchedaInfo(s => s ? { ...s, exercises: s.exercises.map(ex => ex.id === te.id ? { ...ex, noteScheda: newNoteScheda, notePersonali: newNotePersonali } : ex) } : null)
+    setNoteSaving(false)
+    setNoteEdit(null)
+  }
+
   function openAdd(exId: string, targetReps: string | null) {
     const isSame = addExId === exId
     setAddExId(isSame ? null : exId)
@@ -602,13 +619,13 @@ export default function TrainingDiaryPage() {
                       onClick={() => te.restSeconds && setRecTimer({ mode: 'countdown', rem: te.restSeconds, init: te.restSeconds, on: true })}
                     >{rest || '—'}</button>
                     <div className="flex gap-2.5 justify-center items-center">
-                      <button onClick={() => setOpenNote(n => n?.exId === te.id && n.type === 'scheda' ? null : { exId: te.id, type: 'scheda' })}
-                        title="Note scheda" disabled={!te.noteScheda}>
-                        <StickyNote size={16} style={{ color: te.noteScheda ? (openNote?.exId === te.id && openNote.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
+                      <button onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'scheda' ? null : { exId: te.id, teId: te.id, type: 'scheda', text: te.noteScheda ?? '' })}
+                        title="Note scheda">
+                        <StickyNote size={16} style={{ color: te.noteScheda ? (noteEdit?.exId === te.id && noteEdit.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
                       </button>
-                      <button onClick={() => setOpenNote(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, type: 'personali' })}
-                        title="Note personali" disabled={!te.notePersonali}>
-                        <StickyNote size={16} style={{ color: te.notePersonali ? (openNote?.exId === te.id && openNote.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
+                      <button onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, teId: te.id, type: 'personali', text: te.notePersonali ?? '' })}
+                        title="Note personali">
+                        <StickyNote size={16} style={{ color: te.notePersonali ? (noteEdit?.exId === te.id && noteEdit.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
                       </button>
                       <button onClick={() => setTimerPicker(p => p === te.id ? null : te.id)}
                         title="Cronometro / Timer">
@@ -622,11 +639,28 @@ export default function TrainingDiaryPage() {
                     </div>
                   </div>
                 </div>
-                {openNote?.exId === te.id && openNote.type === 'scheda' && te.noteScheda && (
-                  <p className="text-[10px] italic px-4 pb-2" style={{ color: '#f0aa78' }}>{te.noteScheda}</p>
-                )}
-                {openNote?.exId === te.id && openNote.type === 'personali' && te.notePersonali && (
-                  <p className="text-[10px] italic px-4 pb-2" style={{ color: '#9d8fcc' }}>{te.notePersonali}</p>
+                {noteEdit?.exId === te.id && (
+                  <div className="px-4 pb-2 space-y-1.5">
+                    <textarea
+                      value={noteEdit.text}
+                      onChange={e => setNoteEdit(n => n ? { ...n, text: e.target.value } : null)}
+                      placeholder={noteEdit.type === 'scheda' ? 'Note scheda...' : 'Note personali...'}
+                      rows={2}
+                      className="w-full text-xs px-3 py-2 rounded-xl border bg-gray-50 dark:bg-gray-800 outline-none resize-none placeholder-gray-300"
+                      style={{ borderColor: noteEdit.type === 'scheda' ? '#f0aa7880' : '#9d8fcc80', color: noteEdit.type === 'scheda' ? '#f0aa78' : '#9d8fcc' }}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setNoteEdit(null)}
+                        className="text-xs text-gray-400 px-3 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                        Annulla
+                      </button>
+                      <button onClick={() => saveNote(te)} disabled={noteSaving}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
+                        style={{ backgroundColor: noteEdit.type === 'scheda' ? '#f0aa78' : '#9d8fcc' }}>
+                        {noteSaving ? '...' : 'Salva'}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {/* Timer picker */}
@@ -663,10 +697,9 @@ export default function TrainingDiaryPage() {
                           {historyData.sets.map((s, i) => (
                             <div key={i} className="flex items-center gap-2">
                               <span className="w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
-                                style={s.isWarmup ? { backgroundColor: '#f0aa7820', color: '#f0aa78' } : { backgroundColor: CT + '18', color: CT }}>
-                                {s.isWarmup ? 'R' : i + 1}
+                                style={{ backgroundColor: CT + '18', color: CT }}>
+                                {i + 1}
                               </span>
-                              {s.isWarmup && <Flame size={9} style={{ color: '#f0aa78' }} className="shrink-0" />}
                               <span className="text-gray-700 dark:text-gray-300">
                                 {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
                               </span>
