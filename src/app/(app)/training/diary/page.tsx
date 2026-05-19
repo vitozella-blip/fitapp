@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock } from 'lucide-react'
+import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -16,6 +16,7 @@ const SCHEDA_COLORS = ['#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#
 const WARMUP_KEY    = 'workout_warmup_v1'
 const COMPLETED_KEY = 'workout_completed_v1'
 const SET_TAGS_KEY  = 'workout_set_tags_v1'
+const PAIRS_KEY     = 'workout_pairs_v1'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
 type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }
@@ -26,6 +27,7 @@ type Template   = { id: string; name: string; exercises: TemplateEx[] }
 type Plan       = { id: string; name: string; isActive?: boolean }
 type Week       = { id: string; name: string; order: number }
 type WeekParamRow = { weekId: string; templateExId: string; sets: number; reps: string | null; restSeconds: number | null }
+type ExPair = { partnerId: string; partnerName: string; type: 'SS' | 'JS' }
 
 function loadSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -224,7 +226,8 @@ export default function TrainingDiaryPage() {
   const [noteSaving, setNoteSaving] = useState(false)
   const [recTimer,  setRecTimer]  = useState<{ mode: 'countdown' | 'stopwatch'; rem: number; init: number; on: boolean } | null>(null)
   const [timerPicker, setTimerPicker] = useState<string | null>(null)
-  const recRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const recRef          = useRef<NodeJS.Timeout | undefined>(undefined)
+  const pendingNextUpRef = useRef<string | null>(null)
 
   const [addExId,    setAddExId]    = useState<string | null>(null)
   const [formReps,   setFormReps]   = useState('')
@@ -246,6 +249,29 @@ export default function TrainingDiaryPage() {
       return next
     })
   }
+  function setPairs(fn: (prev: Record<string, ExPair>) => Record<string, ExPair>) {
+    setPairsRaw(prev => {
+      const next = fn(prev)
+      try { localStorage.setItem(PAIRS_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  function addPair(idA: string, nameA: string, idB: string, nameB: string, type: 'SS' | 'JS') {
+    setPairs(() => ({
+      [idA]: { partnerId: idB, partnerName: nameB, type },
+      [idB]: { partnerId: idA, partnerName: nameA, type },
+    }))
+    setPairPickerExId(null)
+  }
+  function removePair(exId: string) {
+    setPairs(prev => {
+      const partnerId = prev[exId]?.partnerId
+      const next = { ...prev }
+      delete next[exId]
+      if (partnerId) delete next[partnerId]
+      return next
+    })
+  }
 
   const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
   const [absExId,    setAbsExId]    = useState<string | null>(null)
@@ -253,6 +279,11 @@ export default function TrainingDiaryPage() {
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
   const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [pairPickerExId, setPairPickerExId] = useState<string | null>(null)
+  const [nextUpExId,     setNextUpExId]     = useState<string | null>(null)
+  const [pairs, setPairsRaw] = useState<Record<string, ExPair>>(() => {
+    try { return JSON.parse(localStorage.getItem(PAIRS_KEY) ?? '{}') } catch { return {} }
+  })
 
   useEffect(() => {
     setWarmups(loadSet(WARMUP_KEY))
@@ -266,6 +297,13 @@ export default function TrainingDiaryPage() {
 
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
   useRefreshOnFocus(fetchWorkout)
+
+  useEffect(() => {
+    if (recTimer?.mode === 'countdown' && recTimer.rem === 0 && !recTimer.on && pendingNextUpRef.current) {
+      setNextUpExId(pendingNextUpRef.current)
+      pendingNextUpRef.current = null
+    }
+  }, [recTimer?.rem, recTimer?.on, recTimer?.mode])
 
   useEffect(() => {
     clearInterval(recRef.current)
@@ -348,6 +386,15 @@ export default function TrainingDiaryPage() {
       }
     }
     setWorkout(w)
+    const pair = pairs[exId]
+    if (pair) {
+      if (pair.type === 'SS') {
+        setNextUpExId(pair.partnerId)
+      } else {
+        pendingNextUpRef.current = pair.partnerId
+        setRecTimer({ mode: 'countdown', rem: 60, init: 60, on: true })
+      }
+    }
     setFormReps(''); setFormWeight('')
     setFormSaving(false)
     bumpWorkoutVersion()
@@ -452,6 +499,7 @@ export default function TrainingDiaryPage() {
   }
 
   function openAdd(exId: string, targetReps: string | null) {
+    if (nextUpExId === exId) setNextUpExId(null)
     const isSame = addExId === exId
     setAddExId(isSame ? null : exId)
     setExpandedExId(exId)
@@ -503,6 +551,17 @@ export default function TrainingDiaryPage() {
 
   const schedaColor = getSchedaColor(selectedDate) ?? CT
   const hasAny = schedaInfo || Object.keys(extraGrouped).length > 0 || tennisActive
+
+  const allExercisesForPicker: { id: string; name: string }[] = [
+    ...(schedaInfo?.exercises.map((te, teIdx) => {
+      const isLast = teIdx === schedaInfo.exercises.length - 1
+      const eId    = isLast && absExId ? absExId : te.exercise.id
+      const eName  = isLast && absExId ? (absOptions.find(o => o.id === absExId)?.name ?? te.exercise.name) : te.exercise.name
+      return { id: eId, name: eName }
+    }) ?? []),
+    ...Object.entries(extraGrouped).map(([eId, { name }]) => ({ id: eId, name })),
+  ]
+
   const swipe = useDateSwipe(selectedDate, handleDateChange)
 
   return (
@@ -642,7 +701,27 @@ export default function TrainingDiaryPage() {
         return (
           <div key={te.id}
             className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
+              nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
               isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+
+            {/* Next-up banner (superset/jumpset) */}
+            {nextUpExId === exId && (
+              <div className="px-4 py-1.5 flex items-center justify-between"
+                style={{ backgroundColor: CT + '28' }}>
+                <span className="text-[11px] font-bold animate-pulse" style={{ color: CT }}>↑ VAI ORA</span>
+                <button onClick={() => setNextUpExId(null)} className="text-gray-400 hover:text-gray-600"><X size={11} /></button>
+              </div>
+            )}
+
+            {/* Pairing badge */}
+            {pairs[exId] && (
+              <div className="flex items-center gap-1.5 px-4 py-1 border-b border-gray-50 dark:border-gray-800">
+                <Link2 size={9} style={{ color: CT }} />
+                <span className="text-[10px] font-bold" style={{ color: CT }}>{pairs[exId].type}</span>
+                <span className="text-[10px] text-gray-400 flex-1 truncate">↔ {pairs[exId].partnerName}</span>
+                <button onClick={() => removePair(exId)} className="text-gray-300 hover:text-red-400"><X size={10} /></button>
+              </div>
+            )}
 
             {/* Header row */}
             <div className="flex items-center gap-2 px-4 py-3">
@@ -679,12 +758,40 @@ export default function TrainingDiaryPage() {
                   <Trash2 size={15} />
                 </button>
               )}
+              <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#d1d5db' }}>
+                <Link2 size={14} />
+              </button>
               <button onClick={() => openAdd(exId, te.reps)}
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-white"
                 style={{ backgroundColor: addOpen ? CT : CT + '99' }}>
                 <Plus size={15} />
               </button>
             </div>
+
+            {/* Pair picker panel */}
+            {pairPickerExId === te.id && (
+              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Collega con...</p>
+                {allExercisesForPicker.filter(e => e.id !== exId).length === 0
+                  ? <p className="text-xs text-gray-400">Nessun altro esercizio</p>
+                  : <div className="space-y-1.5">
+                      {allExercisesForPicker.filter(e => e.id !== exId).map(e => (
+                        <div key={e.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
+                          <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{e.name}</span>
+                          <button onClick={() => addPair(exId, te.exercise.name, e.id, e.name, 'SS')}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
+                            style={{ borderColor: CT, color: CT }}>SS</button>
+                          <button onClick={() => addPair(exId, te.exercise.name, e.id, e.name, 'JS')}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
+                            style={{ borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+            )}
 
             {/* Expanded: target + logged sets */}
             {isOpen && (
@@ -859,8 +966,8 @@ export default function TrainingDiaryPage() {
                                 </button>
                               </div>
                               {labelMenuSetId === s.id && (
-                                <div className="flex gap-1.5 px-4 pb-2">
-                                  {['D', 'S', 'DS', 'BO', 'TS'].map(opt => {
+                                <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                                  {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR'].map(opt => {
                                     const active = setTags[s.id] === opt
                                     return (
                                       <button key={opt}
@@ -905,7 +1012,22 @@ export default function TrainingDiaryPage() {
         return (
           <div key={exId}
             className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
+              nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
               isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+            {nextUpExId === exId && (
+              <div className="px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: CT + '28' }}>
+                <span className="text-[11px] font-bold animate-pulse" style={{ color: CT }}>↑ VAI ORA</span>
+                <button onClick={() => setNextUpExId(null)} className="text-gray-400 hover:text-gray-600"><X size={11} /></button>
+              </div>
+            )}
+            {pairs[exId] && (
+              <div className="flex items-center gap-1.5 px-4 py-1 border-b border-gray-50 dark:border-gray-800">
+                <Link2 size={9} style={{ color: CT }} />
+                <span className="text-[10px] font-bold" style={{ color: CT }}>{pairs[exId].type}</span>
+                <span className="text-[10px] text-gray-400 flex-1 truncate">↔ {pairs[exId].partnerName}</span>
+                <button onClick={() => removePair(exId)} className="text-gray-300 hover:text-red-400"><X size={10} /></button>
+              </div>
+            )}
             <div className="flex items-center gap-2 px-4 py-3">
               <button onClick={() => toggleCompleted(exId)}
                 className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors border',
@@ -921,11 +1043,37 @@ export default function TrainingDiaryPage() {
               <span className="text-xs font-semibold px-2 py-0.5 rounded-lg shrink-0" style={{ color: CT, backgroundColor: CT + '18' }}>
                 {sets.length} set
               </span>
+              <button onClick={() => setPairPickerExId(p => p === exId ? null : exId)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                style={pairs[exId] || pairPickerExId === exId ? { backgroundColor: CT + '20', color: CT } : { color: '#d1d5db' }}>
+                <Link2 size={13} />
+              </button>
               <button onClick={() => deleteExerciseSets(exId, sets)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50">
                 <Trash2 size={13} />
               </button>
             </div>
+            {pairPickerExId === exId && (
+              <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Collega con...</p>
+                {allExercisesForPicker.filter(e => e.id !== exId).length === 0
+                  ? <p className="text-xs text-gray-400">Nessun altro esercizio</p>
+                  : <div className="space-y-1.5">
+                      {allExercisesForPicker.filter(e => e.id !== exId).map(e => (
+                        <div key={e.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
+                          <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{e.name}</span>
+                          <button onClick={() => addPair(exId, name, e.id, e.name, 'SS')}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
+                            style={{ borderColor: CT, color: CT }}>SS</button>
+                          <button onClick={() => addPair(exId, name, e.id, e.name, 'JS')}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
+                            style={{ borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+            )}
             {isOpen && (
               <div className="border-t border-gray-50 dark:border-gray-800 divide-y divide-gray-50 dark:divide-gray-800">
                 {sets.map(s => {
@@ -986,17 +1134,27 @@ export default function TrainingDiaryPage() {
                             </button>
                           </div>
                           {labelMenuSetId === s.id && (
-                            <div className="flex gap-1.5 px-4 pb-2">
-                              {['D', 'S', 'DS', 'BO'].map(opt => (
-                                <button key={opt}
-                                  onClick={() => setLabelMenuSetId(null)}
-                                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors hover:text-white"
-                                  style={{ borderColor: CT, color: CT }}
-                                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = CT)}
-                                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
-                                  {opt}
-                                </button>
-                              ))}
+                            <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                              {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR'].map(opt => {
+                                const active = setTags[s.id] === opt
+                                return (
+                                  <button key={opt}
+                                    onClick={() => {
+                                      setSetTags(prev => {
+                                        const next = { ...prev }
+                                        if (active) delete next[s.id]; else next[s.id] = opt
+                                        return next
+                                      })
+                                      setLabelMenuSetId(null)
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
+                                    style={active
+                                      ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                                      : { borderColor: CT, color: CT }}>
+                                    {opt}
+                                  </button>
+                                )
+                              })}
                             </div>
                           )}
                         </div>
