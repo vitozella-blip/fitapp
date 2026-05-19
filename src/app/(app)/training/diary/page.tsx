@@ -55,6 +55,49 @@ function fmtRest(s: number | null): string | null {
   return `${s}''`
 }
 
+// ── Set grouping helpers ──────────────────────────────────────────────────────
+type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
+type SetGroup = { key: string; type: string; items: SetItem[]; isGrouped: boolean }
+const GROUP_TAGS = new Set(['SS', 'JS', 'MR'])
+
+function groupColor(type: string): string {
+  if (type === 'JS') return '#9d8fcc'
+  if (type === 'MR') return '#7dbf7d'
+  return CT
+}
+
+function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: Set<string>): SetGroup[] {
+  let wIdx = 0, rIdx = 0
+  const items: SetItem[] = sets.map(s => {
+    const isW = warmupIds.has(s.id)
+    return { s, isW, label: isW ? `R${++rIdx}` : `S${++wIdx}` }
+  })
+  const result: SetGroup[] = []
+  let i = 0
+  while (i < items.length) {
+    const item = items[i]
+    const tag = tags[item.s.id] ?? ''
+    // D+S pairing: different side tags adjacent → group them
+    if ((tag === 'D' || tag === 'S') && i + 1 < items.length) {
+      const nextTag = tags[items[i + 1].s.id] ?? ''
+      if ((tag === 'D' && nextTag === 'S') || (tag === 'S' && nextTag === 'D')) {
+        result.push({ key: item.s.id, type: 'DS', items: [item, items[i + 1]], isGrouped: true })
+        i += 2; continue
+      }
+    }
+    // SS/JS/MR: group consecutive same-tagged sets
+    if (GROUP_TAGS.has(tag)) {
+      const grp = [item]; let j = i + 1
+      while (j < items.length && (tags[items[j].s.id] ?? '') === tag) { grp.push(items[j]); j++ }
+      result.push({ key: item.s.id, type: tag, items: grp, isGrouped: grp.length > 1 })
+      i = j; continue
+    }
+    result.push({ key: item.s.id, type: tag, items: [item], isGrouped: false })
+    i++
+  }
+  return result
+}
+
 // ── Scheda + Week picker (bottom sheet) ───────────────────────────────────────
 function SchedaPickerPanel({ userId, onPick, onClose }: {
   userId: string
@@ -944,13 +987,15 @@ export default function TrainingDiaryPage() {
 
                 {/* Logged sets — comparison view when history active, normal list otherwise */}
                 {historyView ?? (exSets.length > 0 ? (
-                  <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
-                    {exSets.map(s => {
-                      const isW  = warmups.has(s.id)
-                      const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
+                  <div className="border-t border-gray-50 dark:border-gray-800">
+                    {groupSets(exSets, setTags, warmups).map((group, gi) => (
+                      <div key={group.key}
+                        className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800', group.isGrouped && 'border-l-2 ml-2')}
+                        style={group.isGrouped ? { borderLeftColor: groupColor(group.type) } : {}}>
+                        {group.items.map(({ s, isW, label }, ii) => {
                       const isEditing = editSetId === s.id
                       return (
-                        <div key={s.id}>
+                        <div key={s.id} className={cn(ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                           {isEditing ? (
                             <div className="px-4 py-2 space-y-2">
                               <div className="grid grid-cols-2 gap-2">
@@ -1033,7 +1078,9 @@ export default function TrainingDiaryPage() {
                           )}
                         </div>
                       )
-                    })}
+                        })}
+                      </div>
+                    ))}
                   </div>
                 ) : null)}
               </div>
@@ -1141,13 +1188,15 @@ export default function TrainingDiaryPage() {
                         </div>
                       )}
                       {exSets.length > 0 && (
-                        <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
-                          {exSets.map(s => {
-                            const isW = warmups.has(s.id)
-                            const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
+                        <div className="border-t border-gray-50 dark:border-gray-800">
+                          {groupSets(exSets, setTags, warmups).map((group, gi) => (
+                            <div key={group.key}
+                              className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800', group.isGrouped && 'border-l-2 ml-2')}
+                              style={group.isGrouped ? { borderLeftColor: groupColor(group.type) } : {}}>
+                              {group.items.map(({ s, isW, label }, ii) => {
                             const isEditing = editSetId === s.id
                             return (
-                              <div key={s.id}>
+                              <div key={s.id} className={cn(ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                                 {isEditing ? (
                                   <div className="px-4 py-2 space-y-2">
                                     <div className="grid grid-cols-2 gap-2">
@@ -1229,7 +1278,9 @@ export default function TrainingDiaryPage() {
                                 )}
                               </div>
                             )
-                          })}
+                              })}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
