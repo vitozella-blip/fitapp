@@ -274,6 +274,8 @@ export default function TrainingDiaryPage() {
   const [showPicker, setShowPicker] = useState(false)
   const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
   const [schedaCollapsed, setSchedaCollapsed] = useState(false)
+  const [tennisCollapsed, setTennisCollapsed] = useState(true)
+  const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'partita', hours: '' })
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
   const [completed,  setCompleted]  = useState<Set<string>>(new Set())
   const [tennisLoading, setTennisLoading] = useState(false)
@@ -401,6 +403,23 @@ export default function TrainingDiaryPage() {
     return () => clearInterval(recRef.current)
   }, [recTimer?.on])
 
+
+  function setTennisMeta(update: Partial<{ type: 'allenamento' | 'partita'; hours: string }>) {
+    setTennisMetaRaw(prev => {
+      const next = { ...prev, ...update }
+      try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
+  // Load tennis meta when date changes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
+      setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
+    } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
+    setTennisCollapsed(true)
+  }, [selectedDate])
 
   // Load scheda + week params from localStorage when date changes
   useEffect(() => {
@@ -680,38 +699,65 @@ export default function TrainingDiaryPage() {
         </div>
       )}
 
-      {/* Tennis pill */}
+      {/* Tennis pill (collapsible) */}
       {tennisActive && (
-        <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2" style={{ backgroundColor: C_TENNIS + '22' }}>
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
-          <span className="text-sm font-bold truncate flex-1" style={{ color: '#5a8a5a' }}>Tennis</span>
-          <button onClick={toggleTennis} disabled={tennisLoading}
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0 disabled:opacity-50">
-            <X size={13} />
-          </button>
+        <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: C_TENNIS + '22' }}>
+          <div className="px-4 py-2.5 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
+            <button className="text-sm font-bold flex-1 text-left" style={{ color: '#5a8a5a' }}
+              onClick={() => setTennisCollapsed(c => !c)}>
+              Tennis{tennisMeta.hours ? ` · ${tennisMeta.hours}h` : ''}{tennisMeta.type ? ` · ${tennisMeta.type}` : ''}
+            </button>
+            <button onClick={toggleTennis} disabled={tennisLoading}
+              className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0 disabled:opacity-50">
+              <X size={13} />
+            </button>
+          </div>
+          {!tennisCollapsed && (
+            <div className="px-4 pb-3 space-y-2 border-t" style={{ borderColor: C_TENNIS + '44' }}>
+              <div className="flex gap-2 pt-2">
+                {(['partita', 'allenamento'] as const).map(t => (
+                  <button key={t} onClick={() => setTennisMeta({ type: t })}
+                    className="flex-1 py-1.5 rounded-xl text-xs font-semibold border transition-colors capitalize"
+                    style={tennisMeta.type === t
+                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                      : { borderColor: C_TENNIS + '88', color: '#5a8a5a' }}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 shrink-0">Ore</span>
+                <input type="number" min="0" max="24" step="0.5"
+                  value={tennisMeta.hours}
+                  onChange={e => setTennisMeta({ hours: e.target.value })}
+                  placeholder="—"
+                  className="flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold text-center outline-none"
+                  style={{ borderColor: C_TENNIS + '88', backgroundColor: C_TENNIS + '11', color: '#5a8a5a' }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Scheda header band (collapsible) */}
+      {/* Scheda header band (collapsible, no chevron) */}
       {schedaInfo && (
-        <button onClick={() => setSchedaCollapsed(c => !c)}
-          className="w-full px-4 py-2.5 rounded-2xl flex items-center gap-2 text-left"
-          style={{ backgroundColor: schedaColor + '22' }}>
+        <div className="rounded-2xl flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: schedaColor + '22' }}>
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
-          <span className="text-sm font-bold truncate flex-1" style={{ color: schedaColor }}>{schedaInfo.name}</span>
+          <button className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}
+            onClick={() => setSchedaCollapsed(c => !c)}>
+            {schedaInfo.name}
+          </button>
           {schedaInfo.weekName && (
             <span className="text-xs font-semibold shrink-0" style={{ color: schedaColor + 'cc' }}>
               {schedaInfo.weekName}
             </span>
           )}
-          <ChevronDown size={14} className={cn('shrink-0 transition-transform', schedaCollapsed && 'rotate-180')}
-            style={{ color: schedaColor + 'cc' }} />
-          <span onClick={e => { e.stopPropagation(); removeScheda() }}
-            role="button"
+          <button onClick={removeScheda}
             className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
             <X size={13} />
-          </span>
-        </button>
+          </button>
+        </div>
       )}
 
       {/* Scheda exercises */}
