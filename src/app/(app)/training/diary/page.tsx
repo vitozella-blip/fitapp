@@ -706,7 +706,9 @@ export default function TrainingDiaryPage() {
       )}
 
       {/* Scheda exercises */}
-      {schedaInfo && schedaInfo.exercises.filter(te => !te.isAbs).map((te) => {
+      {schedaInfo && (() => {
+        const filteredExes = schedaInfo.exercises.filter(te => !te.isAbs)
+        const renderCard = (te: TemplateEx) => {
         const exId = te.exercise.id
         const exSets  = workoutSets
           .filter(s => s.exerciseId === exId)
@@ -1088,7 +1090,27 @@ export default function TrainingDiaryPage() {
 
           </div>
         )
-      })}
+        }
+        const seen = new Set<string>()
+        return filteredExes.flatMap(te => {
+          const exId = te.exercise.id
+          if (seen.has(exId)) return []
+          const pair = pairs[exId]
+          const partnerTe = pair ? filteredExes.find(x => x.exercise.id === pair.partnerId) : null
+          if (partnerTe) {
+            seen.add(exId); seen.add(pair!.partnerId)
+            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
+            return [(
+              <div key={te.id + '_pg'} className="border-l-2 space-y-2" style={{ borderLeftColor: color }}>
+                {renderCard(te)}
+                {renderCard(partnerTe)}
+              </div>
+            )]
+          }
+          seen.add(exId)
+          return [renderCard(te)]
+        })
+      })()}
 
       {/* ABS section */}
       {schedaInfo && (() => {
