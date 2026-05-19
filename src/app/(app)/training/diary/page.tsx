@@ -235,6 +235,7 @@ export default function TrainingDiaryPage() {
   const [editWeight,    setEditWeight]    = useState('')
   const [editSaving,    setEditSaving]    = useState(false)
   const [labelMenuSetId, setLabelMenuSetId] = useState<string | null>(null)
+  const [setTags, setSetTags] = useState<Record<string, string>>({})
 
   const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
   const [absExId,    setAbsExId]    = useState<string | null>(null)
@@ -774,7 +775,7 @@ export default function TrainingDiaryPage() {
                   <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
                     {exSets.map(s => {
                       const isW  = warmups.has(s.id)
-                      const label = isW ? `R${++warmIdx}` : String(++workIdx)
+                      const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
                       const isEditing = editSetId === s.id
                       return (
                         <div key={s.id}>
@@ -823,6 +824,9 @@ export default function TrainingDiaryPage() {
                                 <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                   onClick={() => openEdit(s)}>
                                   {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                  {setTags[s.id] && (
+                                    <span className="ml-1.5 text-xs font-bold" style={{ color: CT }}>{setTags[s.id]}</span>
+                                  )}
                                 </button>
                                 <button onClick={() => deleteSet(s.id)}
                                   className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -831,16 +835,26 @@ export default function TrainingDiaryPage() {
                               </div>
                               {labelMenuSetId === s.id && (
                                 <div className="flex gap-1.5 px-4 pb-2">
-                                  {['D', 'S', 'DS', 'BO'].map(opt => (
-                                    <button key={opt}
-                                      onClick={() => setLabelMenuSetId(null)}
-                                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors hover:text-white"
-                                      style={{ borderColor: CT, color: CT }}
-                                      onMouseEnter={e => (e.currentTarget.style.backgroundColor = CT)}
-                                      onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
-                                      {opt}
-                                    </button>
-                                  ))}
+                                  {['D', 'S', 'DS', 'BO', 'TS'].map(opt => {
+                                    const active = setTags[s.id] === opt
+                                    return (
+                                      <button key={opt}
+                                        onClick={() => {
+                                          setSetTags(prev => {
+                                            const next = { ...prev }
+                                            if (active) delete next[s.id]; else next[s.id] = opt
+                                            return next
+                                          })
+                                          setLabelMenuSetId(null)
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
+                                        style={active
+                                          ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                                          : { borderColor: CT, color: CT }}>
+                                        {opt}
+                                      </button>
+                                    )
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -891,7 +905,7 @@ export default function TrainingDiaryPage() {
               <div className="border-t border-gray-50 dark:border-gray-800 divide-y divide-gray-50 dark:divide-gray-800">
                 {sets.map(s => {
                   const isW  = warmups.has(s.id)
-                  const label = isW ? `R${++warmIdx}` : String(++workIdx)
+                  const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
                   const isEditing = editSetId === s.id
                   return (
                     <div key={s.id}>
