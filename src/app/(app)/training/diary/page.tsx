@@ -301,7 +301,8 @@ export default function TrainingDiaryPage() {
     })
   }
   function addPair(idA: string, nameA: string, idB: string, nameB: string, type: 'SS' | 'JS') {
-    setPairs(() => ({
+    setPairs(prev => ({
+      ...prev,
       [idA]: { partnerId: idB, partnerName: nameB, type },
       [idB]: { partnerId: idA, partnerName: nameA, type },
     }))
