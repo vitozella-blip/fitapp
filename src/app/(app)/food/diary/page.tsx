@@ -7,6 +7,7 @@ import { DateNav } from '@/components/shared/DateNav'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
 import { cn } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
+import { useDateSwipe } from '@/hooks/useDateSwipe'
 
 const C = {
   kcal:    '#6abf6a',
@@ -76,8 +77,10 @@ export default function FoodDiaryPage() {
   const calOver = totals.calories > userProfile.targetCalories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
 
+  const swipe = useDateSwipe(selectedDate, setSelectedDate)
+
   return (
-    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
+    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none" {...swipe}>
       <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
 
       <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} showWorkoutColors={false} />
