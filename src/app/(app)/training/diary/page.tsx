@@ -27,7 +27,8 @@ type Template   = { id: string; name: string; exercises: TemplateEx[] }
 type Plan       = { id: string; name: string; isActive?: boolean }
 type Week       = { id: string; name: string; order: number }
 type WeekParamRow = { weekId: string; templateExId: string; sets: number; reps: string | null; restSeconds: number | null }
-type ExPair = { partnerId: string; partnerName: string; type: 'SS' | 'JS' }
+type ExPair  = { partnerId: string; partnerName: string; type: 'SS' | 'JS' }
+type AbsSel  = { id: string; type: 'SS' | 'JS' }
 
 function loadSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -272,9 +273,49 @@ export default function TrainingDiaryPage() {
       return next
     })
   }
+  function toggleAbsExercise(id: string, type: 'SS' | 'JS') {
+    const existing = absExIds.find(x => x.id === id)
+    let next: AbsSel[]
+    if (existing?.type === type) {
+      next = absExIds.filter(x => x.id !== id)
+    } else if (existing) {
+      next = absExIds.map(x => x.id === id ? { ...x, type } : x)
+    } else {
+      next = [...absExIds, { id, type }]
+    }
+    setAbsExIds(next)
+    if (schedaInfo) {
+      try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
+    }
+    const absOptionIds = new Set(absOptions.map(o => o.id))
+    setPairs(prev => {
+      const cleaned: Record<string, ExPair> = {}
+      for (const [k, v] of Object.entries(prev)) {
+        if (!absOptionIds.has(k) && !absOptionIds.has(v.partnerId)) cleaned[k] = v
+      }
+      const ssSels = next.filter(x => x.type === 'SS')
+      const jsSels = next.filter(x => x.type === 'JS')
+      for (let i = 0; i + 1 < ssSels.length; i += 2) {
+        const a = ssSels[i], b = ssSels[i + 1]
+        const aName = absOptions.find(o => o.id === a.id)?.name ?? a.id
+        const bName = absOptions.find(o => o.id === b.id)?.name ?? b.id
+        cleaned[a.id] = { partnerId: b.id, partnerName: bName, type: 'SS' }
+        cleaned[b.id] = { partnerId: a.id, partnerName: aName, type: 'SS' }
+      }
+      for (let i = 0; i + 1 < jsSels.length; i += 2) {
+        const a = jsSels[i], b = jsSels[i + 1]
+        const aName = absOptions.find(o => o.id === a.id)?.name ?? a.id
+        const bName = absOptions.find(o => o.id === b.id)?.name ?? b.id
+        cleaned[a.id] = { partnerId: b.id, partnerName: bName, type: 'JS' }
+        cleaned[b.id] = { partnerId: a.id, partnerName: aName, type: 'JS' }
+      }
+      return cleaned
+    })
+  }
 
-  const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
-  const [absExId,    setAbsExId]    = useState<string | null>(null)
+  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
+  const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
+  const [absPickerOpen, setAbsPickerOpen] = useState(false)
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
   const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
@@ -339,9 +380,11 @@ export default function TrainingDiaryPage() {
   }, [selectedDate])
 
   useEffect(() => {
-    if (!schedaInfo) { setAbsOptions([]); setAbsExId(null); return }
-    const defaultAbsId = schedaInfo.exercises[schedaInfo.exercises.length - 1]?.exercise.id ?? null
-    setAbsExId(defaultAbsId)
+    if (!schedaInfo) { setAbsOptions([]); setAbsExIds([]); return }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`abs_sel_${schedaInfo.id}`) ?? '[]')
+      setAbsExIds(Array.isArray(saved) ? saved.filter((x: unknown) => x && typeof x === 'object' && 'id' in x && 'type' in x) : [])
+    } catch { setAbsExIds([]) }
     ;(async () => {
       try {
         const plans: Plan[] = await fetch(`/api/workout-plans?userId=${userId}`).then(r => r.json())
@@ -349,11 +392,14 @@ export default function TrainingDiaryPage() {
         if (!active) return
         const tmps: Template[] = await fetch(`/api/workout-templates?planId=${active.id}`).then(r => r.json())
         const seen = new Set<string>()
-        const opts = tmps
-          .map(t => t.exercises[t.exercises.length - 1])
-          .filter(Boolean)
-          .map(te => ({ id: te.exercise.id, name: te.exercise.name }))
-          .filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true })
+        const opts: { id: string; name: string; schedaName: string }[] = []
+        tmps.forEach(t => {
+          const last = t.exercises[t.exercises.length - 1]
+          if (last && !seen.has(last.exercise.id)) {
+            seen.add(last.exercise.id)
+            opts.push({ id: last.exercise.id, name: last.exercise.name, schedaName: t.name })
+          }
+        })
         setAbsOptions(opts)
       } catch {}
     })()
@@ -452,7 +498,7 @@ export default function TrainingDiaryPage() {
     localStorage.removeItem(`workout_scheda_${selectedDate}`)
     setSchedaInfo(null)
     setAbsOptions([])
-    setAbsExId(null)
+    setAbsExIds([])
     bumpWorkoutVersion()
   }
 
@@ -512,7 +558,10 @@ export default function TrainingDiaryPage() {
   const tennisActive = tennisSets.length > 0
   const workoutSets  = allSets.filter(s => s.exercise?.name !== TENNIS_NAME)
 
-  const schedaExIds = new Set((schedaInfo?.exercises ?? []).map(te => te.exercise.id))
+  const schedaExIds = new Set([
+    ...(schedaInfo?.exercises ?? []).map(te => te.exercise.id),
+    ...absExIds.map(x => x.id),
+  ])
   const extraGrouped = workoutSets
     .filter(s => !schedaExIds.has(s.exerciseId))
     .reduce((acc, s) => {
@@ -553,12 +602,8 @@ export default function TrainingDiaryPage() {
   const hasAny = schedaInfo || Object.keys(extraGrouped).length > 0 || tennisActive
 
   const allExercisesForPicker: { id: string; name: string }[] = [
-    ...(schedaInfo?.exercises.map((te, teIdx) => {
-      const isLast = teIdx === schedaInfo.exercises.length - 1
-      const eId    = isLast && absExId ? absExId : te.exercise.id
-      const eName  = isLast && absExId ? (absOptions.find(o => o.id === absExId)?.name ?? te.exercise.name) : te.exercise.name
-      return { id: eId, name: eName }
-    }) ?? []),
+    ...(schedaInfo?.exercises.slice(0, -1).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
+    ...absExIds.map(({ id }) => ({ id, name: absOptions.find(o => o.id === id)?.name ?? id })),
     ...Object.entries(extraGrouped).map(([eId, { name }]) => ({ id: eId, name })),
   ]
 
@@ -612,9 +657,8 @@ export default function TrainingDiaryPage() {
       )}
 
       {/* Scheda exercises */}
-      {schedaInfo && schedaInfo.exercises.map((te, teIdx) => {
-        const isLastEx = teIdx === schedaInfo.exercises.length - 1
-        const exId    = isLastEx && absExId ? absExId : te.exercise.id
+      {schedaInfo && schedaInfo.exercises.slice(0, -1).map((te) => {
+        const exId = te.exercise.id
         const exSets  = workoutSets
           .filter(s => s.exerciseId === exId)
           .sort((a, b) => {
@@ -734,19 +778,9 @@ export default function TrainingDiaryPage() {
 
               <button className="flex-1 min-w-0 text-left"
                 onClick={() => { setExpandedExId(id => id === exId ? null : exId); setAddExId(null) }}>
-                {isLastEx && absOptions.length > 1 ? (
-                  <select
-                    value={absExId ?? te.exercise.id}
-                    onChange={e => { setAbsExId(e.target.value); setAddExId(null); setExpandedExId(null); setEditSetId(null) }}
-                    onClick={e => e.stopPropagation()}
-                    className="font-semibold text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-900 bg-transparent outline-none w-full cursor-pointer">
-                    {absOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                ) : (
-                  <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">
-                    {te.exercise.name}
-                  </p>
-                )}
+                <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">
+                  {te.exercise.name}
+                </p>
                 {exSets.length > 0 && (
                   <p className="text-[10px] mt-0.5" style={{ color: CT }}>{exSets.length} eseguiti</p>
                 )}
@@ -1002,6 +1036,240 @@ export default function TrainingDiaryPage() {
           </div>
         )
       })}
+
+      {/* ABS section */}
+      {schedaInfo && (() => {
+        return (
+          <>
+            {absExIds.map(({ id: absId, type: absType }) => {
+              const opt = absOptions.find(o => o.id === absId)
+              if (!opt) return null
+              const exId = absId
+              const exSets = workoutSets
+                .filter(s => s.exerciseId === exId)
+                .sort((a, b) => {
+                  const aW = warmups.has(a.id) ? 0 : 1
+                  const bW = warmups.has(b.id) ? 0 : 1
+                  if (aW !== bW) return aW - bW
+                  return Number(a.id) - Number(b.id)
+                })
+              const compKey = `${selectedDate}_${exId}`
+              const isDone = completed.has(compKey)
+              const isOpen = expandedExId === exId
+              const addOpen = addExId === exId
+              let workIdx = 0, warmIdx = 0
+              return (
+                <div key={exId}
+                  className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
+                    nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
+                    isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+                  {nextUpExId === exId && (
+                    <div className="px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: schedaColor + '28' }}>
+                      <span className="text-[11px] font-bold animate-pulse" style={{ color: schedaColor }}>↑ VAI ORA</span>
+                      <button onClick={() => setNextUpExId(null)} className="text-gray-400 hover:text-gray-600"><X size={11} /></button>
+                    </div>
+                  )}
+                  {pairs[exId] && (
+                    <div className="flex items-center gap-1.5 px-4 py-1 border-b border-gray-50 dark:border-gray-800">
+                      <Link2 size={9} style={{ color: schedaColor }} />
+                      <span className="text-[10px] font-bold" style={{ color: schedaColor }}>{pairs[exId].type}</span>
+                      <span className="text-[10px] text-gray-400 flex-1 truncate">↔ {pairs[exId].partnerName}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 px-4 py-3">
+                    <button onClick={() => toggleCompleted(exId)}
+                      className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors border',
+                        isDone ? 'border-transparent text-white' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400')}
+                      style={isDone ? { backgroundColor: '#7dbf7d' } : {}}>
+                      {isDone && <Check size={13} />}
+                    </button>
+                    <button className="flex-1 min-w-0 text-left"
+                      onClick={() => { setExpandedExId(id => id === exId ? null : exId); setAddExId(null) }}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: schedaColor + '20', color: schedaColor }}>
+                          {absType}
+                        </span>
+                        <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">{opt.name}</p>
+                      </div>
+                      {exSets.length > 0 && (
+                        <p className="text-[10px] mt-0.5" style={{ color: schedaColor }}>{exSets.length} eseguiti</p>
+                      )}
+                    </button>
+                    {exSets.length > 0 && (
+                      <button onClick={() => deleteExerciseSets(exId, exSets)}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50">
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                    <button onClick={() => openAdd(exId, null)}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white"
+                      style={{ backgroundColor: addOpen ? schedaColor : schedaColor + '99' }}>
+                      <Plus size={15} />
+                    </button>
+                  </div>
+                  {isOpen && (
+                    <div className="border-t border-gray-50 dark:border-gray-800">
+                      {addOpen && (
+                        <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 grid grid-cols-4 gap-1.5">
+                          <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                            <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                              onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
+                            <span className="flex-1 text-center text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{formReps || ''}</span>
+                            <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                              onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
+                          </div>
+                          <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
+                            placeholder="kg"
+                            className="py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
+                          <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
+                            className="py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                            style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
+                            <Flame size={11} /> Risc.
+                          </button>
+                          <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
+                            className="py-2 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                            style={{ backgroundColor: schedaColor }}>
+                            {formSaving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Serie
+                          </button>
+                        </div>
+                      )}
+                      {exSets.length > 0 && (
+                        <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
+                          {exSets.map(s => {
+                            const isW = warmups.has(s.id)
+                            const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
+                            const isEditing = editSetId === s.id
+                            return (
+                              <div key={s.id}>
+                                {isEditing ? (
+                                  <div className="px-4 py-2 space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
+                                        <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                                          <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                            onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
+                                          <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{editReps || '—'}</span>
+                                          <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                            onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                                        <input type="number" step="0.5" min="0" value={editWeight}
+                                          onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                          className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button onClick={() => setEditSetId(null)}
+                                        className="py-1.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800">
+                                        Annulla
+                                      </button>
+                                      <button onClick={updateSet} disabled={editSaving || !editReps.trim()}
+                                        className="py-1.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
+                                        style={{ backgroundColor: schedaColor }}>
+                                        {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salva
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="flex items-center gap-2 px-4 py-2">
+                                      <button onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
+                                        className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
+                                        style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: schedaColor + '18', color: schedaColor }}>
+                                        {label}
+                                      </button>
+                                      {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                                      {setTags[s.id] && (
+                                        <span className="text-[10px] font-bold shrink-0" style={{ color: schedaColor }}>{setTags[s.id]}</span>
+                                      )}
+                                      <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                                        onClick={() => openEdit(s)}>
+                                        {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                      </button>
+                                      <button onClick={() => deleteSet(s.id)}
+                                        className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                    {labelMenuSetId === s.id && (
+                                      <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                                        {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR', 'WD'].map(opt => {
+                                          const active = setTags[s.id] === opt
+                                          return (
+                                            <button key={opt}
+                                              onClick={() => {
+                                                setSetTags(prev => {
+                                                  const next = { ...prev }
+                                                  if (active) delete next[s.id]; else next[s.id] = opt
+                                                  return next
+                                                })
+                                                setLabelMenuSetId(null)
+                                              }}
+                                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
+                                              style={active
+                                                ? { backgroundColor: schedaColor, borderColor: schedaColor, color: '#fff' }
+                                                : { borderColor: schedaColor, color: schedaColor }}>
+                                              {opt}
+                                            </button>
+                                          )
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* ABS picker button */}
+            <div className="bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+              <button className="w-full flex items-center gap-2 px-4 py-3"
+                onClick={() => setAbsPickerOpen(p => !p)}>
+                <span className="text-xs font-bold" style={{ color: schedaColor }}>ABS</span>
+                <span className="flex-1 text-xs text-gray-400 text-left">
+                  {absExIds.length > 0
+                    ? absExIds.map(x => absOptions.find(o => o.id === x.id)?.name ?? x.id).join(' · ')
+                    : 'Seleziona esercizi addominali'}
+                </span>
+                <ChevronDown size={14} className={cn('text-gray-400 transition-transform', absPickerOpen && 'rotate-180')} />
+              </button>
+              {absPickerOpen && (
+                <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1">
+                  {absOptions.map(o => {
+                    const sel = absExIds.find(x => x.id === o.id)
+                    return (
+                      <div key={o.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
+                        <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{o.name}</span>
+                        <button onClick={() => toggleAbsExercise(o.id, 'SS')}
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                          style={sel?.type === 'SS'
+                            ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                            : { borderColor: CT, color: CT }}>SS</button>
+                        <button onClick={() => toggleAbsExercise(o.id, 'JS')}
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                          style={sel?.type === 'JS'
+                            ? { backgroundColor: '#9d8fcc', borderColor: '#9d8fcc', color: '#fff' }
+                            : { borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )
+      })()}
 
       {/* Extra exercises (not in scheda) */}
       {Object.entries(extraGrouped).map(([exId, { name, group, sets }]) => {
