@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const date = dateRows[0].date
 
     const { rows: sets } = await pool.query(
-      `SELECT s.reps, s.weight
+      `SELECT s.id::text, s.reps, s.weight
        FROM "WorkoutSet" s
        JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId"
        WHERE w."userId" = $1 AND s."exerciseId" = $2 AND w.date = $3

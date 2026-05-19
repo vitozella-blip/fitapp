@@ -15,6 +15,7 @@ const TENNIS_NAME   = 'Tennis'
 const SCHEDA_COLORS = ['#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#e8a5a5']
 const WARMUP_KEY    = 'workout_warmup_v1'
 const COMPLETED_KEY = 'workout_completed_v1'
+const SET_TAGS_KEY  = 'workout_set_tags_v1'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
 type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }
@@ -235,13 +236,22 @@ export default function TrainingDiaryPage() {
   const [editWeight,    setEditWeight]    = useState('')
   const [editSaving,    setEditSaving]    = useState(false)
   const [labelMenuSetId, setLabelMenuSetId] = useState<string | null>(null)
-  const [setTags, setSetTags] = useState<Record<string, string>>({})
+  const [setTags, setSetTagsRaw] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem(SET_TAGS_KEY) ?? '{}') } catch { return {} }
+  })
+  function setSetTags(fn: (prev: Record<string, string>) => Record<string, string>) {
+    setSetTagsRaw(prev => {
+      const next = fn(prev)
+      try { localStorage.setItem(SET_TAGS_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
 
   const [absOptions, setAbsOptions] = useState<{ id: string; name: string }[]>([])
   const [absExId,    setAbsExId]    = useState<string | null>(null)
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
-  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { reps: number; weight: number | null; isWarmup: boolean }[] } | null>(null)
+  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
@@ -590,23 +600,27 @@ export default function TrainingDiaryPage() {
               </div>
               {Array.from({ length: maxW }, (_, i) => {
                 const hS = hWarm[i]; const cS = currWarm[i]
+                const hTag = hS ? setTags[hS.id] : undefined
+                const cTag = cS ? setTags[cS.id] : undefined
                 return (
                   <div key={`R${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
                     <span className="text-[10px] font-bold text-center" style={{ color: C_WARM }}>R{i+1}</span>
-                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}{cTag && <span className="ml-1 text-[9px] font-bold">{cTag}</span>}</span>
                   </div>
                 )
               })}
               {Array.from({ length: maxS }, (_, i) => {
                 const hS = hWork[i]; const cS = currWork[i]
+                const hTag = hS ? setTags[hS.id] : undefined
+                const cTag = cS ? setTags[cS.id] : undefined
                 return (
                   <div key={`S${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
                     <span className="text-[10px] font-bold text-center" style={{ color: CT }}>S{i+1}</span>
-                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                    <span className="text-[12px] font-bold text-center" style={{ color: cS ? CT : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}{cTag && <span className="ml-1 text-[9px] font-bold">{cTag}</span>}</span>
                   </div>
                 )
               })}
