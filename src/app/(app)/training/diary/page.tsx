@@ -388,16 +388,20 @@ export default function TrainingDiaryPage() {
     ;(async () => {
       try {
         const plans: Plan[] = await fetch(`/api/workout-plans?userId=${userId}`).then(r => r.json())
-        const active = plans.find(p => p.isActive) ?? plans[0]
-        if (!active) return
-        const tmps: Template[] = await fetch(`/api/workout-templates?planId=${active.id}`).then(r => r.json())
+        const allTmps: Template[] = (await Promise.all(
+          plans.map(pl => fetch(`/api/workout-templates?planId=${pl.id}`).then(r => r.json()))
+        )).flat()
+        const absKeywords = ['crunch', 'plank', 'obliqui', 'side']
         const seen = new Set<string>()
         const opts: { id: string; name: string; schedaName: string }[] = []
-        tmps.forEach(t => {
+        allTmps.forEach(t => {
           const last = t.exercises[t.exercises.length - 1]
           if (last && !seen.has(last.exercise.id)) {
-            seen.add(last.exercise.id)
-            opts.push({ id: last.exercise.id, name: last.exercise.name, schedaName: t.name })
+            const nameLower = last.exercise.name.toLowerCase()
+            if (absKeywords.some(kw => nameLower.includes(kw))) {
+              seen.add(last.exercise.id)
+              opts.push({ id: last.exercise.id, name: last.exercise.name, schedaName: t.name })
+            }
           }
         })
         setAbsOptions(opts)
