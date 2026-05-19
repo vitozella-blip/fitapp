@@ -58,11 +58,13 @@ function fmtRest(s: number | null): string | null {
 // ── Set grouping helpers ──────────────────────────────────────────────────────
 type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
 type SetGroup = { key: string; type: string; items: SetItem[]; isGrouped: boolean }
-const GROUP_TAGS = new Set(['SS', 'JS', 'MR'])
+const GROUP_TAGS = new Set(['SS', 'JS', 'MR', 'WD'])
 
 function groupColor(type: string): string {
   if (type === 'JS') return '#9d8fcc'
   if (type === 'MR') return '#7dbf7d'
+  if (type === 'WD') return '#e8a0a0'
+  if (type === 'TSBO') return '#f0aa78'
   return CT
 }
 
@@ -77,7 +79,7 @@ function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: 
   while (i < items.length) {
     const item = items[i]
     const tag = tags[item.s.id] ?? ''
-    // D+S pairing: different side tags adjacent → group them
+    // D+S pairing: different side tags adjacent → group (not D+D or S+S)
     if ((tag === 'D' || tag === 'S') && i + 1 < items.length) {
       const nextTag = tags[items[i + 1].s.id] ?? ''
       if ((tag === 'D' && nextTag === 'S') || (tag === 'S' && nextTag === 'D')) {
@@ -85,7 +87,15 @@ function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: 
         i += 2; continue
       }
     }
-    // SS/JS/MR: group consecutive same-tagged sets
+    // TS+BO pairing: different tags adjacent → group (not TS+TS or BO+BO)
+    if ((tag === 'TS' || tag === 'BO') && i + 1 < items.length) {
+      const nextTag = tags[items[i + 1].s.id] ?? ''
+      if ((tag === 'TS' && nextTag === 'BO') || (tag === 'BO' && nextTag === 'TS')) {
+        result.push({ key: item.s.id, type: 'TSBO', items: [item, items[i + 1]], isGrouped: true })
+        i += 2; continue
+      }
+    }
+    // SS/JS/MR/WD: group consecutive same-tagged sets
     if (GROUP_TAGS.has(tag)) {
       const grp = [item]; let j = i + 1
       while (j < items.length && (tags[items[j].s.id] ?? '') === tag) { grp.push(items[j]); j++ }
