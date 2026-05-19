@@ -19,7 +19,7 @@ const SET_TAGS_KEY  = 'workout_set_tags_v1'
 const PAIRS_KEY     = 'workout_pairs_v1'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
-type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }
+type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null; isAbs: boolean }
 type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[] }
 type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
@@ -396,18 +396,15 @@ export default function TrainingDiaryPage() {
         const allTmps: Template[] = (await Promise.all(
           plans.map(pl => fetch(`/api/workout-templates?planId=${pl.id}`).then(r => r.json()))
         )).flat()
-        const absKeywords = ['crunch', 'plank', 'obliqui', 'side']
         const seen = new Set<string>()
         const opts: { id: string; name: string; schedaName: string }[] = []
         allTmps.forEach(t => {
-          const last = t.exercises[t.exercises.length - 1]
-          if (last && !seen.has(last.exercise.id)) {
-            const nameLower = last.exercise.name.toLowerCase()
-            if (absKeywords.some(kw => nameLower.includes(kw))) {
-              seen.add(last.exercise.id)
-              opts.push({ id: last.exercise.id, name: last.exercise.name, schedaName: t.name })
+          t.exercises.forEach(te => {
+            if (te.isAbs && !seen.has(te.exercise.id)) {
+              seen.add(te.exercise.id)
+              opts.push({ id: te.exercise.id, name: te.exercise.name, schedaName: t.name })
             }
-          }
+          })
         })
         setAbsOptions(opts)
       } catch {}
@@ -611,7 +608,7 @@ export default function TrainingDiaryPage() {
   const hasAny = schedaInfo || Object.keys(extraGrouped).length > 0 || tennisActive
 
   const allExercisesForPicker: { id: string; name: string }[] = [
-    ...(schedaInfo?.exercises.slice(0, -1).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
+    ...(schedaInfo?.exercises.filter(te => !te.isAbs).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
     ...absExIds.map(({ id }) => ({ id, name: absOptions.find(o => o.id === id)?.name ?? id })),
     ...Object.entries(extraGrouped).map(([eId, { name }]) => ({ id: eId, name })),
   ]
@@ -666,7 +663,7 @@ export default function TrainingDiaryPage() {
       )}
 
       {/* Scheda exercises */}
-      {schedaInfo && schedaInfo.exercises.slice(0, -1).map((te) => {
+      {schedaInfo && schedaInfo.exercises.filter(te => !te.isAbs).map((te) => {
         const exId = te.exercise.id
         const exSets  = workoutSets
           .filter(s => s.exerciseId === exId)

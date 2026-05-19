@@ -16,6 +16,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
       return NextResponse.json({ ok: true })
     }
+    if (body.action === 'toggleAbs') {
+      await pool.query(`UPDATE "WorkoutTemplateExercise" SET "isAbs" = NOT "isAbs" WHERE id=$1`, [id])
+      return NextResponse.json({ ok: true })
+    }
     const { sets, reps, restSeconds, noteScheda, notePersonali } = body
     await pool.query(
       `UPDATE "WorkoutTemplateExercise" SET sets=$1,reps=$2,"restSeconds"=$3,"noteScheda"=$4,"notePersonali"=$5 WHERE id=$6`,
