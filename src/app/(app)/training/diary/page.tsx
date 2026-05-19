@@ -743,39 +743,27 @@ export default function TrainingDiaryPage() {
 
                 {/* Add set form */}
                 {addOpen && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
-                        className="py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
-                        style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
-                        <Flame size={12} /> Risc.
-                      </button>
-                      <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
-                        className="py-2 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
-                        style={{ backgroundColor: CT }}>
-                        {formSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Serie
-                      </button>
+                  <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 flex items-center gap-2">
+                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0">
+                      <button className="px-2 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-bold"
+                        onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
+                      <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{formReps || '—'}</span>
+                      <button className="px-2 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-bold"
+                        onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
-                        <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                          <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                            onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
-                          <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
-                            {formReps || '—'}
-                          </span>
-                          <button className="px-3 py-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                            onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
-                        <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                          placeholder="—"
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
-                      </div>
-                    </div>
+                    <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
+                      placeholder="kg"
+                      className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 shrink-0" />
+                    <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
+                      className="py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40 shrink-0"
+                      style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
+                      <Flame size={11} /> Risc.
+                    </button>
+                    <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
+                      className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                      style={{ backgroundColor: CT }}>
+                      {formSaving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Serie
+                    </button>
                   </div>
                 )}
 
