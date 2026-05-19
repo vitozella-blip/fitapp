@@ -553,6 +553,64 @@ export default function TrainingDiaryPage() {
         let workIdx = 0, warmIdx = 0
         const rest = fmtRest(te.restSeconds)
 
+        const historyView = (() => {
+          if (historyExId !== te.id) return null
+          if (historyLoading) return (
+            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1 flex justify-center py-2">
+              <Loader2 size={12} className="animate-spin" style={{ color: CT }} />
+            </div>
+          )
+          const currWarm = exSets.filter(s => warmups.has(s.id))
+          const currWork = exSets.filter(s => !warmups.has(s.id))
+          const hist = historyData?.sets ?? []
+          const hWarm = hist.slice(0, currWarm.length)
+          const hWork = hist.slice(currWarm.length)
+          const maxW = Math.max(currWarm.length, hWarm.length)
+          const maxS = Math.max(currWork.length, hWork.length)
+          if (maxW === 0 && maxS === 0 && !historyData) return (
+            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
+              <p className="text-[11px] text-gray-400 text-center py-1">Nessuna sessione precedente</p>
+            </div>
+          )
+          const fmt = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? '—'}`
+          const prevLabel = historyData
+            ? new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+            : '—'
+          const currLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+          return (
+            <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
+              <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 mb-1 items-center">
+                <div />
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{prevLabel}</p>
+                <div className="self-stretch bg-gray-200 dark:bg-gray-700" />
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{currLabel}</p>
+              </div>
+              {Array.from({ length: maxW }, (_, i) => {
+                const hS = hWarm[i]; const cS = currWarm[i]
+                return (
+                  <div key={`R${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-1 items-center">
+                    <span className="text-[10px] font-bold text-center" style={{ color: C_WARM }}>R{i+1}</span>
+                    <span className="text-[11px] font-semibold text-center" style={{ color: hS ? CT : '#9ca3af' }}>{hS ? fmt(hS) : '—'}</span>
+                    <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
+                    <span className="text-[11px] font-semibold text-center" style={{ color: cS ? '#6b7280' : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                  </div>
+                )
+              })}
+              {Array.from({ length: maxS }, (_, i) => {
+                const hS = hWork[i]; const cS = currWork[i]
+                return (
+                  <div key={`S${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-1 items-center">
+                    <span className="text-[10px] font-bold text-center" style={{ color: CT }}>S{i+1}</span>
+                    <span className="text-[11px] font-semibold text-center" style={{ color: hS ? CT : '#9ca3af' }}>{hS ? fmt(hS) : '—'}</span>
+                    <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
+                    <span className="text-[11px] font-semibold text-center" style={{ color: cS ? '#6b7280' : '#9ca3af' }}>{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()
+
         return (
           <div key={te.id}
             className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
@@ -683,52 +741,6 @@ export default function TrainingDiaryPage() {
                   </div>
                 )}
 
-                {/* Previous session history — side-by-side comparison */}
-                {historyExId === te.id && (
-                  <div className="mx-4 mb-2 rounded-xl px-3 py-2" style={{ backgroundColor: CT + '08', border: `1px solid ${CT}25` }}>
-                    {historyLoading ? (
-                      <div className="flex justify-center py-1"><Loader2 size={12} className="animate-spin" style={{ color: CT }} /></div>
-                    ) : !historyData ? (
-                      <p className="text-[11px] text-gray-400 text-center py-0.5">Nessuna sessione precedente</p>
-                    ) : (() => {
-                      const currWarm = exSets.filter(s => warmups.has(s.id))
-                      const currWork  = exSets.filter(s => !warmups.has(s.id))
-                      const hist      = historyData.sets
-                      const hWarm     = hist.slice(0, currWarm.length)
-                      const hWork     = hist.slice(currWarm.length)
-                      const maxW = Math.max(currWarm.length, hWarm.length)
-                      const maxS = Math.max(currWork.length, hWork.length)
-                      type Row = { label: string; prev: string | null; curr: string | null; isWarm: boolean }
-                      const rows: Row[] = []
-                      const fmt = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? '—'}`
-                      for (let i = 0; i < maxW; i++) rows.push({ label: `R${i+1}`, prev: hWarm[i] ? fmt(hWarm[i]) : null, curr: currWarm[i] ? fmt({ reps: currWarm[i].reps, weight: currWarm[i].weight }) : null, isWarm: true })
-                      for (let i = 0; i < maxS; i++) rows.push({ label: `S${i+1}`, prev: hWork[i] ? fmt(hWork[i]) : null, curr: currWork[i] ? fmt({ reps: currWork[i].reps, weight: currWork[i].weight }) : null, isWarm: false })
-                      const prevLabel = new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
-                      const currLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
-                      return (
-                        <div>
-                          {/* Date headers */}
-                          <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-1 mb-1.5 items-center">
-                            <div />
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{prevLabel}</p>
-                            <div className="self-stretch bg-gray-200 dark:bg-gray-700" />
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{currLabel}</p>
-                          </div>
-                          {/* Rows */}
-                          {rows.map(r => (
-                            <div key={r.label} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-1 py-0.5 items-center">
-                              <span className="text-[10px] font-bold text-center" style={{ color: r.isWarm ? C_WARM : CT }}>{r.label}</span>
-                              <span className="text-[11px] font-semibold text-center" style={{ color: r.prev ? CT : '#9ca3af' }}>{r.prev ?? '—'}</span>
-                              <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                              <span className="text-[11px] font-semibold text-center" style={{ color: r.curr ? '#6b7280' : '#9ca3af' }}>{r.curr ?? '—'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-
                 {/* Add set form */}
                 {addOpen && (
                   <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-2">
@@ -767,8 +779,8 @@ export default function TrainingDiaryPage() {
                   </div>
                 )}
 
-                {/* Logged sets */}
-                {exSets.length > 0 && (
+                {/* Logged sets — comparison view when history active, normal list otherwise */}
+                {historyView ?? (exSets.length > 0 ? (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
                     {exSets.map(s => {
                       const isW  = warmups.has(s.id)
@@ -847,7 +859,7 @@ export default function TrainingDiaryPage() {
                       )
                     })}
                   </div>
-                )}
+                ) : null)}
               </div>
             )}
 
