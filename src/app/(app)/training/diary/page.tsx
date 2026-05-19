@@ -669,7 +669,7 @@ export default function TrainingDiaryPage() {
             const aW = warmups.has(a.id) ? 0 : 1
             const bW = warmups.has(b.id) ? 0 : 1
             if (aW !== bW) return aW - bW
-            return Number(a.id) - Number(b.id)
+            return a.setNumber - b.setNumber
           })
         const compKey = `${selectedDate}_${exId}`
         const isDone  = completed.has(compKey)
