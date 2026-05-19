@@ -683,33 +683,49 @@ export default function TrainingDiaryPage() {
                   </div>
                 )}
 
-                {/* Previous session history */}
+                {/* Previous session history — side-by-side comparison */}
                 {historyExId === te.id && (
-                  <div className="mx-4 mb-2 rounded-xl px-3 py-2 text-[11px]" style={{ backgroundColor: CT + '10', border: `1px solid ${CT}30` }}>
+                  <div className="mx-4 mb-2 rounded-xl px-3 py-2" style={{ backgroundColor: CT + '08', border: `1px solid ${CT}25` }}>
                     {historyLoading ? (
                       <div className="flex justify-center py-1"><Loader2 size={12} className="animate-spin" style={{ color: CT }} /></div>
-                    ) : historyData ? (
-                      <>
-                        <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: CT }}>
-                          {new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                        <div className="space-y-1">
-                          {historyData.sets.map((s, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: CT + '18', color: CT }}>
-                                {i + 1}
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300">
-                                {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                              </span>
+                    ) : !historyData ? (
+                      <p className="text-[11px] text-gray-400 text-center py-0.5">Nessuna sessione precedente</p>
+                    ) : (() => {
+                      const currWarm = exSets.filter(s => warmups.has(s.id))
+                      const currWork  = exSets.filter(s => !warmups.has(s.id))
+                      const hist      = historyData.sets
+                      const hWarm     = hist.slice(0, currWarm.length)
+                      const hWork     = hist.slice(currWarm.length)
+                      const maxW = Math.max(currWarm.length, hWarm.length)
+                      const maxS = Math.max(currWork.length, hWork.length)
+                      type Row = { label: string; prev: string | null; curr: string | null; isWarm: boolean }
+                      const rows: Row[] = []
+                      const fmt = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? '—'}`
+                      for (let i = 0; i < maxW; i++) rows.push({ label: `R${i+1}`, prev: hWarm[i] ? fmt(hWarm[i]) : null, curr: currWarm[i] ? fmt({ reps: currWarm[i].reps, weight: currWarm[i].weight }) : null, isWarm: true })
+                      for (let i = 0; i < maxS; i++) rows.push({ label: `S${i+1}`, prev: hWork[i] ? fmt(hWork[i]) : null, curr: currWork[i] ? fmt({ reps: currWork[i].reps, weight: currWork[i].weight }) : null, isWarm: false })
+                      const prevLabel = new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+                      const currLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+                      return (
+                        <div>
+                          {/* Date headers */}
+                          <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-1 mb-1.5 items-center">
+                            <div />
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{prevLabel}</p>
+                            <div className="self-stretch bg-gray-200 dark:bg-gray-700" />
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{currLabel}</p>
+                          </div>
+                          {/* Rows */}
+                          {rows.map(r => (
+                            <div key={r.label} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-1 py-0.5 items-center">
+                              <span className="text-[10px] font-bold text-center" style={{ color: r.isWarm ? C_WARM : CT }}>{r.label}</span>
+                              <span className="text-[11px] font-semibold text-center" style={{ color: r.prev ? CT : '#9ca3af' }}>{r.prev ?? '—'}</span>
+                              <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
+                              <span className="text-[11px] font-semibold text-center" style={{ color: r.curr ? '#6b7280' : '#9ca3af' }}>{r.curr ?? '—'}</span>
                             </div>
                           ))}
                         </div>
-                      </>
-                    ) : (
-                      <p className="text-gray-400 text-center py-0.5">Nessuna sessione precedente</p>
-                    )}
+                      )
+                    })()}
                   </div>
                 )}
 
