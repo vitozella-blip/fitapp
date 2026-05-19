@@ -612,9 +612,9 @@ export default function TrainingDiaryPage() {
                     <span className="text-[10px] font-bold text-center" style={{ color: C_WARM }}>R{i+1}</span>
                     <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                    <div className="flex items-center" style={{ color: cS ? CT : '#9ca3af' }}>
-                      <span className="text-[9px] font-bold w-5 shrink-0">{cTag ?? ''}</span>
-                      <span className="flex-1 text-right text-[12px] font-bold">{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                    <div className="relative flex items-center justify-center" style={{ color: cS ? CT : '#9ca3af' }}>
+                      {cTag && <span className="absolute left-0 text-[9px] font-bold">{cTag}</span>}
+                      <span className="text-[12px] font-bold">{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
                     </div>
                   </div>
                 )
@@ -628,9 +628,9 @@ export default function TrainingDiaryPage() {
                     <span className="text-[10px] font-bold text-center" style={{ color: CT }}>S{i+1}</span>
                     <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
-                    <div className="flex items-center" style={{ color: cS ? CT : '#9ca3af' }}>
-                      <span className="text-[9px] font-bold w-5 shrink-0">{cTag ?? ''}</span>
-                      <span className="flex-1 text-right text-[12px] font-bold">{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                    <div className="relative flex items-center justify-center" style={{ color: cS ? CT : '#9ca3af' }}>
+                      {cTag && <span className="absolute left-0 text-[9px] font-bold">{cTag}</span>}
+                      <span className="text-[12px] font-bold">{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
                     </div>
                   </div>
                 )
