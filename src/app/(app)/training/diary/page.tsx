@@ -274,27 +274,35 @@ export default function TrainingDiaryPage() {
     })
   }
   function toggleAbsExercise(id: string, type: 'SS' | 'JS') {
-    const existing = absExIds.find(x => x.id === id)
-    let next: AbsSel[]
-    if (existing?.type === type) {
-      next = absExIds.filter(x => x.id !== id)
-    } else if (existing) {
-      next = absExIds.map(x => x.id === id ? { ...x, type } : x)
-    } else {
-      next = [...absExIds, { id, type }]
-    }
-    setAbsExIds(next)
-    if (schedaInfo) {
-      try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
-    }
+    setAbsExIds(prev => {
+      const existing = prev.find(x => x.id === id)
+      const next = existing?.type === type
+        ? prev.filter(x => x.id !== id)
+        : existing
+          ? prev.map(x => x.id === id ? { ...x, type } : x)
+          : [...prev, { id, type }]
+      if (schedaInfo) {
+        try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
+      }
+      return next
+    })
+  }
+
+  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
+  const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
+  const [absPickerOpen, setAbsPickerOpen] = useState(false)
+
+  // Sync ABS pairs whenever selection or options change
+  useEffect(() => {
+    if (absOptions.length === 0) return
     const absOptionIds = new Set(absOptions.map(o => o.id))
     setPairs(prev => {
       const cleaned: Record<string, ExPair> = {}
       for (const [k, v] of Object.entries(prev)) {
         if (!absOptionIds.has(k) && !absOptionIds.has(v.partnerId)) cleaned[k] = v
       }
-      const ssSels = next.filter(x => x.type === 'SS')
-      const jsSels = next.filter(x => x.type === 'JS')
+      const ssSels = absExIds.filter(x => x.type === 'SS')
+      const jsSels = absExIds.filter(x => x.type === 'JS')
       for (let i = 0; i + 1 < ssSels.length; i += 2) {
         const a = ssSels[i], b = ssSels[i + 1]
         const aName = absOptions.find(o => o.id === a.id)?.name ?? a.id
@@ -311,11 +319,8 @@ export default function TrainingDiaryPage() {
       }
       return cleaned
     })
-  }
-
-  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
-  const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
-  const [absPickerOpen, setAbsPickerOpen] = useState(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [absExIds, absOptions])
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
   const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
