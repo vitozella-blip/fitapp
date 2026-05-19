@@ -5,6 +5,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { DateNav } from '@/components/shared/DateNav'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
+import { useDateSwipe } from '@/hooks/useDateSwipe'
 
 const C = {
   kcal:     '#6abf6a',
@@ -107,8 +108,10 @@ export default function DashboardPage() {
     </div>
   )
 
+  const swipe = useDateSwipe(selectedDate, setSelectedDate)
+
   return (
-    <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]">
+    <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]" {...swipe}>
 
       <div className="shrink-0">
         <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} />

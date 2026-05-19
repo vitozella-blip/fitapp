@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { cn } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
+import { useDateSwipe } from '@/hooks/useDateSwipe'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
@@ -474,9 +475,10 @@ export default function TrainingDiaryPage() {
 
   const schedaColor = getSchedaColor(selectedDate) ?? CT
   const hasAny = schedaInfo || Object.keys(extraGrouped).length > 0 || tennisActive
+  const swipe = useDateSwipe(selectedDate, handleDateChange)
 
   return (
-    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
+    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none" {...swipe}>
       <PageHeader title="Diario Workout" icon={Dumbbell} accent="training"
         action={
           <div className="flex items-center gap-1.5">
