@@ -272,6 +272,8 @@ export default function TrainingDiaryPage() {
   const [workout,    setWorkout]    = useState<Workout | null>(null)
   const [schedaInfo, setSchedaInfo] = useState<SchedaInfo | null>(null)
   const [showPicker, setShowPicker] = useState(false)
+  const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
+  const [schedaCollapsed, setSchedaCollapsed] = useState(false)
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
   const [completed,  setCompleted]  = useState<Set<string>>(new Set())
   const [tennisLoading, setTennisLoading] = useState(false)
@@ -453,6 +455,7 @@ export default function TrainingDiaryPage() {
     localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify({ templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder }))
     const merged = await mergeWeekParams(t.exercises, weekId)
     setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged })
+    setSchedaCollapsed(false)
     setShowPicker(false)
     bumpWorkoutVersion()
   }
@@ -657,15 +660,10 @@ export default function TrainingDiaryPage() {
       <PageHeader title="Diario Workout" icon={Dumbbell} accent="training"
         action={
           <div className="flex items-center gap-1.5">
-            <button onClick={toggleTennis} disabled={tennisLoading}
-              className={cn('px-3 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50', tennisActive ? 'text-white' : '')}
-              style={tennisActive ? { backgroundColor: C_TENNIS } : { backgroundColor: C_TENNIS + '22', color: '#5a8a5a' }}>
-              Tennis
-            </button>
-            <button onClick={() => setShowPicker(true)}
+            <button onClick={() => setShowAllenamentoPicker(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold"
               style={{ backgroundColor: CT }}>
-              <Plus size={15} /> Workout
+              <Plus size={15} /> Allenamento
             </button>
           </div>
         }
@@ -682,9 +680,23 @@ export default function TrainingDiaryPage() {
         </div>
       )}
 
-      {/* Scheda header band */}
+      {/* Tennis pill */}
+      {tennisActive && (
+        <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2" style={{ backgroundColor: C_TENNIS + '22' }}>
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
+          <span className="text-sm font-bold truncate flex-1" style={{ color: '#5a8a5a' }}>Tennis</span>
+          <button onClick={toggleTennis} disabled={tennisLoading}
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0 disabled:opacity-50">
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Scheda header band (collapsible) */}
       {schedaInfo && (
-        <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2" style={{ backgroundColor: schedaColor + '22' }}>
+        <button onClick={() => setSchedaCollapsed(c => !c)}
+          className="w-full px-4 py-2.5 rounded-2xl flex items-center gap-2 text-left"
+          style={{ backgroundColor: schedaColor + '22' }}>
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
           <span className="text-sm font-bold truncate flex-1" style={{ color: schedaColor }}>{schedaInfo.name}</span>
           {schedaInfo.weekName && (
@@ -692,15 +704,18 @@ export default function TrainingDiaryPage() {
               {schedaInfo.weekName}
             </span>
           )}
-          <button onClick={removeScheda}
+          <ChevronDown size={14} className={cn('shrink-0 transition-transform', schedaCollapsed && 'rotate-180')}
+            style={{ color: schedaColor + 'cc' }} />
+          <span onClick={e => { e.stopPropagation(); removeScheda() }}
+            role="button"
             className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
             <X size={13} />
-          </button>
-        </div>
+          </span>
+        </button>
       )}
 
       {/* Scheda exercises */}
-      {schedaInfo && (() => {
+      {schedaInfo && !schedaCollapsed && (() => {
         const filteredExes = schedaInfo.exercises.filter(te => !te.isAbs)
         const renderCard = (te: TemplateEx) => {
         const exId = te.exercise.id
@@ -1340,6 +1355,39 @@ export default function TrainingDiaryPage() {
           </div>
         )
       })}
+
+      {/* Allenamento type picker */}
+      {showAllenamentoPicker && (
+        <div className="fixed inset-0 z-40 flex items-end" onClick={() => setShowAllenamentoPicker(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-t-3xl w-full shadow-xl px-5 py-6"
+            onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700 mx-auto mb-5" />
+            <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Aggiungi allenamento</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { toggleTennis(); setShowAllenamentoPicker(false) }}
+                className={cn('flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors',
+                  tennisActive ? 'border-[#a8d8a8]' : 'border-gray-200 dark:border-gray-700')}
+                style={tennisActive ? { backgroundColor: C_TENNIS + '22' } : {}}>
+                <span className="text-2xl">🎾</span>
+                <span className="text-sm font-bold" style={{ color: tennisActive ? '#5a8a5a' : undefined }}>Tennis</span>
+                {tennisActive && <span className="text-[10px] text-green-600 font-semibold">Attivo · rimuovi</span>}
+              </button>
+              <button
+                onClick={() => { setShowPicker(true); setShowAllenamentoPicker(false) }}
+                className={cn('flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors',
+                  schedaInfo ? '' : 'border-gray-200 dark:border-gray-700')}
+                style={schedaInfo ? { borderColor: schedaColor, backgroundColor: schedaColor + '18' } : {}}>
+                <Dumbbell size={24} style={{ color: schedaInfo ? schedaColor : '#9ca3af' }} />
+                <span className="text-sm font-bold" style={{ color: schedaInfo ? schedaColor : undefined }}>Palestra</span>
+                {schedaInfo
+                  ? <span className="text-[10px] font-semibold truncate px-2" style={{ color: schedaColor + 'bb' }}>{schedaInfo.name}</span>
+                  : <span className="text-[10px] text-gray-400">Scegli scheda</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Scheda + week picker */}
       {showPicker && (
