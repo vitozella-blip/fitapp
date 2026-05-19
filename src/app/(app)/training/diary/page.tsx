@@ -1052,7 +1052,7 @@ export default function TrainingDiaryPage() {
                               </div>
                               {labelMenuSetId === s.id && (
                                 <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                  {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR', 'WD'].map(opt => {
+                                  {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
                                     const active = setTags[s.id] === opt
                                     return (
                                       <button key={opt}
@@ -1252,7 +1252,7 @@ export default function TrainingDiaryPage() {
                                     </div>
                                     {labelMenuSetId === s.id && (
                                       <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                        {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR', 'WD'].map(opt => {
+                                        {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
                                           const active = setTags[s.id] === opt
                                           return (
                                             <button key={opt}
@@ -1460,7 +1460,7 @@ export default function TrainingDiaryPage() {
                           </div>
                           {labelMenuSetId === s.id && (
                             <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                              {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR', 'WD'].map(opt => {
+                              {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
                                 const active = setTags[s.id] === opt
                                 return (
                                   <button key={opt}
