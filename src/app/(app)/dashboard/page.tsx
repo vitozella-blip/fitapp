@@ -185,9 +185,9 @@ export default function DashboardPage() {
               const free = m?.isFree ?? false
               return (
                 <div key={name} className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700">
                     <span style={{ flexShrink: 0 }}>{renderIcon('', 20)}</span>
-                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{label}</span>
+                    <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">{label}</span>
                   </div>
                   <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
                     {free ? (
@@ -236,9 +236,9 @@ export default function DashboardPage() {
               <div className="h-full flex flex-col">
                 {/* Slot 1 — Tennis (aligns with Colazione) */}
                 <div className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700">
                     <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
-                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">Tennis</span>
+                    <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">Tennis</span>
                   </div>
                   <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
                     {tennisMeta?.type || tennisMeta?.hours ? (
@@ -253,9 +253,9 @@ export default function DashboardPage() {
                 </div>
                 {/* Slot 2 — Workout (aligns with Sp. Mattina) */}
                 <div className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700">
                     <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
-                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{pillLabel}</span>
+                    <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">{pillLabel}</span>
                   </div>
                   <div className="mt-0.5 px-0.5 leading-tight flex-1">
                     {schedaInfo && (
@@ -278,9 +278,9 @@ export default function DashboardPage() {
               </div>
             ) : data?.workout.hasTennis ? (
               <>
-                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
+                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700 mb-0.5">
                   <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
-                  <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">Tennis</span>
+                  <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">Tennis</span>
                 </div>
                 <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
                   {tennisMeta?.type || tennisMeta?.hours ? (
@@ -295,9 +295,9 @@ export default function DashboardPage() {
               </>
             ) : (data?.workout.exists || !!schedaInfo) ? (
               <>
-                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
+                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700 mb-0.5">
                   <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
-                  <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{pillLabel}</span>
+                  <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">{pillLabel}</span>
                 </div>
                 <div className="mt-0.5 px-0.5 leading-tight">
                   {schedaInfo && (
