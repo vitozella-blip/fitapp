@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
 type Category = { id: string; name: string }
 type CartItem = { food: Food; qty: string }
-const FREE_MEAL_ALLOWED = ['Pranzo', 'Cena']
 type Props = { meal: string; date: string; onClose: () => void; onAdded: () => void; isFree?: boolean; onFreeMeal?: () => void }
 
 const calcMacro = (val: number, qty: string) => Math.round((val * Number(qty)) / 100)
@@ -144,7 +143,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
                 )}>
                 <Star size={16} fill={favFilter ? 'currentColor' : 'none'} />
               </button>
-              {FREE_MEAL_ALLOWED.includes(meal) && onFreeMeal && (
+              {onFreeMeal && (
                 <button
                   onClick={() => { onFreeMeal(); onClose() }}
                   aria-label="Pasto libero"

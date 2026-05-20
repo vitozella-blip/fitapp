@@ -17,7 +17,6 @@ const C = {
 } as const
 
 const MEALS = ['Colazione', 'Spuntino mattina', 'Pranzo', 'Spuntino pomeriggio', 'Cena']
-const FREE_MEAL_ALLOWED = ['Pranzo', 'Cena']
 
 type Entry = {
   id: string; meal: string; quantity: number
@@ -139,7 +138,6 @@ export default function FoodDiaryPage() {
         const mealEntries = entries.filter(e => e.meal === meal)
         const isFree = freeMeals.has(meal)
         const mealCal = mealEntries.reduce((s, e) => s + calc(e.food.calories, e.quantity), 0)
-        const canToggleFree = FREE_MEAL_ALLOWED.includes(meal)
 
         return (
           <div key={meal} className={cn(
@@ -154,10 +152,7 @@ export default function FoodDiaryPage() {
                   {meal}
                 </p>
                 {isFree && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                    style={{ backgroundColor: C.carbs + '30', color: C.carbs }}>
-                    LIBERO
-                  </span>
+                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>cheat meal</p>
                 )}
                 {!isFree && mealCal > 0 && (
                   <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>{mealCal} kcal</p>
@@ -175,7 +170,7 @@ export default function FoodDiaryPage() {
             {isFree ? (
               <div className="px-4 py-2.5 flex items-center gap-2">
                 <span className="text-base">🍣</span>
-                <p className="text-sm font-medium" style={{ color: C.carbs }}>Pasto libero</p>
+                <p className="text-sm font-medium" style={{ color: C.carbs }}>Cheat meal</p>
               </div>
             ) : mealEntries.length === 0 ? (
               <p className="text-xs text-gray-400 px-4 py-2.5">Nessun alimento registrato</p>
