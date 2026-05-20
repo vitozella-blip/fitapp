@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, BookOpen, PartyPopper } from 'lucide-react'
+import { Plus, Trash2, BookOpen } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -164,15 +164,6 @@ export default function FoodDiaryPage() {
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                {canToggleFree && (
-                  <button onClick={() => toggleFreeMeal(meal)}
-                    className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                      isFree ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'
-                    )}
-                    style={isFree ? { backgroundColor: C.carbs + '18' } : {}}>
-                    <PartyPopper size={13} />
-                  </button>
-                )}
                 <button onClick={() => setModal(meal)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white"
                   style={{ backgroundColor: C.carbs + 'cc' }}>
@@ -217,7 +208,8 @@ export default function FoodDiaryPage() {
       })}
 
       {modal && (
-        <AddFoodModal meal={modal} date={selectedDate} onClose={() => setModal(null)} onAdded={fetchEntries} />
+        <AddFoodModal meal={modal} date={selectedDate} onClose={() => setModal(null)} onAdded={fetchEntries}
+          isFree={freeMeals.has(modal)} onFreeMeal={() => toggleFreeMeal(modal)} />
       )}
     </div>
   )

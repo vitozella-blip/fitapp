@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Search, X, Plus, Loader2, Star, ChevronDown, Trash2 } from 'lucide-react'
+import { Search, X, Plus, Loader2, Star, ChevronDown, Trash2, PartyPopper } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -8,11 +8,12 @@ import { cn } from '@/lib/utils'
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
 type Category = { id: string; name: string }
 type CartItem = { food: Food; qty: string }
-type Props = { meal: string; date: string; onClose: () => void; onAdded: () => void }
+const FREE_MEAL_ALLOWED = ['Pranzo', 'Cena']
+type Props = { meal: string; date: string; onClose: () => void; onAdded: () => void; isFree?: boolean; onFreeMeal?: () => void }
 
 const calcMacro = (val: number, qty: string) => Math.round((val * Number(qty)) / 100)
 
-export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
+export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal }: Props) {
   const userId = useAppStore((s) => s.userId)
   const router = useRouter()
   const [q, setQ] = useState('')
@@ -143,6 +144,19 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
                 )}>
                 <Star size={16} fill={favFilter ? 'currentColor' : 'none'} />
               </button>
+              {FREE_MEAL_ALLOWED.includes(meal) && onFreeMeal && (
+                <button
+                  onClick={() => { onFreeMeal(); onClose() }}
+                  aria-label="Pasto libero"
+                  className={cn(
+                    'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors',
+                    isFree
+                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-400'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
+                  )}>
+                  <PartyPopper size={16} />
+                </button>
+              )}
             </div>
 
             {categories.length > 0 && (
