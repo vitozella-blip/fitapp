@@ -32,9 +32,12 @@ export default function FoodDiaryPage() {
   const [freeMeals, setFreeMeals] = useState<Set<string>>(new Set())
 
   const fetchEntries = useCallback(async () => {
-    const r = await fetch(`/api/diary?userId=${userId}&date=${selectedDate}`)
-    setEntries(await r.json())
-    setFreeMeals(new Set())
+    const [diary, freeList] = await Promise.all([
+      fetch(`/api/diary?userId=${userId}&date=${selectedDate}`).then(r => r.json()),
+      fetch(`/api/freemeals?userId=${userId}&date=${selectedDate}`).then(r => r.json()).catch(() => []),
+    ])
+    setEntries(diary)
+    setFreeMeals(new Set(Array.isArray(freeList) ? freeList : []))
   }, [userId, selectedDate])
 
   useEffect(() => { fetchEntries() }, [fetchEntries])
@@ -60,6 +63,11 @@ export default function FoodDiaryPage() {
       next.has(meal) ? next.delete(meal) : next.add(meal)
       return next
     })
+    fetch('/api/freemeals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, date: selectedDate, meal }),
+    }).catch(() => {})
   }
 
   const activeMealEntries = entries.filter(e => !freeMeals.has(e.meal))
@@ -170,7 +178,7 @@ export default function FoodDiaryPage() {
             {isFree ? (
               <div className="px-4 py-2.5 flex items-center gap-2">
                 <p className="text-sm font-medium" style={{ color: C.carbs }}>Cheat meal</p>
-                <span className="text-base">🍣</span>
+                <span className="text-base">🍟</span>
               </div>
             ) : mealEntries.length === 0 ? (
               <p className="text-xs text-gray-400 px-4 py-2.5">Nessun alimento registrato</p>
