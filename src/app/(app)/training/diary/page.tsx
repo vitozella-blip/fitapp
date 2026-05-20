@@ -153,7 +153,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl w-full max-h-[75vh] flex flex-col shadow-xl"
         onClick={e => e.stopPropagation()}>
 
@@ -1676,8 +1676,7 @@ export default function TrainingDiaryPage() {
 
       {/* Allenamento type picker */}
       {showAllenamentoPicker && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-sm bg-black/40 px-6"
-          onClick={() => setShowAllenamentoPicker(false)}>
+        <div className="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-sm bg-black/40 px-6">
           <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm shadow-2xl px-5 py-6"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">

@@ -96,7 +96,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   const showEmpty = !selected && searched && results.length === 0 && (q.length >= 2 || hasFilter)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 px-4">
       <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
