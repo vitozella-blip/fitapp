@@ -11,16 +11,8 @@ import { cn } from '@/lib/utils'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc', bar: '#f0aa78' }
 
-const WEEK_OPTIONS = [
-  { label: 'Tutto', value: null },
-  { label: '4 sett', value: 4 },
-  { label: '8 sett', value: 8 },
-  { label: '12 sett', value: 12 },
-  { label: '26 sett', value: 26 },
-  { label: '52 sett', value: 52 },
-]
-
 type WorkoutTemplate = { id: string; name: string; order: number; planName: string; planId: string }
+type WorkoutWeek     = { id: string; name: string; order: number }
 
 type ExerciseSummary = {
   id: string; name: string; muscleGroup?: string
@@ -81,7 +73,8 @@ export default function ProgressiPage() {
   const [exercises, setExercises]     = useState<ExerciseSummary[]>([])
   const [selEx, setSelEx]             = useState<ExerciseSummary | null>(null)
   const [q, setQ]                     = useState('')
-  const [weeks, setWeeks]             = useState<number | null>(null)
+  const [routineWeeks, setRoutineWeeks] = useState<WorkoutWeek[]>([])
+  const [selWeekIds, setSelWeekIds]   = useState<Set<string>>(new Set())
   const [sessions, setSessions]       = useState<SessionData[]>([])
   const [loading, setLoading]         = useState(false)
 
@@ -93,33 +86,37 @@ export default function ProgressiPage() {
       .then(data => setTemplates(Array.isArray(data) ? data : []))
   }, [userId])
 
-  // Load exercises when template selected
+  // Load exercises + routine weeks when template selected
   useEffect(() => {
     if (!selTemplate) return
     setLoading(true)
-    fetch(`/api/training/progress?userId=${userId}&templateId=${selTemplate.id}`)
-      .then(r => r.json())
-      .then(data => setExercises(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false))
+    setSelWeekIds(new Set())
+    Promise.all([
+      fetch(`/api/training/progress?userId=${userId}&templateId=${selTemplate.id}`).then(r => r.json()),
+      fetch(`/api/workout-weeks?templateId=${selTemplate.id}`).then(r => r.json()),
+    ]).then(([exData, wkData]) => {
+      setExercises(Array.isArray(exData) ? exData : [])
+      setRoutineWeeks(Array.isArray(wkData) ? wkData : [])
+    }).finally(() => setLoading(false))
   }, [selTemplate, userId])
 
-  // Load sessions when exercise or weeks changes
-  const loadSessions = useCallback(async (ex: ExerciseSummary, w: number | null) => {
+  // Load sessions when exercise or week-filter changes
+  const loadSessions = useCallback(async (ex: ExerciseSummary, weekIds: Set<string>) => {
     setLoading(true)
     const p = new URLSearchParams({ userId, exerciseId: ex.id })
-    if (w) p.set('weeks', String(w))
+    if (weekIds.size > 0) p.set('weekIds', [...weekIds].join(','))
     const data = await fetch(`/api/training/progress?${p}`).then(r => r.json()).catch(() => [])
     setSessions(Array.isArray(data) ? data : [])
     setLoading(false)
   }, [userId])
 
   useEffect(() => {
-    if (selEx) loadSessions(selEx, weeks)
-  }, [selEx, weeks, loadSessions])
+    if (selEx) loadSessions(selEx, selWeekIds)
+  }, [selEx, selWeekIds, loadSessions])
 
   function goBack() {
-    if (step === 'detail')   { setSelEx(null); setStep('exercise') }
-    else if (step === 'exercise') { setSelTemplate(null); setExercises([]); setStep('template') }
+    if (step === 'detail')   { setSelEx(null); setSelWeekIds(new Set()); setStep('exercise') }
+    else if (step === 'exercise') { setSelTemplate(null); setExercises([]); setRoutineWeeks([]); setStep('template') }
     else router.push('/training')
   }
 
@@ -237,17 +234,38 @@ export default function ProgressiPage() {
       {/* ── STEP 2: CHARTS ── */}
       {step === 'detail' && (
         <>
-          {/* Week filter */}
+          {/* Routine filter pills (multi-select) */}
           <div className="flex gap-1.5 flex-wrap">
-            {WEEK_OPTIONS.map(o => (
-              <button key={String(o.value)} onClick={() => setWeeks(o.value)}
-                className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
-                  weeks === o.value ? 'text-white border-transparent' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
-                )}
-                style={weeks === o.value ? { backgroundColor: C.training } : {}}>
-                {o.label}
-              </button>
-            ))}
+            {/* "Tutto" pill — deselects all */}
+            <button
+              onClick={() => setSelWeekIds(new Set())}
+              className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
+                selWeekIds.size === 0
+                  ? 'text-white border-transparent'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
+              )}
+              style={selWeekIds.size === 0 ? { backgroundColor: C.training } : {}}>
+              Tutto
+            </button>
+            {routineWeeks.map(w => {
+              const active = selWeekIds.has(w.id)
+              return (
+                <button key={w.id}
+                  onClick={() => setSelWeekIds(prev => {
+                    const next = new Set(prev)
+                    active ? next.delete(w.id) : next.add(w.id)
+                    return next
+                  })}
+                  className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
+                    active
+                      ? 'text-white border-transparent'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
+                  )}
+                  style={active ? { backgroundColor: C.accent } : {}}>
+                  {w.name}
+                </button>
+              )
+            })}
           </div>
 
           {loading ? (

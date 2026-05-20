@@ -515,7 +515,7 @@ export default function TrainingDiaryPage() {
     setFormSaving(true)
     await fetch('/api/workout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null }),
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null }),
     })
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     const w: Workout = await r.json()
@@ -688,7 +688,7 @@ export default function TrainingDiaryPage() {
       const ex = await findOrCreateTennis()
       await fetch('/api/workout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date: selectedDate, exerciseId: ex.id, sets: 1, reps: 1, weight: null }),
+        body: JSON.stringify({ userId, date: selectedDate, exerciseId: ex.id, sets: 1, reps: 1, weight: null, weekId: schedaInfo?.weekId ?? null }),
       })
     }
     await fetchWorkout(); setTennisLoading(false); bumpWorkoutVersion()

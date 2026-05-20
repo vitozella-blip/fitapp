@@ -34,23 +34,29 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, date, exerciseId, sets, reps, weight } = await req.json()
+  const { userId, date, exerciseId, sets, reps, weight, weekId } = await req.json()
   try {
     await pool.query(
       `INSERT INTO "User" (id, name, "targetCalories", "targetProtein", "targetCarbs", "targetFat", goal, "createdAt") VALUES ($1,'Utente',2000,150,220,65,'maintain',NOW()) ON CONFLICT (id) DO NOTHING`,
       [userId]
     )
+    // Ensure weekId column exists
+    await pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {})
     let workoutId: string
     const { rows: existing } = await pool.query(
       `SELECT id FROM "WorkoutDiary" WHERE "userId" = $1 AND date = $2`, [userId, date]
     )
     if (existing.length > 0) {
       workoutId = existing[0].id
+      // Update weekId if provided and not yet set
+      if (weekId) {
+        await pool.query(`UPDATE "WorkoutDiary" SET "weekId"=$1 WHERE id=$2`, [weekId, workoutId])
+      }
     } else {
       workoutId = crypto.randomUUID()
       await pool.query(
-        `INSERT INTO "WorkoutDiary" (id, "userId", date, "createdAt") VALUES ($1,$2,$3,NOW())`,
-        [workoutId, userId, date]
+        `INSERT INTO "WorkoutDiary" (id, "userId", date, "weekId", "createdAt") VALUES ($1,$2,$3,$4,NOW())`,
+        [workoutId, userId, date, weekId ?? null]
       )
     }
     const { rows: maxRows } = await pool.query(

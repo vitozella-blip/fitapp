@@ -54,9 +54,14 @@ export async function GET(req: NextRequest) {
 
     // ── Time-series for one exercise ─────────────────────────────────────
     if (exerciseId) {
+      const weekIds = req.nextUrl.searchParams.get('weekIds')
       const params: unknown[] = [userId, exerciseId]
       let dateFilter = ''
-      if (weeks) {
+      if (weekIds) {
+        const ids = weekIds.split(',').filter(Boolean)
+        dateFilter = `AND w."weekId" = ANY($3::text[])`
+        params.push(ids)
+      } else if (weeks) {
         dateFilter = `AND w.date >= (CURRENT_DATE - ($3 || ' weeks')::interval)::text`
         params.push(weeks)
       }
