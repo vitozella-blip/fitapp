@@ -28,7 +28,7 @@ type Plan       = { id: string; name: string; isActive?: boolean }
 type Week       = { id: string; name: string; order: number }
 type WeekParamRow = { weekId: string; templateExId: string; sets: number; reps: string | null; restSeconds: number | null }
 type ExPair  = { partnerId: string; partnerName: string; type: 'SS' | 'JS' }
-type AbsSel  = { id: string; type: 'SS' | 'JS' } // kept for localStorage back-compat
+type AbsSel  = { id: string; type: 'SS' | 'JS' }
 
 function loadSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set()
