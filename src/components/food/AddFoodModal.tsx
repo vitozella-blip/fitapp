@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Search, X, Plus, Loader2, Star, ChevronDown, Trash2, PartyPopper } from 'lucide-react'
+import { Search, X, Plus, Loader2, Star, ChevronDown, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -153,7 +153,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
                       ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-400'
                       : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
                   )}>
-                  <PartyPopper size={16} />
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>🍟</span>
                 </button>
               )}
             </div>
