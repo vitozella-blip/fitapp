@@ -146,20 +146,21 @@ export default function FoodDiaryPage() {
             'bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
             isFree ? 'border-amber-100 dark:border-amber-900/50' : 'border-gray-100 dark:border-gray-800'
           )}>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800"
+              style={{ backgroundColor: C.carbs + '18' }}>
               <div className="flex items-center gap-2 min-w-0">
-                <p className={cn('font-semibold text-sm truncate', isFree ? '' : 'text-gray-900 dark:text-gray-100')}
-                  style={isFree ? { color: C.carbs } : {}}>
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C.carbs }} />
+                <p className="font-bold text-sm truncate uppercase" style={{ color: C.carbs }}>
                   {meal}
                 </p>
                 {isFree && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                    style={{ backgroundColor: C.carbs + '18', color: C.carbs }}>
+                    style={{ backgroundColor: C.carbs + '30', color: C.carbs }}>
                     LIBERO
                   </span>
                 )}
                 {!isFree && mealCal > 0 && (
-                  <p className="text-xs text-gray-400 shrink-0">{mealCal} kcal</p>
+                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>{mealCal} kcal</p>
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">

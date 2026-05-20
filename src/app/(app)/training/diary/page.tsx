@@ -10,7 +10,7 @@ import { useDateSwipe } from '@/hooks/useDateSwipe'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
-const C_TENNIS      = '#a8d8a8'
+const C_TENNIS      = '#6aaa6a'
 const TENNIS_NAME   = 'Tennis'
 const SCHEDA_COLORS = ['#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#e8a5a5']
 const WARMUP_KEY    = 'workout_warmup_v1'
@@ -701,12 +701,12 @@ export default function TrainingDiaryPage() {
 
       {/* Tennis pill (collapsible) */}
       {tennisActive && (
-        <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: C_TENNIS + '22' }}>
-          <div className="px-4 py-2.5 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: C_TENNIS + '22' }}>
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
-            <button className="text-sm font-bold flex-1 text-left" style={{ color: '#5a8a5a' }}
+            <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
               onClick={() => setTennisCollapsed(c => !c)}>
-              Tennis{tennisMeta.hours ? ` · ${tennisMeta.hours}h` : ''}{tennisMeta.type ? ` · ${tennisMeta.type}` : ''}
+              Tennis{tennisMeta.type ? ` — ${tennisMeta.type}` : ''}{tennisMeta.hours ? <span className="normal-case font-semibold"> {tennisMeta.hours}h</span> : ''}
             </button>
             <button onClick={toggleTennis} disabled={tennisLoading}
               className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0 disabled:opacity-50">
@@ -714,54 +714,33 @@ export default function TrainingDiaryPage() {
             </button>
           </div>
           {!tennisCollapsed && (
-            <div className="px-4 pb-3 space-y-2 border-t" style={{ borderColor: C_TENNIS + '44' }}>
+            <div className="px-4 pb-3 space-y-2 border-t border-gray-100 dark:border-gray-700">
               <div className="flex gap-2 pt-2">
                 {(['partita', 'allenamento'] as const).map(t => (
                   <button key={t} onClick={() => setTennisMeta({ type: t })}
-                    className="flex-1 py-1.5 rounded-xl text-xs font-semibold border transition-colors capitalize"
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors capitalize"
                     style={tennisMeta.type === t
                       ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                      : { borderColor: C_TENNIS + '88', color: '#5a8a5a' }}>
+                      : { borderColor: '#e5e7eb', color: '#6b7280' }}>
                     {t}
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 shrink-0">Ore</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 shrink-0">Ore</span>
                 <input type="number" min="0" max="24" step="0.5"
                   value={tennisMeta.hours}
                   onChange={e => setTennisMeta({ hours: e.target.value })}
                   placeholder="—"
-                  className="flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold text-center outline-none"
-                  style={{ borderColor: C_TENNIS + '88', backgroundColor: C_TENNIS + '11', color: '#5a8a5a' }} />
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-center outline-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Scheda header band (collapsible, no chevron) */}
-      {schedaInfo && (
-        <div className="rounded-2xl flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: schedaColor + '22' }}>
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
-          <button className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}
-            onClick={() => setSchedaCollapsed(c => !c)}>
-            {schedaInfo.name}
-          </button>
-          {schedaInfo.weekName && (
-            <span className="text-xs font-semibold shrink-0" style={{ color: schedaColor + 'cc' }}>
-              {schedaInfo.weekName}
-            </span>
-          )}
-          <button onClick={removeScheda}
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
-            <X size={13} />
-          </button>
-        </div>
-      )}
-
       {/* Scheda exercises */}
-      {schedaInfo && !schedaCollapsed && (() => {
+      {schedaInfo && (() => {
         const filteredExes = schedaInfo.exercises.filter(te => !te.isAbs)
         const renderCard = (te: TemplateEx) => {
         const exId = te.exercise.id
@@ -850,9 +829,9 @@ export default function TrainingDiaryPage() {
 
         return (
           <div key={te.id}
-            className={cn('bg-white dark:bg-gray-800 border rounded-2xl overflow-hidden transition-colors shadow-sm',
-              nextUpExId === exId ? 'border-blue-300 dark:border-blue-500' :
-              isDone ? 'border-green-200/60 dark:border-green-800/60' : 'border-gray-200 dark:border-gray-700')}>
+            className={cn('transition-colors',
+              nextUpExId === exId ? 'bg-blue-50/40 dark:bg-blue-950/20' :
+              isDone ? 'bg-green-50/30 dark:bg-green-950/10' : '')}>
 
             {/* Next-up banner (superset/jumpset) */}
             {nextUpExId === exId && (
@@ -900,7 +879,7 @@ export default function TrainingDiaryPage() {
               )}
               <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#d1d5db' }}>
+                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#9ca3af' }}>
                 <Link2 size={14} />
               </button>
               <button onClick={() => openAdd(exId, te.reps)}
@@ -1157,7 +1136,7 @@ export default function TrainingDiaryPage() {
             seen1.add(exId); seen1.add(pair!.partnerId)
             const color = pair!.type === 'JS' ? '#9d8fcc' : CT
             return [(
-              <div key={te.id + '_pg'} className="border-l-2 space-y-2" style={{ borderLeftColor: color }}>
+              <div key={te.id + '_pg'} className="border-l-2 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
                 {renderCard(te)}
                 {renderCard(partnerTe)}
               </div>
@@ -1186,7 +1165,7 @@ export default function TrainingDiaryPage() {
             seen2.add(exId); seen2.add(pair!.partnerId)
             const color = pair!.type === 'JS' ? '#9d8fcc' : CT
             return [(
-              <div key={te.id + '_pg'} className="border-l-2 space-y-2" style={{ borderLeftColor: color }}>
+              <div key={te.id + '_pg'} className="border-l-2 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
                 {renderCard(te)}
                 {renderCard(partnerTe)}
               </div>
@@ -1198,10 +1177,37 @@ export default function TrainingDiaryPage() {
 
         return (
           <>
-            {schedaCards}
-            {absCards}
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+            {/* Scheda header */}
+            <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
+              style={{ backgroundColor: schedaColor + '22' }}
+              onClick={() => setSchedaCollapsed(c => !c)}>
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
+              <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
+                {schedaInfo.name}
+              </span>
+              {schedaInfo.weekName && (
+                <span className="text-xs font-semibold shrink-0" style={{ color: schedaColor + 'cc' }}>
+                  {schedaInfo.weekName}
+                </span>
+              )}
+              <button onClick={e => { e.stopPropagation(); removeScheda() }}
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
+                <X size={13} />
+              </button>
+            </div>
 
-            {/* ABS picker */}
+            {/* Exercise rows (hidden when collapsed) */}
+            {!schedaCollapsed && (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {schedaCards}
+                {absCards}
+              </div>
+            )}
+          </div>
+
+          {/* ABS picker — standalone dashed card */}
+          {!schedaCollapsed && (
             <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-2xl overflow-hidden shadow-sm">
               <button className="w-full flex items-center gap-2 px-4 py-3"
                 onClick={() => setAbsPickerOpen(p => !p)}>
@@ -1233,6 +1239,7 @@ export default function TrainingDiaryPage() {
                 </div>
               )}
             </div>
+          )}
           </>
         )
       })()}
