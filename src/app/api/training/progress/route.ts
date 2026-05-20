@@ -24,20 +24,28 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
 
-    // ── Exercises logged for a specific template ─────────────────────────
+    // ── Exercises for a specific template (scoped to userId) ─────────────
     if (templateId) {
       const { rows } = await pool.query(
         `SELECT e.id, e.name, e."muscleGroup",
-                COUNT(DISTINCT w.date)::int            AS sessions,
-                MAX(s.weight)                          AS "maxWeight",
-                MAX(s.duration)                        AS "maxDuration",
-                BOOL_OR(s.duration IS NOT NULL AND s.weight IS NULL) AS "isDuration"
+                te."order",
+                COALESCE(stats.sessions, 0)::int       AS sessions,
+                stats."maxWeight",
+                stats."maxDuration",
+                COALESCE(stats."isDuration", false)    AS "isDuration"
          FROM "WorkoutTemplateExercise" te
-         JOIN "Exercise"     e  ON e.id  = te."exerciseId"
-         LEFT JOIN "WorkoutSet"    s  ON s."exerciseId" = e.id
-         LEFT JOIN "WorkoutDiary"  w  ON w.id = s."workoutDiaryId" AND w."userId" = $1
+         JOIN "Exercise" e ON e.id = te."exerciseId"
+         LEFT JOIN (
+           SELECT s."exerciseId",
+                  COUNT(DISTINCT w.date)::int           AS sessions,
+                  MAX(s.weight)                         AS "maxWeight",
+                  MAX(s.duration)                       AS "maxDuration",
+                  BOOL_OR(s.duration IS NOT NULL AND s.weight IS NULL) AS "isDuration"
+           FROM "WorkoutSet" s
+           JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
+           GROUP BY s."exerciseId"
+         ) stats ON stats."exerciseId" = e.id
          WHERE te."templateId" = $2
-         GROUP BY e.id, e.name, e."muscleGroup"
          ORDER BY te."order" ASC`,
         [userId, templateId]
       )
