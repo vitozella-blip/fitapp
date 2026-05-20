@@ -8,9 +8,9 @@ import {
   Dumbbell,
   ClipboardList,
   History,
-  BarChart3,
   Upload,
   TrendingUp,
+  ShoppingCart,
 } from 'lucide-react'
 
 export type NavItem = {
@@ -38,22 +38,22 @@ export const NAV: NavGroup[] = [
     label: 'Alimentazione',
     accent: 'food',
     items: [
-      { label: 'Diario', href: '/food/diary', icon: BookOpen, section: 'food' },
-      { label: 'Alimenti', href: '/food/database', icon: Apple, section: 'food' },
-      { label: 'Ricette', href: '/food/recipes', icon: ChefHat, section: 'food' },
-      { label: 'Completa Macro', href: '/food/macros', icon: Target, section: 'food' },
-      { label: 'Piano Alimentare', href: '/food/plan', icon: CalendarDays, section: 'food' },
+      { label: 'Diario Pasti',      href: '/food/diary',     icon: BookOpen,      section: 'food' },
+      { label: 'Alimenti',          href: '/food/database',  icon: Apple,         section: 'food' },
+      { label: 'Lista della Spesa', href: '/food/shopping',  icon: ShoppingCart,  section: 'food' },
+      { label: 'Ricette',           href: '/food/recipes',   icon: ChefHat,       section: 'food' },
+      { label: 'Completa Macro',    href: '/food/macros',    icon: Target,        section: 'food' },
+      { label: 'Piano Alimentare',  href: '/food/plan',      icon: CalendarDays,  section: 'food' },
     ],
   },
   {
     label: 'Allenamento',
     accent: 'training',
     items: [
-      { label: 'Diario Workout', href: '/training/diary', icon: Dumbbell, section: 'training' },
-      { label: 'Progressi', href: '/training/progressi', icon: TrendingUp, section: 'training' },
-      { label: 'Piano', href: '/training/plan', icon: ClipboardList, section: 'training' },
-      { label: 'Storico', href: '/training/history', icon: History, section: 'training' },
-      { label: 'Statistiche', href: '/training/stats', icon: BarChart3, section: 'training' },
+      { label: 'Diario Allenamenti', href: '/training/diary',      icon: Dumbbell,     section: 'training' },
+      { label: 'Progressi',          href: '/training/progressi',  icon: TrendingUp,   section: 'training' },
+      { label: 'Storico',            href: '/training/history',    icon: History,      section: 'training' },
+      { label: 'Piano Allenamento',  href: '/training/plan',       icon: ClipboardList, section: 'training' },
     ],
   },
   {
