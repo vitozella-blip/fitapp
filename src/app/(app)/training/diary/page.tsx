@@ -472,12 +472,7 @@ export default function TrainingDiaryPage() {
     if (!schedaInfo) { setAbsOptions([]); setAbsExIds([]); return }
     try {
       const saved = JSON.parse(localStorage.getItem(`abs_sel_${schedaInfo.id}`) ?? '[]')
-      // support both old format [string] and new format [{id,type}]
-      setAbsExIds(Array.isArray(saved)
-        ? saved.flatMap((x: unknown) =>
-            typeof x === 'string' ? [{ id: x, type: 'SS' as const }] :
-            (x && typeof x === 'object' && 'id' in x ? [x as AbsSel] : []))
-        : [])
+      setAbsExIds(Array.isArray(saved) ? saved.filter((x: unknown) => x && typeof x === 'object' && 'id' in x && 'type' in x) : [])
     } catch { setAbsExIds([]) }
     ;(async () => {
       try {
