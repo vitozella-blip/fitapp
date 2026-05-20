@@ -347,15 +347,6 @@ export default function TrainingDiaryPage() {
   }
   function toggleAbsExercise(id: string, type: 'SS' | 'JS' = 'SS') {
     setAbsExIds(prev => {
-      const next = prev.some(x => x.id === id) ? prev.filter(x => x.id !== id) : [...prev, { id, type }]
-      if (schedaInfo) {
-        try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
-      }
-      return next
-    })
-  }
-  function toggleAbsExercise(id: string, type: 'SS' | 'JS') {
-    setAbsExIds(prev => {
       const existing = prev.find(x => x.id === id)
       const next = existing?.type === type
         ? prev.filter(x => x.id !== id)
