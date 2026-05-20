@@ -33,7 +33,7 @@ type Exercise = { id: string; name: string }
 type DashData = {
   totals:  { calories: number; protein: number; carbs: number; fat: number }
   targets: { calories: number; protein: number; carbs: number; fat: number }
-  meals:   { name: string; calories: number; protein: number; carbs: number; fat: number }[]
+  meals:   { name: string; isFree?: boolean; calories: number; protein: number; carbs: number; fat: number }[]
   workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean; exercises?: Exercise[] }
 }
 
