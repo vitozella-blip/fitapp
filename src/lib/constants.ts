@@ -10,6 +10,7 @@ import {
   History,
   BarChart3,
   Upload,
+  TrendingUp,
 } from 'lucide-react'
 
 export type NavItem = {
@@ -49,6 +50,7 @@ export const NAV: NavGroup[] = [
     accent: 'training',
     items: [
       { label: 'Diario Workout', href: '/training/diary', icon: Dumbbell, section: 'training' },
+      { label: 'Progressi', href: '/training/progressi', icon: TrendingUp, section: 'training' },
       { label: 'Piano', href: '/training/plan', icon: ClipboardList, section: 'training' },
       { label: 'Storico', href: '/training/history', icon: History, section: 'training' },
       { label: 'Statistiche', href: '/training/stats', icon: BarChart3, section: 'training' },
