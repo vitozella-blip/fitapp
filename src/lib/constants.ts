@@ -8,7 +8,7 @@ import {
   Dumbbell,
   ClipboardList,
   History,
-  Upload,
+  Download,
   TrendingUp,
   ShoppingCart,
 } from 'lucide-react'
@@ -22,6 +22,7 @@ export type NavItem = {
 
 export type NavGroup = {
   label: string
+  href?: string
   accent: 'primary' | 'food' | 'training' | 'tools'
   items: NavItem[]
 }
@@ -36,6 +37,7 @@ export const NAV: NavGroup[] = [
   },
   {
     label: 'Alimentazione',
+    href: '/food',
     accent: 'food',
     items: [
       { label: 'Diario Pasti',      href: '/food/diary',     icon: BookOpen,      section: 'food' },
@@ -48,11 +50,12 @@ export const NAV: NavGroup[] = [
   },
   {
     label: 'Allenamento',
+    href: '/training',
     accent: 'training',
     items: [
-      { label: 'Diario Allenamenti', href: '/training/diary',      icon: Dumbbell,     section: 'training' },
-      { label: 'Progressi',          href: '/training/progressi',  icon: TrendingUp,   section: 'training' },
-      { label: 'Storico',            href: '/training/history',    icon: History,      section: 'training' },
+      { label: 'Diario Allenamenti', href: '/training/diary',      icon: Dumbbell,      section: 'training' },
+      { label: 'Progressi',          href: '/training/progressi',  icon: TrendingUp,    section: 'training' },
+      { label: 'Storico',            href: '/training/history',    icon: History,       section: 'training' },
       { label: 'Piano Allenamento',  href: '/training/plan',       icon: ClipboardList, section: 'training' },
     ],
   },
@@ -60,7 +63,7 @@ export const NAV: NavGroup[] = [
     label: 'Strumenti',
     accent: 'tools',
     items: [
-      { label: 'Importa dati', href: '/import', icon: Upload },
+      { label: 'Importa dati', href: '/import', icon: Download },
     ],
   },
 ]
@@ -69,7 +72,6 @@ export const MOBILE_NAV: NavItem[] = [
   { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Diario', href: '/food/diary', icon: BookOpen, section: 'food' },
   { label: 'Workout', href: '/training/diary', icon: Dumbbell, section: 'training' },
-  { label: 'Stats', href: '/training/stats', icon: BarChart3, section: 'training' },
 ]
 
 export const MACRO_COLORS = {
