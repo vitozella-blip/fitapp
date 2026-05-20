@@ -699,7 +699,7 @@ export default function TrainingDiaryPage() {
 
   const allExercisesForPicker: { id: string; name: string }[] = [
     ...(schedaInfo?.exercises.filter(te => !te.isAbs).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
-    ...absExIds.map(x => ({ id: x.id, name: absOptions.find(o => o.id === x.id)?.name ?? x.id })),
+    ...absExIds.map(({ id }) => ({ id, name: absOptions.find(o => o.id === id)?.name ?? id })),
     ...Object.entries(extraGrouped).map(([eId, { name }]) => ({ id: eId, name })),
   ]
 
