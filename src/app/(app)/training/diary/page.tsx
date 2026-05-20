@@ -1411,31 +1411,27 @@ export default function TrainingDiaryPage() {
 
       {/* Allenamento type picker */}
       {showAllenamentoPicker && (
-        <div className="fixed inset-0 z-40 flex items-end" onClick={() => setShowAllenamentoPicker(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-t-3xl w-full shadow-xl px-5 py-6"
+        <div className="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-sm bg-black/40 px-6"
+          onClick={() => setShowAllenamentoPicker(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm shadow-2xl px-5 py-6"
             onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700 mx-auto mb-5" />
-            <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">Aggiungi allenamento</p>
+            <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">Aggiungi allenamento</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => { toggleTennis(); setShowAllenamentoPicker(false) }}
-                className={cn('flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors',
-                  tennisActive ? 'border-[#a8d8a8]' : 'border-gray-200 dark:border-gray-700')}
-                style={tennisActive ? { backgroundColor: C_TENNIS + '22' } : {}}>
+                className="flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors"
+                style={tennisActive
+                  ? { borderColor: C_TENNIS, backgroundColor: C_TENNIS + '22' }
+                  : { borderColor: '#e5e7eb' }}>
                 <span className="text-2xl">🎾</span>
-                <span className="text-sm font-bold" style={{ color: tennisActive ? '#5a8a5a' : undefined }}>Tennis</span>
-                {tennisActive && <span className="text-[10px] text-green-600 font-semibold">Attivo · rimuovi</span>}
+                <span className="text-sm font-bold" style={{ color: tennisActive ? C_TENNIS : undefined }}>Tennis</span>
               </button>
               <button
                 onClick={() => { setShowPicker(true); setShowAllenamentoPicker(false) }}
-                className={cn('flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors',
-                  schedaInfo ? '' : 'border-gray-200 dark:border-gray-700')}
-                style={schedaInfo ? { borderColor: schedaColor, backgroundColor: schedaColor + '18' } : {}}>
+                className="flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors"
+                style={schedaInfo ? { borderColor: schedaColor, backgroundColor: schedaColor + '18' } : { borderColor: '#e5e7eb' }}>
                 <Dumbbell size={24} style={{ color: schedaInfo ? schedaColor : '#9ca3af' }} />
                 <span className="text-sm font-bold" style={{ color: schedaInfo ? schedaColor : undefined }}>Palestra</span>
-                {schedaInfo
-                  ? <span className="text-[10px] font-semibold truncate px-2" style={{ color: schedaColor + 'bb' }}>{schedaInfo.name}</span>
-                  : <span className="text-[10px] text-gray-400">Scegli scheda</span>}
               </button>
             </div>
           </div>

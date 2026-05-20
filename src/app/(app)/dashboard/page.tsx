@@ -230,14 +230,14 @@ export default function DashboardPage() {
               <div className="h-full flex flex-col">
                 {/* Slot 1 — Tennis (aligns with Colazione) */}
                 <div className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800">
-                    <Em e="🎾" size={20} />
-                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Tennis</span>
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                    <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
+                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">Tennis</span>
                   </div>
                   <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
                     {tennisMeta?.type || tennisMeta?.hours ? (
                       <>
-                        <p className="text-xs font-semibold capitalize" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
+                        <p className="text-xs font-semibold uppercase" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500">{tennisMeta?.hours ? `${tennisMeta.hours}h` : ''}&nbsp;</p>
                       </>
                     ) : (
@@ -247,18 +247,18 @@ export default function DashboardPage() {
                 </div>
                 {/* Slot 2 — Workout (aligns with Sp. Mattina) */}
                 <div className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800">
-                    <img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
-                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">{pillLabel}</span>
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                    <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
+                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{pillLabel}</span>
                   </div>
                   <div className="mt-0.5 px-0.5 leading-tight flex-1">
                     {schedaInfo && (
-                      <p className="text-xs font-semibold truncate" style={{ color: C.training }}>
+                      <p className="text-xs font-semibold truncate text-center" style={{ color: C.training }}>
                         {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
                       </p>
                     )}
                     {completedExercises.map(ex => (
-                      <div key={ex.id} className="flex items-center gap-1 py-0.5">
+                      <div key={ex.id} className="flex items-center gap-1 py-0.5 text-left">
                         <Check size={9} className="shrink-0" style={{ color: C.training }} />
                         <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
                       </div>
@@ -272,9 +272,9 @@ export default function DashboardPage() {
               </div>
             ) : data?.workout.hasTennis ? (
               <>
-                <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
-                  <Em e="🎾" size={18} />
-                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Tennis</span>
+                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
+                  <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
+                  <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">Tennis</span>
                 </div>
                 <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
                   {tennisMeta?.type || tennisMeta?.hours ? (
@@ -289,18 +289,18 @@ export default function DashboardPage() {
               </>
             ) : (data?.workout.exists || !!schedaInfo) ? (
               <>
-                <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
-                  <img src="/icon-training.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">{pillLabel}</span>
+                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
+                  <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
+                  <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{pillLabel}</span>
                 </div>
                 <div className="mt-0.5 px-0.5 leading-tight">
                   {schedaInfo && (
-                    <p className="text-xs font-semibold truncate" style={{ color: C.training }}>
+                    <p className="text-xs font-semibold truncate text-center" style={{ color: C.training }}>
                       {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
                     </p>
                   )}
                   {completedExercises.map(ex => (
-                    <div key={ex.id} className="flex items-center gap-1 py-0.5">
+                    <div key={ex.id} className="flex items-center gap-1 py-0.5 text-left">
                       <Check size={9} className="shrink-0" style={{ color: C.training }} />
                       <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
                     </div>
