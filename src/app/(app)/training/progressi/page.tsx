@@ -290,6 +290,34 @@ export default function ProgressiPage() {
                 </div>
               </div>
 
+              {/* Session history */}
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Storico sessioni</p>
+                </div>
+                {[...sessions].reverse().map((s, i) => (
+                  <div key={s.date} className={cn('px-4 py-3', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                        {new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                      {isDuration
+                        ? <p className="text-xs font-semibold" style={{ color: C.training }}>{fmtMin(s.totalDuration)}</p>
+                        : <p className="text-xs font-semibold" style={{ color: C.training }}>max {s.maxWeight ?? '—'} kg</p>
+                      }
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {s.sets.map((set, j) => (
+                        <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: C.training + '18', color: C.training }}>
+                          {isDuration ? fmtMin(set.duration) : `${set.reps ?? '?'} × ${set.weight ?? '?'} kg`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* Line chart */}
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
                 <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.training }}>
@@ -325,33 +353,6 @@ export default function ProgressiPage() {
                 </div>
               )}
 
-              {/* Session history */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Storico sessioni</p>
-                </div>
-                {[...sessions].reverse().map((s, i) => (
-                  <div key={s.date} className={cn('px-4 py-3', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                        {new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
-                      {isDuration
-                        ? <p className="text-xs font-semibold" style={{ color: C.training }}>{fmtMin(s.totalDuration)}</p>
-                        : <p className="text-xs font-semibold" style={{ color: C.training }}>max {s.maxWeight ?? '—'} kg</p>
-                      }
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.sets.map((set, j) => (
-                        <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: C.training + '18', color: C.training }}>
-                          {isDuration ? fmtMin(set.duration) : `${set.reps ?? '?'} × ${set.weight ?? '?'} kg`}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </>
           )}
         </>
