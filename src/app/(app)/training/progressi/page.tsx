@@ -20,6 +20,8 @@ const WEEK_OPTIONS = [
   { label: '52 sett', value: 52 },
 ]
 
+type WorkoutTemplate = { id: string; name: string; order: number; planName: string; planId: string }
+
 type ExerciseSummary = {
   id: string; name: string; muscleGroup?: string
   sessions: number; maxWeight?: number; maxDuration?: number; isDuration: boolean
@@ -57,40 +59,49 @@ function CustomTooltip({ active, payload, label, isDuration }: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function VolumeTooltip({ active, payload, label, isDuration }: any) {
+function VolumeTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
-  const v = payload[0].value
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2 shadow-lg text-xs">
       <p className="font-bold text-gray-600 dark:text-gray-300 mb-1">{fmtDate(label)}</p>
-      <p className="font-semibold" style={{ color: C.bar }}>
-        {isDuration ? fmtMin(v * 60) : `${v} kg·reps`}
-      </p>
+      <p className="font-semibold" style={{ color: C.bar }}>{payload[0].value} kg·reps</p>
     </div>
   )
 }
+
+type Step = 'template' | 'exercise' | 'detail'
 
 export default function ProgressiPage() {
   const userId = useAppStore(s => s.userId)
   const router = useRouter()
 
-  const [exercises, setExercises]   = useState<ExerciseSummary[]>([])
-  const [q, setQ]                   = useState('')
-  const [selected, setSelected]     = useState<ExerciseSummary | null>(null)
-  const [weeks, setWeeks]           = useState<number | null>(null)
-  const [sessions, setSessions]     = useState<SessionData[]>([])
-  const [loading, setLoading]       = useState(false)
-  const [loadingEx, setLoadingEx]   = useState(true)
+  const [step, setStep]               = useState<Step>('template')
+  const [templates, setTemplates]     = useState<WorkoutTemplate[]>([])
+  const [selTemplate, setSelTemplate] = useState<WorkoutTemplate | null>(null)
+  const [exercises, setExercises]     = useState<ExerciseSummary[]>([])
+  const [selEx, setSelEx]             = useState<ExerciseSummary | null>(null)
+  const [q, setQ]                     = useState('')
+  const [weeks, setWeeks]             = useState<number | null>(null)
+  const [sessions, setSessions]       = useState<SessionData[]>([])
+  const [loading, setLoading]         = useState(false)
 
-  // Load exercise list
+  // Load templates on mount
   useEffect(() => {
     if (!userId) return
-    setLoadingEx(true)
-    fetch(`/api/training/progress?userId=${userId}`)
+    fetch(`/api/training/progress?userId=${userId}&templates=1`)
+      .then(r => r.json())
+      .then(data => setTemplates(Array.isArray(data) ? data : []))
+  }, [userId])
+
+  // Load exercises when template selected
+  useEffect(() => {
+    if (!selTemplate) return
+    setLoading(true)
+    fetch(`/api/training/progress?userId=${userId}&templateId=${selTemplate.id}`)
       .then(r => r.json())
       .then(data => setExercises(Array.isArray(data) ? data : []))
-      .finally(() => setLoadingEx(false))
-  }, [userId])
+      .finally(() => setLoading(false))
+  }, [selTemplate, userId])
 
   // Load sessions when exercise or weeks changes
   const loadSessions = useCallback(async (ex: ExerciseSummary, w: number | null) => {
@@ -103,60 +114,84 @@ export default function ProgressiPage() {
   }, [userId])
 
   useEffect(() => {
-    if (selected) loadSessions(selected, weeks)
-  }, [selected, weeks, loadSessions])
+    if (selEx) loadSessions(selEx, weeks)
+  }, [selEx, weeks, loadSessions])
+
+  function goBack() {
+    if (step === 'detail')   { setSelEx(null); setStep('exercise') }
+    else if (step === 'exercise') { setSelTemplate(null); setExercises([]); setStep('template') }
+    else router.push('/training')
+  }
+
+  const title = step === 'template' ? 'Progressi'
+    : step === 'exercise' ? selTemplate!.name
+    : selEx!.name
 
   const filtered = exercises.filter(e =>
     !q || e.name.toLowerCase().includes(q.toLowerCase())
   )
 
-  const isDuration = selected?.isDuration ?? false
-
-  // Chart data
+  const isDuration = selEx?.isDuration ?? false
   const chartData = sessions.map(s => ({
     date: s.date,
-    main: isDuration
-      ? Math.round((s.totalDuration ?? 0) / 60)   // seconds → minutes
-      : Number(s.maxWeight ?? 0),
-    vol: isDuration
-      ? Math.round((s.totalDuration ?? 0) / 60)
-      : Math.round(s.volume ?? 0),
+    main: isDuration ? Math.round((s.totalDuration ?? 0) / 60) : Number(s.maxWeight ?? 0),
+    vol: Math.round(s.volume ?? 0),
   }))
-
   const pr = isDuration
-    ? Math.max(...sessions.map(s => s.totalDuration ?? 0))
-    : Math.max(...sessions.map(s => Number(s.maxWeight ?? 0)))
+    ? Math.max(0, ...sessions.map(s => s.totalDuration ?? 0))
+    : Math.max(0, ...sessions.map(s => Number(s.maxWeight ?? 0)))
 
   return (
     <div className="max-w-2xl mx-auto md:max-w-none space-y-3">
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => selected ? setSelected(null) : router.push('/training')}
+        <button onClick={goBack}
           className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
           <ChevronLeft size={16} />
         </button>
         <div className="flex items-center gap-2 min-w-0">
           <TrendingUp size={20} style={{ color: C.training }} className="shrink-0" />
-          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-            {selected ? selected.name : 'Progressi'}
-          </h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">{title}</h1>
         </div>
       </div>
 
-      {/* ── EXERCISE LIST ── */}
-      {!selected && (
+      {/* ── STEP 0: TEMPLATE PICKER ── */}
+      {step === 'template' && (
+        templates.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-10">Nessun piano di allenamento trovato</p>
+        ) : (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+            {templates.map((t, i) => (
+              <button key={t.id}
+                onClick={() => { setSelTemplate(t); setStep('exercise') }}
+                className={cn('w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
+                  style={{ backgroundColor: C.training + '22', color: C.training }}>
+                  {t.order}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{t.planName}</p>
+                </div>
+                <ChevronLeft size={14} className="text-gray-300 rotate-180 shrink-0" />
+              </button>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* ── STEP 1: EXERCISE LIST ── */}
+      {step === 'exercise' && (
         <>
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={q} onChange={e => setQ(e.target.value)}
+            <input value={q} onChange={e => setQ(e.target.value)}
               placeholder="Cerca esercizio..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400"
-            />
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
           </div>
 
-          {loadingEx ? (
+          {loading ? (
             <div className="flex justify-center py-10">
               <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
             </div>
@@ -165,7 +200,8 @@ export default function ProgressiPage() {
           ) : (
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
               {filtered.map((ex, i) => (
-                <button key={ex.id} onClick={() => setSelected(ex)}
+                <button key={ex.id}
+                  onClick={() => { setSelEx(ex); setStep('detail') }}
                   className={cn('w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: C.training + '22' }}>
                     <Dumbbell size={14} style={{ color: C.training }} />
@@ -175,11 +211,16 @@ export default function ProgressiPage() {
                     {ex.muscleGroup && <p className="text-xs text-gray-400 truncate">{ex.muscleGroup}</p>}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs font-bold" style={{ color: C.training }}>{ex.sessions} sess.</p>
-                    {ex.isDuration
-                      ? ex.maxDuration && <p className="text-xs text-gray-400">{fmtMin(ex.maxDuration)}</p>
-                      : ex.maxWeight && <p className="text-xs text-gray-400">max {ex.maxWeight} kg</p>
-                    }
+                    {ex.sessions > 0 ? (
+                      <>
+                        <p className="text-xs font-bold" style={{ color: C.training }}>{ex.sessions} sess.</p>
+                        {ex.isDuration
+                          ? ex.maxDuration && <p className="text-xs text-gray-400">{fmtMin(ex.maxDuration)}</p>
+                          : ex.maxWeight && <p className="text-xs text-gray-400">max {ex.maxWeight} kg</p>}
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-300">nessuna</p>
+                    )}
                   </div>
                 </button>
               ))}
@@ -188,19 +229,17 @@ export default function ProgressiPage() {
         </>
       )}
 
-      {/* ── EXERCISE DETAIL ── */}
-      {selected && (
+      {/* ── STEP 2: CHARTS ── */}
+      {step === 'detail' && (
         <>
           {/* Week filter */}
           <div className="flex gap-1.5 flex-wrap">
             {WEEK_OPTIONS.map(o => (
               <button key={String(o.value)} onClick={() => setWeeks(o.value)}
                 className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
-                  weeks === o.value
-                    ? 'text-white border-transparent'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
+                  weeks === o.value ? 'text-white border-transparent' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
                 )}
-                style={weeks === o.value ? { backgroundColor: C.training, borderColor: C.training } : {}}>
+                style={weeks === o.value ? { backgroundColor: C.training } : {}}>
                 {o.label}
               </button>
             ))}
@@ -214,7 +253,7 @@ export default function ProgressiPage() {
             <p className="text-sm text-gray-400 text-center py-10">Nessuna sessione nel periodo selezionato</p>
           ) : (
             <>
-              {/* PR badge */}
+              {/* PR + sessions */}
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Record personale</p>
@@ -228,10 +267,10 @@ export default function ProgressiPage() {
                 </div>
               </div>
 
-              {/* Line chart: max weight / duration */}
+              {/* Line chart */}
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
                 <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.training }}>
-                  {isDuration ? 'Durata per sessione' : 'Peso massimo per sessione'}
+                  {isDuration ? 'Durata per sessione (min)' : 'Peso massimo per sessione (kg)'}
                 </p>
                 <ResponsiveContainer width="100%" height={160}>
                   <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -239,12 +278,13 @@ export default function ProgressiPage() {
                     <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
                     <Tooltip content={<CustomTooltip isDuration={isDuration} />} />
-                    <Line type="monotone" dataKey="main" stroke={C.training} strokeWidth={2.5} dot={{ r: 3, fill: C.training }} activeDot={{ r: 5 }} />
+                    <Line type="monotone" dataKey="main" stroke={C.training} strokeWidth={2.5}
+                      dot={{ r: 3, fill: C.training }} activeDot={{ r: 5 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Bar chart: volume (only for weight exercises) */}
+              {/* Volume bar chart (weight exercises only) */}
               {!isDuration && (
                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
                   <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.bar }}>
@@ -255,14 +295,14 @@ export default function ProgressiPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
                       <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
-                      <Tooltip content={<VolumeTooltip isDuration={false} />} />
+                      <Tooltip content={<VolumeTooltip />} />
                       <Bar dataKey="vol" fill={C.bar} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
 
-              {/* Session history table */}
+              {/* Session history */}
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Storico sessioni</p>
@@ -282,10 +322,7 @@ export default function ProgressiPage() {
                       {s.sets.map((set, j) => (
                         <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                           style={{ backgroundColor: C.training + '18', color: C.training }}>
-                          {isDuration
-                            ? fmtMin(set.duration)
-                            : `${set.reps ?? '?'} × ${set.weight ?? '?'} kg`
-                          }
+                          {isDuration ? fmtMin(set.duration) : `${set.reps ?? '?'} × ${set.weight ?? '?'} kg`}
                         </span>
                       ))}
                     </div>
