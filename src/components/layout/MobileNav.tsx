@@ -78,10 +78,6 @@ export function MobileNav() {
           <div className="relative bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl overflow-y-auto"
             style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))', maxHeight: '85vh' }}>
 
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white dark:bg-gray-900 z-10">
-              <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700" />
-            </div>
 
             {/* User info header */}
             <div className="px-4 pt-3 pb-4 border-b border-gray-100 dark:border-gray-800">

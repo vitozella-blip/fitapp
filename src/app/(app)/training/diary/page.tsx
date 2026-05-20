@@ -10,7 +10,7 @@ import { useDateSwipe } from '@/hooks/useDateSwipe'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
-const C_TENNIS      = '#a8d8a8'
+const C_TENNIS      = '#6aaa6a'
 const TENNIS_NAME   = 'Tennis'
 const SCHEDA_COLORS = ['#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#e8a5a5']
 const WARMUP_KEY    = 'workout_warmup_v1'
@@ -19,7 +19,7 @@ const SET_TAGS_KEY  = 'workout_set_tags_v1'
 const PAIRS_KEY     = 'workout_pairs_v1'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
-type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }
+type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null; isAbs: boolean }
 type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[] }
 type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
@@ -53,6 +53,59 @@ function fmtRest(s: number | null): string | null {
   if (m > 0 && sec > 0) return `${m}'${sec}''`
   if (m > 0) return `${m}'`
   return `${s}''`
+}
+
+// ── Set grouping helpers ──────────────────────────────────────────────────────
+type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
+type SetGroup = { key: string; type: string; items: SetItem[]; isGrouped: boolean }
+const GROUP_TAGS = new Set(['SS', 'JS', 'MR', 'WD'])
+
+function groupColor(type: string): string {
+  if (type === 'JS') return '#9d8fcc'
+  if (type === 'MR') return '#7dbf7d'
+  if (type === 'WD') return '#e8a0a0'
+  if (type === 'TSBO') return '#f0aa78'
+  return CT
+}
+
+function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: Set<string>): SetGroup[] {
+  let wIdx = 0, rIdx = 0
+  const items: SetItem[] = sets.map(s => {
+    const isW = warmupIds.has(s.id)
+    return { s, isW, label: isW ? `R${++rIdx}` : `S${++wIdx}` }
+  })
+  const result: SetGroup[] = []
+  let i = 0
+  while (i < items.length) {
+    const item = items[i]
+    const tag = tags[item.s.id] ?? ''
+    // D+S pairing: different side tags adjacent → group (not D+D or S+S)
+    if ((tag === 'D' || tag === 'S') && i + 1 < items.length) {
+      const nextTag = tags[items[i + 1].s.id] ?? ''
+      if ((tag === 'D' && nextTag === 'S') || (tag === 'S' && nextTag === 'D')) {
+        result.push({ key: item.s.id, type: 'DS', items: [item, items[i + 1]], isGrouped: true })
+        i += 2; continue
+      }
+    }
+    // TS+BO pairing: different tags adjacent → group (not TS+TS or BO+BO)
+    if ((tag === 'TS' || tag === 'BO') && i + 1 < items.length) {
+      const nextTag = tags[items[i + 1].s.id] ?? ''
+      if ((tag === 'TS' && nextTag === 'BO') || (tag === 'BO' && nextTag === 'TS')) {
+        result.push({ key: item.s.id, type: 'TSBO', items: [item, items[i + 1]], isGrouped: true })
+        i += 2; continue
+      }
+    }
+    // SS/JS/MR/WD: group consecutive same-tagged sets
+    if (GROUP_TAGS.has(tag)) {
+      const grp = [item]; let j = i + 1
+      while (j < items.length && (tags[items[j].s.id] ?? '') === tag) { grp.push(items[j]); j++ }
+      result.push({ key: item.s.id, type: tag, items: grp, isGrouped: grp.length > 1 })
+      i = j; continue
+    }
+    result.push({ key: item.s.id, type: tag, items: [item], isGrouped: false })
+    i++
+  }
+  return result
 }
 
 // ── Scheda + Week picker (bottom sheet) ───────────────────────────────────────
@@ -100,7 +153,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl w-full max-h-[75vh] flex flex-col shadow-xl"
         onClick={e => e.stopPropagation()}>
 
@@ -118,8 +171,8 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
             </p>
           </div>
           <button onClick={onClose}
-            className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500">
-            <X size={14} />
+            className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
+            <X size={16} />
           </button>
         </div>
 
@@ -137,7 +190,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
               const label2 = sepIdx >= 0 ? t.name.slice(sepIdx + 3) : null
               return (
                 <button key={t.id} onClick={() => selectTemplate(t, i)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                     style={{ backgroundColor: color }}>
                     {String(i + 1).padStart(2, '0')}
@@ -173,7 +226,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
                 <p className="text-xs text-gray-400 pb-1">Seleziona la settimana</p>
                 {weeks.map(w => (
                   <button key={w.id} onClick={() => confirm(w.id, w.name, w.order + 1)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                       style={{ backgroundColor: CT }}>
                       {w.order + 1}
@@ -219,6 +272,10 @@ export default function TrainingDiaryPage() {
   const [workout,    setWorkout]    = useState<Workout | null>(null)
   const [schedaInfo, setSchedaInfo] = useState<SchedaInfo | null>(null)
   const [showPicker, setShowPicker] = useState(false)
+  const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
+  const [schedaCollapsed, setSchedaCollapsed] = useState(false)
+  const [tennisCollapsed, setTennisCollapsed] = useState(true)
+  const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'partita', hours: '' })
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
   const [completed,  setCompleted]  = useState<Set<string>>(new Set())
   const [tennisLoading, setTennisLoading] = useState(false)
@@ -258,43 +315,66 @@ export default function TrainingDiaryPage() {
     })
   }
   function addPair(idA: string, nameA: string, idB: string, nameB: string, type: 'SS' | 'JS') {
-    setPairs(() => ({
-      [idA]: { partnerId: idB, partnerName: nameB, type },
-      [idB]: { partnerId: idA, partnerName: nameA, type },
-    }))
+    setPairs(prev => {
+      // Remove any existing pair entries for or pointing to idA / idB
+      const oldPartnerA = prev[idA]?.partnerId
+      const oldPartnerB = prev[idB]?.partnerId
+      const next: Record<string, ExPair> = {}
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === idA || k === idB) continue
+        if (oldPartnerA && k === oldPartnerA) continue
+        if (oldPartnerB && k === oldPartnerB) continue
+        next[k] = v
+      }
+      next[idA] = { partnerId: idB, partnerName: nameB, type }
+      next[idB] = { partnerId: idA, partnerName: nameA, type }
+      return next
+    })
     setPairPickerExId(null)
   }
   function removePair(exId: string) {
     setPairs(prev => {
       const partnerId = prev[exId]?.partnerId
-      const next = { ...prev }
-      delete next[exId]
-      if (partnerId) delete next[partnerId]
+      // Remove all entries for or pointing to exId / partnerId (cleans up stale refs)
+      const next: Record<string, ExPair> = {}
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === exId || k === partnerId) continue
+        if (v.partnerId === exId || (partnerId && v.partnerId === partnerId)) continue
+        next[k] = v
+      }
       return next
     })
   }
-  function toggleAbsExercise(id: string, type: 'SS' | 'JS') {
-    const existing = absExIds.find(x => x.id === id)
-    let next: AbsSel[]
-    if (existing?.type === type) {
-      next = absExIds.filter(x => x.id !== id)
-    } else if (existing) {
-      next = absExIds.map(x => x.id === id ? { ...x, type } : x)
-    } else {
-      next = [...absExIds, { id, type }]
-    }
-    setAbsExIds(next)
-    if (schedaInfo) {
-      try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
-    }
+  function toggleAbsExercise(id: string, type: 'SS' | 'JS' = 'SS') {
+    setAbsExIds(prev => {
+      const existing = prev.find(x => x.id === id)
+      const next = existing?.type === type
+        ? prev.filter(x => x.id !== id)
+        : existing
+          ? prev.map(x => x.id === id ? { ...x, type } : x)
+          : [...prev, { id, type }]
+      if (schedaInfo) {
+        try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
+      }
+      return next
+    })
+  }
+
+  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
+  const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
+  const [absPickerOpen, setAbsPickerOpen] = useState(false)
+
+  // Sync ABS pairs whenever selection or options change
+  useEffect(() => {
+    if (absOptions.length === 0) return
     const absOptionIds = new Set(absOptions.map(o => o.id))
     setPairs(prev => {
       const cleaned: Record<string, ExPair> = {}
       for (const [k, v] of Object.entries(prev)) {
         if (!absOptionIds.has(k) && !absOptionIds.has(v.partnerId)) cleaned[k] = v
       }
-      const ssSels = next.filter(x => x.type === 'SS')
-      const jsSels = next.filter(x => x.type === 'JS')
+      const ssSels = absExIds.filter(x => x.type === 'SS')
+      const jsSels = absExIds.filter(x => x.type === 'JS')
       for (let i = 0; i + 1 < ssSels.length; i += 2) {
         const a = ssSels[i], b = ssSels[i + 1]
         const aName = absOptions.find(o => o.id === a.id)?.name ?? a.id
@@ -311,11 +391,8 @@ export default function TrainingDiaryPage() {
       }
       return cleaned
     })
-  }
-
-  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
-  const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
-  const [absPickerOpen, setAbsPickerOpen] = useState(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [absExIds, absOptions])
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
   const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
@@ -361,6 +438,23 @@ export default function TrainingDiaryPage() {
   }, [recTimer?.on])
 
 
+  function setTennisMeta(update: Partial<{ type: 'allenamento' | 'partita'; hours: string }>) {
+    setTennisMetaRaw(prev => {
+      const next = { ...prev, ...update }
+      try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
+  // Load tennis meta when date changes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
+      setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
+    } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
+    setTennisCollapsed(true)
+  }, [selectedDate])
+
   // Load scheda + week params from localStorage when date changes
   useEffect(() => {
     setSchedaInfo(null)
@@ -391,18 +485,15 @@ export default function TrainingDiaryPage() {
         const allTmps: Template[] = (await Promise.all(
           plans.map(pl => fetch(`/api/workout-templates?planId=${pl.id}`).then(r => r.json()))
         )).flat()
-        const absKeywords = ['crunch', 'plank', 'obliqui', 'side']
         const seen = new Set<string>()
         const opts: { id: string; name: string; schedaName: string }[] = []
         allTmps.forEach(t => {
-          const last = t.exercises[t.exercises.length - 1]
-          if (last && !seen.has(last.exercise.id)) {
-            const nameLower = last.exercise.name.toLowerCase()
-            if (absKeywords.some(kw => nameLower.includes(kw))) {
-              seen.add(last.exercise.id)
-              opts.push({ id: last.exercise.id, name: last.exercise.name, schedaName: t.name })
+          t.exercises.forEach(te => {
+            if (te.isAbs && !seen.has(te.exercise.id)) {
+              seen.add(te.exercise.id)
+              opts.push({ id: te.exercise.id, name: te.exercise.name, schedaName: t.name })
             }
-          }
+          })
         })
         setAbsOptions(opts)
       } catch {}
@@ -414,6 +505,7 @@ export default function TrainingDiaryPage() {
     localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify({ templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder }))
     const merged = await mergeWeekParams(t.exercises, weekId)
     setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged })
+    setSchedaCollapsed(false)
     setShowPicker(false)
     bumpWorkoutVersion()
   }
@@ -423,7 +515,7 @@ export default function TrainingDiaryPage() {
     setFormSaving(true)
     await fetch('/api/workout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null }),
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null }),
     })
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     const w: Workout = await r.json()
@@ -596,7 +688,7 @@ export default function TrainingDiaryPage() {
       const ex = await findOrCreateTennis()
       await fetch('/api/workout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date: selectedDate, exerciseId: ex.id, sets: 1, reps: 1, weight: null }),
+        body: JSON.stringify({ userId, date: selectedDate, exerciseId: ex.id, sets: 1, reps: 1, weight: null, weekId: schedaInfo?.weekId ?? null }),
       })
     }
     await fetchWorkout(); setTennisLoading(false); bumpWorkoutVersion()
@@ -606,7 +698,7 @@ export default function TrainingDiaryPage() {
   const hasAny = schedaInfo || Object.keys(extraGrouped).length > 0 || tennisActive
 
   const allExercisesForPicker: { id: string; name: string }[] = [
-    ...(schedaInfo?.exercises.slice(0, -1).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
+    ...(schedaInfo?.exercises.filter(te => !te.isAbs).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
     ...absExIds.map(({ id }) => ({ id, name: absOptions.find(o => o.id === id)?.name ?? id })),
     ...Object.entries(extraGrouped).map(([eId, { name }]) => ({ id: eId, name })),
   ]
@@ -618,15 +710,10 @@ export default function TrainingDiaryPage() {
       <PageHeader title="Diario Workout" icon={Dumbbell} accent="training"
         action={
           <div className="flex items-center gap-1.5">
-            <button onClick={toggleTennis} disabled={tennisLoading}
-              className={cn('px-3 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50', tennisActive ? 'text-white' : '')}
-              style={tennisActive ? { backgroundColor: C_TENNIS } : { backgroundColor: C_TENNIS + '22', color: '#5a8a5a' }}>
-              Tennis
-            </button>
-            <button onClick={() => setShowPicker(true)}
+            <button onClick={() => setShowAllenamentoPicker(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold"
               style={{ backgroundColor: CT }}>
-              <Plus size={15} /> Workout
+              <Plus size={15} /> Allenamento
             </button>
           </div>
         }
@@ -636,32 +723,57 @@ export default function TrainingDiaryPage() {
 
       {/* Empty state */}
       {!hasAny && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-8 text-center">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center shadow-sm">
           <Dumbbell size={28} className="mx-auto mb-3" style={{ color: CT + '80' }} />
           <p className="text-gray-500 font-medium text-sm">Nessun allenamento oggi</p>
           <p className="text-xs text-gray-400 mt-1">Scegli una scheda o aggiungi Tennis per iniziare</p>
         </div>
       )}
 
-      {/* Scheda header band */}
-      {schedaInfo && (
-        <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2" style={{ backgroundColor: schedaColor + '22' }}>
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
-          <span className="text-sm font-bold truncate flex-1" style={{ color: schedaColor }}>{schedaInfo.name}</span>
-          {schedaInfo.weekName && (
-            <span className="text-xs font-semibold shrink-0" style={{ color: schedaColor + 'cc' }}>
-              {schedaInfo.weekName}
-            </span>
+      {/* Tennis pill (collapsible) */}
+      {tennisActive && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: C_TENNIS + '22' }}>
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
+            <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
+              onClick={() => setTennisCollapsed(c => !c)}>
+              Tennis{tennisMeta.type ? ` — ${tennisMeta.type}` : ''}{tennisMeta.hours ? <span className="normal-case font-semibold"> {tennisMeta.hours}h</span> : ''}
+            </button>
+            <button onClick={toggleTennis} disabled={tennisLoading}
+              className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0 disabled:opacity-50">
+              <X size={13} />
+            </button>
+          </div>
+          {!tennisCollapsed && (
+            <div className="px-4 pb-3 space-y-2 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex gap-2 pt-2">
+                {(['partita', 'allenamento'] as const).map(t => (
+                  <button key={t} onClick={() => setTennisMeta({ type: t })}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors capitalize"
+                    style={tennisMeta.type === t
+                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                      : { borderColor: '#e5e7eb', color: '#6b7280' }}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 shrink-0">Ore</span>
+                <input type="number" min="0" max="24" step="0.5"
+                  value={tennisMeta.hours}
+                  onChange={e => setTennisMeta({ hours: e.target.value })}
+                  placeholder="—"
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-center outline-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+              </div>
+            </div>
           )}
-          <button onClick={removeScheda}
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
-            <X size={13} />
-          </button>
         </div>
       )}
 
       {/* Scheda exercises */}
-      {schedaInfo && schedaInfo.exercises.slice(0, -1).map((te) => {
+      {schedaInfo && (() => {
+        const filteredExes = schedaInfo.exercises.filter(te => !te.isAbs)
+        const renderCard = (te: TemplateEx) => {
         const exId = te.exercise.id
         const exSets  = workoutSets
           .filter(s => s.exerciseId === exId)
@@ -669,7 +781,7 @@ export default function TrainingDiaryPage() {
             const aW = warmups.has(a.id) ? 0 : 1
             const bW = warmups.has(b.id) ? 0 : 1
             if (aW !== bW) return aW - bW
-            return Number(a.id) - Number(b.id)
+            return a.setNumber - b.setNumber
           })
         const compKey = `${selectedDate}_${exId}`
         const isDone  = completed.has(compKey)
@@ -748,9 +860,9 @@ export default function TrainingDiaryPage() {
 
         return (
           <div key={te.id}
-            className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
-              nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
-              isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+            className={cn('transition-colors',
+              nextUpExId === exId ? 'bg-blue-50/40 dark:bg-blue-950/20' :
+              isDone ? 'bg-green-50/30 dark:bg-green-950/10' : '')}>
 
             {/* Next-up banner (superset/jumpset) */}
             {nextUpExId === exId && (
@@ -798,7 +910,7 @@ export default function TrainingDiaryPage() {
               )}
               <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#d1d5db' }}>
+                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#9ca3af' }}>
                 <Link2 size={14} />
               </button>
               <button onClick={() => openAdd(exId, te.reps)}
@@ -942,13 +1054,15 @@ export default function TrainingDiaryPage() {
 
                 {/* Logged sets — comparison view when history active, normal list otherwise */}
                 {historyView ?? (exSets.length > 0 ? (
-                  <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
-                    {exSets.map(s => {
-                      const isW  = warmups.has(s.id)
-                      const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
+                  <div className="border-t border-gray-50 dark:border-gray-800">
+                    {groupSets(exSets, setTags, warmups).map((group, gi) => (
+                      <div key={group.key}
+                        className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800', group.isGrouped && 'border-l-2 ml-2')}
+                        style={group.isGrouped ? { borderLeftColor: groupColor(group.type) } : {}}>
+                        {group.items.map(({ s, isW, label }, ii) => {
                       const isEditing = editSetId === s.id
                       return (
-                        <div key={s.id}>
+                        <div key={s.id} className={cn(ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                           {isEditing ? (
                             <div className="px-4 py-2 space-y-2">
                               <div className="grid grid-cols-2 gap-2">
@@ -1005,7 +1119,7 @@ export default function TrainingDiaryPage() {
                               </div>
                               {labelMenuSetId === s.id && (
                                 <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                  {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR', 'WD'].map(opt => {
+                                  {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
                                     const active = setTags[s.id] === opt
                                     return (
                                       <button key={opt}
@@ -1031,7 +1145,9 @@ export default function TrainingDiaryPage() {
                           )}
                         </div>
                       )
-                    })}
+                        })}
+                      </div>
+                    ))}
                   </div>
                 ) : null)}
               </div>
@@ -1039,7 +1155,125 @@ export default function TrainingDiaryPage() {
 
           </div>
         )
-      })}
+        }
+        // ── Scheda exercise groups ────────────────────────────────────────
+        const seen1 = new Set<string>()
+        const schedaCards = filteredExes.flatMap(te => {
+          const exId = te.exercise.id
+          if (seen1.has(exId)) return []
+          const pair = pairs[exId]
+          const partnerTe = pair ? filteredExes.find(x => x.exercise.id === pair.partnerId) : null
+          if (partnerTe) {
+            seen1.add(exId); seen1.add(pair!.partnerId)
+            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
+            return [(
+              <div key={te.id + '_pg'} className="border-l-2 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
+                {renderCard(te)}
+                {renderCard(partnerTe)}
+              </div>
+            )]
+          }
+          seen1.add(exId)
+          return [renderCard(te)]
+        })
+
+        // ── ABS exercise groups ───────────────────────────────────────────
+        const absTes: TemplateEx[] = absExIds
+          .map(x => absOptions.find(o => o.id === x.id))
+          .filter((o): o is { id: string; name: string; schedaName: string } => !!o)
+          .map(o => ({
+            id: `abs_${o.id}`,
+            exercise: { id: o.id, name: o.name, muscleGroup: '' },
+            sets: 0, reps: null, restSeconds: null, noteScheda: null, notePersonali: null, isAbs: true,
+          }))
+        const seen2 = new Set<string>()
+        const absCards = absTes.flatMap(te => {
+          const exId = te.exercise.id
+          if (seen2.has(exId)) return []
+          const pair = pairs[exId]
+          const partnerTe = pair ? absTes.find(x => x.exercise.id === pair.partnerId) : null
+          if (partnerTe) {
+            seen2.add(exId); seen2.add(pair!.partnerId)
+            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
+            return [(
+              <div key={te.id + '_pg'} className="border-l-2 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
+                {renderCard(te)}
+                {renderCard(partnerTe)}
+              </div>
+            )]
+          }
+          seen2.add(exId)
+          return [renderCard(te)]
+        })
+
+        return (
+          <>
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+            {/* Scheda header */}
+            <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
+              style={{ backgroundColor: schedaColor + '22' }}
+              onClick={() => setSchedaCollapsed(c => !c)}>
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
+              <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
+                {schedaInfo.name}
+              </span>
+              {schedaInfo.weekName && (
+                <span className="text-xs font-semibold shrink-0" style={{ color: schedaColor + 'cc' }}>
+                  {schedaInfo.weekName}
+                </span>
+              )}
+              <button onClick={e => { e.stopPropagation(); removeScheda() }}
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
+                <X size={13} />
+              </button>
+            </div>
+
+            {/* Exercise rows (hidden when collapsed) */}
+            {!schedaCollapsed && (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {schedaCards}
+                {absCards}
+              </div>
+            )}
+          </div>
+
+          {/* ABS picker — standalone dashed card */}
+          {!schedaCollapsed && (
+            <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-2xl overflow-hidden shadow-sm">
+              <button className="w-full flex items-center gap-2 px-4 py-3"
+                onClick={() => setAbsPickerOpen(p => !p)}>
+                <span className="text-xs font-bold" style={{ color: schedaColor }}>ABS</span>
+                <span className="flex-1 text-xs text-gray-400 text-left">
+                  {absExIds.length > 0
+                    ? absExIds.map(x => absOptions.find(o => o.id === x.id)?.name ?? x.id).join(' · ')
+                    : 'Seleziona esercizi addominali'}
+                </span>
+                <ChevronDown size={14} className={cn('text-gray-400 transition-transform', absPickerOpen && 'rotate-180')} />
+              </button>
+              {absPickerOpen && (
+                <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1">
+                  {absOptions.map(o => {
+                    const isSelected = absExIds.some(x => x.id === o.id)
+                    return (
+                      <div key={o.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
+                        <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{o.name}</span>
+                        <button onClick={() => toggleAbsExercise(o.id)}
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                          style={isSelected
+                            ? { backgroundColor: schedaColor, borderColor: schedaColor, color: '#fff' }
+                            : { borderColor: schedaColor, color: schedaColor }}>
+                          {isSelected ? '✓' : '+'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          </>
+        )
+      })()}
 
       {/* ABS section */}
       {schedaInfo && (() => {
@@ -1283,9 +1517,9 @@ export default function TrainingDiaryPage() {
         let workIdx = 0, warmIdx = 0
         return (
           <div key={exId}
-            className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
-              nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
-              isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
+            className={cn('bg-white dark:bg-gray-800 border rounded-2xl overflow-hidden transition-colors shadow-sm',
+              nextUpExId === exId ? 'border-blue-300 dark:border-blue-500' :
+              isDone ? 'border-green-200/60 dark:border-green-800/60' : 'border-gray-200 dark:border-gray-700')}>
             {nextUpExId === exId && (
               <div className="px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: CT + '28' }}>
                 <span className="text-[11px] font-bold animate-pulse" style={{ color: CT }}>↑ VAI ORA</span>
@@ -1407,7 +1641,7 @@ export default function TrainingDiaryPage() {
                           </div>
                           {labelMenuSetId === s.id && (
                             <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                              {['D', 'S', 'DS', 'BO', 'TS', 'SS', 'JS', 'PR', 'MR', 'WD'].map(opt => {
+                              {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
                                 const active = setTags[s.id] === opt
                                 return (
                                   <button key={opt}
@@ -1439,6 +1673,38 @@ export default function TrainingDiaryPage() {
           </div>
         )
       })}
+
+      {/* Allenamento type picker */}
+      {showAllenamentoPicker && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-sm bg-black/40 px-6">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm shadow-2xl px-5 py-6"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-8" />
+              <h2 className="font-bold text-gray-900 dark:text-gray-100 flex-1 text-center">Aggiungi allenamento</h2>
+              <button onClick={() => setShowAllenamentoPicker(false)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { toggleTennis(); setShowAllenamentoPicker(false) }}
+                className="flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors"
+                style={tennisActive
+                  ? { borderColor: C_TENNIS, backgroundColor: C_TENNIS + '22' }
+                  : { borderColor: '#e5e7eb' }}>
+                <span className="text-2xl">🎾</span>
+                <span className="text-sm font-bold" style={{ color: tennisActive ? C_TENNIS : undefined }}>Tennis</span>
+              </button>
+              <button
+                onClick={() => { setShowPicker(true); setShowAllenamentoPicker(false) }}
+                className="flex flex-col items-center gap-2 py-5 rounded-2xl border-2 transition-colors"
+                style={schedaInfo ? { borderColor: schedaColor, backgroundColor: schedaColor + '18' } : { borderColor: '#e5e7eb' }}>
+                <Dumbbell size={24} style={{ color: schedaInfo ? schedaColor : '#9ca3af' }} />
+                <span className="text-sm font-bold" style={{ color: schedaInfo ? schedaColor : undefined }}>Palestra</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Scheda + week picker */}
       {showPicker && (

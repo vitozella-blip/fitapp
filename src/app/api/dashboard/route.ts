@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!userId || !date) return NextResponse.json(null)
 
   try {
-    const [userRes, entriesRes, workoutRes, tennisRes, exercisesRes] = await Promise.all([
+    const [userRes, entriesRes, workoutRes, tennisRes, exercisesRes, freeMealsRes] = await Promise.all([
       pool.query(`SELECT * FROM "User" WHERE id=$1`, [userId]),
       pool.query(
         `SELECT e.meal, e.quantity, f.calories, f.protein, f.carbs, f.fat
@@ -38,10 +38,15 @@ export async function GET(req: NextRequest) {
          WHERE w."userId"=$1 AND w.date=$2 AND e.name != 'Tennis'`,
         [userId, date]
       ),
+      pool.query(
+        `SELECT meal FROM "FreeMeal" WHERE "userId"=$1 AND date=$2`,
+        [userId, date]
+      ).catch(() => ({ rows: [] })),
     ])
 
     const user = userRes.rows[0]
     const entries = entriesRes.rows
+    const freeMealSet = new Set(freeMealsRes.rows.map((r: { meal: string }) => r.meal))
 
     const calc = (v: number, q: number) => Math.round((v * q) / 100)
 
@@ -56,6 +61,7 @@ export async function GET(req: NextRequest) {
       const mealEntries = entries.filter(e => e.meal === name)
       return {
         name,
+        isFree: freeMealSet.has(name),
         calories: mealEntries.reduce((s, e) => s + calc(e.calories, e.quantity), 0),
         protein: mealEntries.reduce((s, e) => s + calc(e.protein, e.quantity), 0),
         carbs: mealEntries.reduce((s, e) => s + calc(e.carbs, e.quantity), 0),

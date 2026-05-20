@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, BookOpen, PartyPopper } from 'lucide-react'
+import { Plus, Trash2, BookOpen } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -17,7 +17,6 @@ const C = {
 } as const
 
 const MEALS = ['Colazione', 'Spuntino mattina', 'Pranzo', 'Spuntino pomeriggio', 'Cena']
-const FREE_MEAL_ALLOWED = ['Pranzo', 'Cena']
 
 type Entry = {
   id: string; meal: string; quantity: number
@@ -33,9 +32,12 @@ export default function FoodDiaryPage() {
   const [freeMeals, setFreeMeals] = useState<Set<string>>(new Set())
 
   const fetchEntries = useCallback(async () => {
-    const r = await fetch(`/api/diary?userId=${userId}&date=${selectedDate}`)
-    setEntries(await r.json())
-    setFreeMeals(new Set())
+    const [diary, freeList] = await Promise.all([
+      fetch(`/api/diary?userId=${userId}&date=${selectedDate}`).then(r => r.json()),
+      fetch(`/api/freemeals?userId=${userId}&date=${selectedDate}`).then(r => r.json()).catch(() => []),
+    ])
+    setEntries(diary)
+    setFreeMeals(new Set(Array.isArray(freeList) ? freeList : []))
   }, [userId, selectedDate])
 
   useEffect(() => { fetchEntries() }, [fetchEntries])
@@ -61,6 +63,11 @@ export default function FoodDiaryPage() {
       next.has(meal) ? next.delete(meal) : next.add(meal)
       return next
     })
+    fetch('/api/freemeals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, date: selectedDate, meal }),
+    }).catch(() => {})
   }
 
   const activeMealEntries = entries.filter(e => !freeMeals.has(e.meal))
@@ -139,39 +146,27 @@ export default function FoodDiaryPage() {
         const mealEntries = entries.filter(e => e.meal === meal)
         const isFree = freeMeals.has(meal)
         const mealCal = mealEntries.reduce((s, e) => s + calc(e.food.calories, e.quantity), 0)
-        const canToggleFree = FREE_MEAL_ALLOWED.includes(meal)
 
         return (
           <div key={meal} className={cn(
             'bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
             isFree ? 'border-amber-100 dark:border-amber-900/50' : 'border-gray-100 dark:border-gray-800'
           )}>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800"
+              style={{ backgroundColor: C.carbs + '18' }}>
               <div className="flex items-center gap-2 min-w-0">
-                <p className={cn('font-semibold text-sm truncate', isFree ? '' : 'text-gray-900 dark:text-gray-100')}
-                  style={isFree ? { color: C.carbs } : {}}>
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C.carbs }} />
+                <p className="font-bold text-sm truncate uppercase" style={{ color: C.carbs }}>
                   {meal}
                 </p>
                 {isFree && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                    style={{ backgroundColor: C.carbs + '18', color: C.carbs }}>
-                    LIBERO
-                  </span>
+                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>Libero</p>
                 )}
                 {!isFree && mealCal > 0 && (
-                  <p className="text-xs text-gray-400 shrink-0">{mealCal} kcal</p>
+                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>{mealCal} kcal</p>
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                {canToggleFree && (
-                  <button onClick={() => toggleFreeMeal(meal)}
-                    className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                      isFree ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'
-                    )}
-                    style={isFree ? { backgroundColor: C.carbs + '18' } : {}}>
-                    <PartyPopper size={13} />
-                  </button>
-                )}
                 <button onClick={() => setModal(meal)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white"
                   style={{ backgroundColor: C.carbs + 'cc' }}>
@@ -182,8 +177,8 @@ export default function FoodDiaryPage() {
 
             {isFree ? (
               <div className="px-4 py-2.5 flex items-center gap-2">
-                <span className="text-base">🍣</span>
-                <p className="text-sm font-medium" style={{ color: C.carbs }}>Pasto libero</p>
+                <p className="text-sm font-medium" style={{ color: C.carbs }}>Cheat meal</p>
+                <span className="text-base">🍟</span>
               </div>
             ) : mealEntries.length === 0 ? (
               <p className="text-xs text-gray-400 px-4 py-2.5">Nessun alimento registrato</p>
@@ -192,9 +187,12 @@ export default function FoodDiaryPage() {
                 {mealEntries.map(e => (
                   <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
+                      <div className="flex items-baseline gap-1.5 min-w-0">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
+                        <span className="text-xs text-gray-400 shrink-0">{e.quantity}g</span>
+                      </div>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {e.quantity}g · {calc(e.food.calories, e.quantity)} kcal ·{' '}
+                        <span style={{ color: C.kcal }}>{calc(e.food.calories, e.quantity)} kcal</span> ·{' '}
                         <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span> ·{' '}
                         <span style={{ color: C.carbs }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
                         <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span>
@@ -213,7 +211,8 @@ export default function FoodDiaryPage() {
       })}
 
       {modal && (
-        <AddFoodModal meal={modal} date={selectedDate} onClose={() => setModal(null)} onAdded={fetchEntries} />
+        <AddFoodModal meal={modal} date={selectedDate} onClose={() => setModal(null)} onAdded={fetchEntries}
+          isFree={freeMeals.has(modal)} onFreeMeal={() => toggleFreeMeal(modal)} />
       )}
     </div>
   )

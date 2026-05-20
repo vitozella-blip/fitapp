@@ -85,7 +85,7 @@ export function AddWorkoutModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl"
         onClick={e => e.stopPropagation()}>
 
@@ -106,8 +106,8 @@ export function AddWorkoutModal({
             {step === 'track'    && (exercise?.name ?? 'Tracking')}
           </p>
           <button onClick={onClose}
-            className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center">
-            <X size={14} />
+            className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
+            <X size={16} />
           </button>
         </div>
 

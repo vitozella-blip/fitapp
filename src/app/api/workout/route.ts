@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
     const { rows } = await pool.query(
-      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e) ORDER BY s.id ASC) as sets
+      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e) ORDER BY s."setNumber" ASC) as sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
        LEFT JOIN "Exercise" e ON e.id = s."exerciseId"
@@ -34,29 +34,40 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, date, exerciseId, sets, reps, weight } = await req.json()
+  const { userId, date, exerciseId, sets, reps, weight, weekId } = await req.json()
   try {
     await pool.query(
       `INSERT INTO "User" (id, name, "targetCalories", "targetProtein", "targetCarbs", "targetFat", goal, "createdAt") VALUES ($1,'Utente',2000,150,220,65,'maintain',NOW()) ON CONFLICT (id) DO NOTHING`,
       [userId]
     )
+    // Ensure weekId column exists
+    await pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {})
     let workoutId: string
     const { rows: existing } = await pool.query(
       `SELECT id FROM "WorkoutDiary" WHERE "userId" = $1 AND date = $2`, [userId, date]
     )
     if (existing.length > 0) {
       workoutId = existing[0].id
+      // Update weekId if provided and not yet set
+      if (weekId) {
+        await pool.query(`UPDATE "WorkoutDiary" SET "weekId"=$1 WHERE id=$2`, [weekId, workoutId])
+      }
     } else {
       workoutId = crypto.randomUUID()
       await pool.query(
-        `INSERT INTO "WorkoutDiary" (id, "userId", date, "createdAt") VALUES ($1,$2,$3,NOW())`,
-        [workoutId, userId, date]
+        `INSERT INTO "WorkoutDiary" (id, "userId", date, "weekId", "createdAt") VALUES ($1,$2,$3,$4,NOW())`,
+        [workoutId, userId, date, weekId ?? null]
       )
     }
+    const { rows: maxRows } = await pool.query(
+      `SELECT COALESCE(MAX("setNumber"), 0) AS max FROM "WorkoutSet" WHERE "workoutDiaryId" = $1 AND "exerciseId" = $2`,
+      [workoutId, exerciseId]
+    )
+    const baseSetNumber = Number(maxRows[0].max)
     for (let i = 0; i < sets; i++) {
       await pool.query(
         `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [crypto.randomUUID(), workoutId, exerciseId, i + 1, reps, weight || null]
+        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null]
       )
     }
     return NextResponse.json({ ok: true, workoutId })

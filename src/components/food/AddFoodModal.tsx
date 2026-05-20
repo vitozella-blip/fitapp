@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils'
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
 type Category = { id: string; name: string }
 type CartItem = { food: Food; qty: string }
-type Props = { meal: string; date: string; onClose: () => void; onAdded: () => void }
+type Props = { meal: string; date: string; onClose: () => void; onAdded: () => void; isFree?: boolean; onFreeMeal?: () => void }
 
 const calcMacro = (val: number, qty: string) => Math.round((val * Number(qty)) / 100)
 
-export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
+export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal }: Props) {
   const userId = useAppStore((s) => s.userId)
   const router = useRouter()
   const [q, setQ] = useState('')
@@ -96,13 +96,14 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
   const showEmpty = !selected && searched && results.length === 0 && (q.length >= 2 || hasFilter)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 px-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-gray-900 dark:text-gray-100">Aggiungi a {meal}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={16} /></button>
+          <div className="w-8" />
+          <h2 className="font-bold text-gray-900 dark:text-gray-100 flex-1 text-center">Aggiungi a {meal}</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
         </div>
 
         {/* Cart */}
@@ -142,6 +143,19 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
                 )}>
                 <Star size={16} fill={favFilter ? 'currentColor' : 'none'} />
               </button>
+              {onFreeMeal && (
+                <button
+                  onClick={() => { onFreeMeal(); onClose() }}
+                  aria-label="Pasto libero"
+                  className={cn(
+                    'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors',
+                    isFree
+                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-400'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
+                  )}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>🍟</span>
+                </button>
+              )}
             </div>
 
             {categories.length > 0 && (
@@ -229,7 +243,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-500 shrink-0">Quantità (g)</label>
               <input autoFocus type="number" min="0" value={qty} onChange={e => setQty(e.target.value)}
-                placeholder="es. 150"
+                placeholder=""
                 className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
             </div>
             <button onClick={addToCart} disabled={!qty.trim()}

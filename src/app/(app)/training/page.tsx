@@ -4,9 +4,10 @@ import Link from 'next/link'
 const COLOR = '#7aafc8'
 
 const SECTIONS = [
-  { label: 'Diario Allenamenti', href: '/training/diary',   e: '📖' },
-  { label: 'Storico',            href: '/training/history', e: '📈' },
-  { label: 'Piano Allenamento',  href: '/training/plan',    e: '🗓️' },
+  { label: 'Diario Allenamenti', href: '/training/diary',      e: '📖' },
+  { label: 'Progressi',          href: '/training/progressi',  e: '📊' },
+  { label: 'Storico',            href: '/training/history',    e: '📈' },
+  { label: 'Piano Allenamento',  href: '/training/plan',       e: '🗓️' },
 ]
 
 export default function TrainingHubPage() {

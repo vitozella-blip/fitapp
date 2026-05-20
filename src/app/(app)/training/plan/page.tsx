@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Plus, Trash2, Pencil, Copy, ChevronUp, ChevronDown, ChevronRight,
   Check, X, Loader2, Search, MoreVertical,
@@ -18,6 +19,7 @@ type WeekItem = { name: string; exercises?: WeekExercise[] }
 type TemplateExercise = {
   id: string; order: number; sets: number; reps: string
   restSeconds: number; noteScheda?: string; notePersonali?: string
+  isAbs: boolean
   exercise: { id: string; name: string; muscleGroup: string }
 }
 type Template = { id: string; planId: string; name: string; order: number; exercises: TemplateExercise[] }
@@ -703,11 +705,11 @@ function ExerciseFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[80vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <p className="font-bold text-gray-900 dark:text-gray-100">Aggiungi esercizio</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={14} /></button>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {!selected ? (
@@ -773,19 +775,27 @@ function ExerciseFormModal({
 }
 
 // ── Base exercise row ─────────────────────────────────────────────────────────
-function BaseExRow({ ex, isFirst, isLast, onDelete, onReorder }: {
+function BaseExRow({ ex, isFirst, isLast, onDelete, onReorder, onToggleAbs }: {
   ex: TemplateExercise; isFirst: boolean; isLast: boolean
   onDelete: () => void; onReorder: (dir: 'up' | 'down') => void
+  onToggleAbs: () => void
 }) {
   return (
     <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 group">
       <div className="flex flex-col shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onReorder('up')} disabled={isFirst} className={cn('w-4 h-4 flex items-center justify-center', isFirst ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}><ChevronUp size={10} /></button>
-        <button onClick={() => onReorder('down')} disabled={isLast} className={cn('w-4 h-4 flex items-center justify-center', isLast ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}><ChevronDown size={10} /></button>
+        <button onClick={e => { e.stopPropagation(); onReorder('up') }} disabled={isFirst} className={cn('w-4 h-4 flex items-center justify-center', isFirst ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}><ChevronUp size={10} /></button>
+        <button onClick={e => { e.stopPropagation(); onReorder('down') }} disabled={isLast} className={cn('w-4 h-4 flex items-center justify-center', isLast ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}><ChevronDown size={10} /></button>
       </div>
       <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.exercise.name}</p>
       {ex.exercise.muscleGroup && <span className="text-[10px] text-gray-400 shrink-0 hidden sm:block">{ex.exercise.muscleGroup}</span>}
-      <button onClick={onDelete} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors shrink-0"><Trash2 size={12} /></button>
+      <button onClick={e => { e.stopPropagation(); onToggleAbs() }} title="Segna come esercizio ABS"
+        className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shrink-0',
+          ex.isAbs
+            ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
+            : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400')}>
+        ABS
+      </button>
+      <button onClick={e => { e.stopPropagation(); onDelete() }} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors shrink-0"><Trash2 size={12} /></button>
     </div>
   )
 }
@@ -810,18 +820,25 @@ function WeekExRow({ ex, weekId, param, color }: {
   }
 
   return (
-    <div className="px-3 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-        <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.exercise.name}</p>
-        {saving && <Loader2 size={11} className="animate-spin text-gray-300 shrink-0" />}
+    <div className="px-3 py-1.5 border-b border-gray-50 dark:border-gray-800 last:border-0">
+      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
+        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{ex.exercise.name}</p>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Set</span>
+          <input type="number" value={sets} onChange={e => setSets(e.target.value)} onBlur={save} min="1"
+            className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>
+          <input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder="—"
+            className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rec</span>
+          <input type="number" value={rest} onChange={e => setRest(e.target.value)} onBlur={save} min="0"
+            className="w-12 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-        <div><label className="text-[9px] text-gray-400 font-bold uppercase tracking-wide block mb-1">Set</label><input type="number" value={sets} onChange={e => setSets(e.target.value)} onBlur={save} min="1" className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" /></div>
-        <div><label className="text-[9px] text-gray-400 font-bold uppercase tracking-wide block mb-1">Reps</label><input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder="—" className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" /></div>
-        <div><label className="text-[9px] text-gray-400 font-bold uppercase tracking-wide block mb-1">Rec (s)</label><input type="number" value={rest} onChange={e => setRest(e.target.value)} onBlur={save} min="0" className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" /></div>
-      </div>
-      <input value={notes} onChange={e => setNotes(e.target.value)} onBlur={save} placeholder="Note per questa week..." className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 outline-none focus:border-gray-400" />
     </div>
   )
 }
@@ -831,21 +848,45 @@ function WeekMenuBtn({ onRename, onDuplicate, onDelete }: {
   onRename: () => void; onDuplicate: () => void; onDelete: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    if (!open) return
+    function h(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
+          btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [])
+  }, [open])
+
+  function toggle(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: r.left + r.width / 2 })
+    }
+    setOpen(o => !o)
+  }
+
   return (
-    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
-      <button onClick={() => setOpen(o => !o)} className="w-4 h-4 flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"><MoreVertical size={11} /></button>
-      {open && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-32 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+    <div onClick={e => e.stopPropagation()}>
+      <button ref={btnRef} onClick={toggle} className="w-4 h-4 flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity">
+        <MoreVertical size={11} />
+      </button>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div ref={menuRef}
+          className="fixed w-32 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] overflow-hidden py-1"
+          style={{ top: pos.top, left: pos.left, transform: 'translateX(-50%)' }}>
           <button onClick={() => { setOpen(false); onRename() }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-left"><Pencil size={11} className="text-gray-400" /> Rinomina</button>
           <button onClick={() => { setOpen(false); onDuplicate() }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-left"><Copy size={11} className="text-gray-400" /> Duplica</button>
           <button onClick={() => { setOpen(false); onDelete() }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 text-left"><Trash2 size={11} /> Elimina</button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -860,6 +901,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   const [addEx, setAddEx]               = useState(false)
   const [collapsed, setCollapsed]       = useState(true)
   const [baseCollapsed, setBaseCollapsed] = useState(true)
+  const [weeksCollapsed, setWeeksCollapsed] = useState(true)
 
   const [weeks, setWeeks]               = useState<Week[]>([])
   const [activeWeekId, setActiveWeekId] = useState<string | null>(null)
@@ -911,6 +953,10 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
     await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reorder', direction: dir }) })
     onRefresh()
   }
+  async function toggleAbsExercise(exId: string) {
+    await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggleAbs' }) })
+    onRefresh()
+  }
   async function addWeek() {
     const n = newWeekName.trim(); if (!n) return
     const r = await fetch('/api/workout-weeks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: tmpl.id, name: n }) })
@@ -943,10 +989,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white text-xs font-bold" style={{ backgroundColor: color + 'cc' }}>
-          {String(idx + 1).padStart(2, '0')}
-        </div>
+      <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
+        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
         {editing ? (
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
@@ -954,8 +998,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
             style={{ borderColor: color }} />
         ) : (
           <button onClick={() => setCollapsed(o => !o)} className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate leading-tight">{tmpl.name}</p>
-            <p className="text-[10px] text-gray-400">
+            <p className="text-sm font-bold truncate leading-tight" style={{ color }}>{tmpl.name}</p>
+            <p className="text-[10px]" style={{ color: color + 'aa' }}>
               {exCount} {exCount === 1 ? 'esercizio' : 'esercizi'}
               {weeks.length > 0 && ` · ${weeks.length} ${weeks.length === 1 ? 'routine' : 'routine'}`}
             </p>
@@ -994,7 +1038,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                 <div>
                   {exercises.map((ex, ei) => (
                     <BaseExRow key={ex.id} ex={ex} isFirst={ei === 0} isLast={ei === exercises.length - 1}
-                      onDelete={() => deleteExercise(ex.id)} onReorder={dir => reorderExercise(ex.id, dir)} />
+                      onDelete={() => deleteExercise(ex.id)} onReorder={dir => reorderExercise(ex.id, dir)}
+                      onToggleAbs={() => toggleAbsExercise(ex.id)} />
                   ))}
                 </div>
                 <div className="px-3 pb-2 pt-1">
@@ -1007,55 +1052,65 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
           </div>
 
           <div className="border-t border-gray-50 dark:border-gray-800">
-            {loadingWeeks ? (
-              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color }} /></div>
-            ) : (
-              <>
-                <div className="flex items-center border-b border-gray-100 dark:border-gray-800 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                  {weeks.map(w => (
-                    renamingWeekId === w.id ? (
-                      <div key={w.id} className="flex items-center gap-1 px-2 py-1.5 shrink-0">
-                        <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') renameWeek(w.id); if (e.key === 'Escape') setRenamingWeekId(null) }}
-                          className="w-24 px-2 py-1 rounded-lg border text-xs outline-none font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                          style={{ borderColor: color }} />
-                        <button onClick={() => renameWeek(w.id)} className="w-5 h-5 rounded flex items-center justify-center text-white" style={{ backgroundColor: color }}><Check size={10} /></button>
-                        <button onClick={() => setRenamingWeekId(null)} className="w-5 h-5 rounded flex items-center justify-center text-gray-400"><X size={10} /></button>
+            <button onClick={() => setWeeksCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 text-left" style={{ backgroundColor: color + '0c' }}>
+              <Chevron size={12} className={cn('text-gray-400 transition-transform shrink-0', weeksCollapsed && '-rotate-90')} />
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">
+                Week <span className="font-normal opacity-60">({weeks.length})</span>
+              </p>
+              {!weeksCollapsed && (
+                <button onClick={e => { e.stopPropagation(); setAddingWeek(true) }}
+                  className="w-5 h-5 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                  <Plus size={11} />
+                </button>
+              )}
+            </button>
+            {!weeksCollapsed && (
+              loadingWeeks ? (
+                <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color }} /></div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-1 px-2 py-2 border-b border-gray-100 dark:border-gray-800">
+                    {weeks.map(w => (
+                      renamingWeekId === w.id ? (
+                        <div key={w.id} className="col-span-2 flex items-center gap-1">
+                          <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') renameWeek(w.id); if (e.key === 'Escape') setRenamingWeekId(null) }}
+                            className="flex-1 min-w-0 px-2 py-1 rounded-lg border text-xs outline-none font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            style={{ borderColor: color }} />
+                          <button onClick={() => renameWeek(w.id)} className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0" style={{ backgroundColor: color }}><Check size={10} /></button>
+                          <button onClick={() => setRenamingWeekId(null)} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
+                        </div>
+                      ) : (
+                        <button key={w.id} onClick={() => setActiveWeekId(w.id)}
+                          className={cn('flex items-center justify-between gap-0.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors', activeWeekId === w.id ? 'text-white' : 'border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800')}
+                          style={activeWeekId === w.id ? { backgroundColor: color, borderColor: color } : {}}>
+                          <span className="truncate">{w.name}</span>
+                          <WeekMenuBtn
+                            onRename={() => { setRenamingWeekId(w.id); setRenameVal(w.name) }}
+                            onDuplicate={() => duplicateWeek(w.id)}
+                            onDelete={() => deleteWeek(w.id)} />
+                        </button>
+                      )
+                    ))}
+                    {addingWeek && (
+                      <div className="col-span-2 flex items-center gap-1">
+                        <input autoFocus value={newWeekName} onChange={e => setNewWeekName(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') addWeek(); if (e.key === 'Escape') { setAddingWeek(false); setNewWeekName('') } }}
+                          placeholder="Nome..." className="flex-1 min-w-0 px-2 py-1 rounded-lg border text-xs outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" style={{ borderColor: color }} />
+                        <button onClick={addWeek} disabled={!newWeekName.trim()} className="w-5 h-5 rounded flex items-center justify-center text-white disabled:opacity-40 shrink-0" style={{ backgroundColor: color }}><Check size={10} /></button>
+                        <button onClick={() => { setAddingWeek(false); setNewWeekName('') }} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
                       </div>
-                    ) : (
-                      <button key={w.id} onClick={() => setActiveWeekId(w.id)}
-                        className={cn('flex items-center gap-1 px-3 py-2 text-xs font-semibold shrink-0 border-b-2 transition-colors', activeWeekId === w.id ? '' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300')}
-                        style={activeWeekId === w.id ? { color, borderColor: color } : {}}>
-                        {w.name}
-                        <WeekMenuBtn
-                          onRename={() => { setRenamingWeekId(w.id); setRenameVal(w.name) }}
-                          onDuplicate={() => duplicateWeek(w.id)}
-                          onDelete={() => deleteWeek(w.id)} />
-                      </button>
-                    )
-                  ))}
-                  {addingWeek ? (
-                    <div className="flex items-center gap-1 px-2 py-1.5 shrink-0">
-                      <input autoFocus value={newWeekName} onChange={e => setNewWeekName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') addWeek(); if (e.key === 'Escape') { setAddingWeek(false); setNewWeekName('') } }}
-                        placeholder="Nome routine..." className="w-28 px-2 py-1 rounded-lg border text-xs outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" style={{ borderColor: color }} />
-                      <button onClick={addWeek} disabled={!newWeekName.trim()} className="w-5 h-5 rounded flex items-center justify-center text-white disabled:opacity-40" style={{ backgroundColor: color }}><Check size={10} /></button>
-                      <button onClick={() => { setAddingWeek(false); setNewWeekName('') }} className="w-5 h-5 rounded flex items-center justify-center text-gray-400"><X size={10} /></button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setAddingWeek(true)} className="px-3 py-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1 text-xs shrink-0 transition-colors ml-auto">
-                      <Plus size={12} />
-                    </button>
-                  )}
-                </div>
-                {activeWeekId && exercises.length > 0 ? (
-                  <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} />)}</div>
-                ) : activeWeekId ? (
-                  <p className="text-xs text-gray-400 text-center py-4 px-3">Nessun esercizio. Apri &ldquo;Esercizi di base&rdquo; per aggiungerne.</p>
-                ) : weeks.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-4 px-3">Nessuna routine. Clicca + per aggiungerne una.</p>
-                ) : null}
-              </>
+                    )}
+                  </div>
+                  {activeWeekId && exercises.length > 0 ? (
+                    <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} />)}</div>
+                  ) : activeWeekId ? (
+                    <p className="text-xs text-gray-400 text-center py-4 px-3">Nessun esercizio. Apri &ldquo;Esercizi di base&rdquo; per aggiungerne.</p>
+                  ) : weeks.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-4 px-3">Nessuna routine. Clicca + per aggiungerne una.</p>
+                  ) : null}
+                </>
+              )
             )}
           </div>
         </>
@@ -1109,10 +1164,11 @@ function PlanCard({ plan, userId, onChanged }: {
   const [eEnd, setEEnd]     = useState((plan as { endDate?: string | null }).endDate ?? '')
   const [savingP, setSavingP] = useState(false)
 
-  const loadTemplates = useCallback(async () => {
-    setLoadingT(true)
+  const loadTemplates = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoadingT(true)
     const r = await fetch(`/api/workout-templates?planId=${plan.id}`)
-    setTemplates(await r.json()); setLoadingT(false)
+    setTemplates(await r.json())
+    if (showLoader) setLoadingT(false)
   }, [plan.id])
 
   useEffect(() => { if (expanded) loadTemplates() }, [expanded, loadTemplates])
@@ -1191,7 +1247,7 @@ function PlanCard({ plan, userId, onChanged }: {
                   <button onClick={createScheda} disabled={savingS || !schedaName.trim()} className="w-9 h-9 rounded-xl text-white flex items-center justify-center disabled:opacity-50" style={{ backgroundColor: CT }}>
                     {savingS ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
                   </button>
-                  <button onClick={() => setShowNewScheda(false)} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={14} /></button>
+                  <button onClick={() => setShowNewScheda(false)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
                 </div>
               )}
               {loadingT ? (
@@ -1199,7 +1255,7 @@ function PlanCard({ plan, userId, onChanged }: {
               ) : templates.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-5">Nessuna scheda. Clicca &ldquo;Scheda&rdquo; per aggiungerne una.</p>
               ) : (
-                templates.map((t, i) => <WorkoutCard key={t.id} tmpl={t} idx={i} userId={userId} onRefresh={loadTemplates} />)
+                templates.map((t, i) => <WorkoutCard key={t.id} tmpl={t} idx={i} userId={userId} onRefresh={() => loadTemplates(false)} />)
               )}
             </div>
           )}

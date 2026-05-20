@@ -125,7 +125,12 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
               {selected && <Check size={11} className="text-white" />}
             </button>
           ) : (
-            <button onClick={onToggleFav} className="shrink-0">
+            <button
+              onClick={e => { e.stopPropagation(); onToggleFav() }}
+              onTouchStart={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
+              onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onToggleFav() }}
+              className="shrink-0 p-1 -m-1">
               <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
             </button>
           )}
@@ -422,11 +427,11 @@ function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onC
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <p className="font-bold text-gray-900 dark:text-gray-100">{editing ? 'Modifica alimento' : 'Nuovo alimento'}</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={14} /></button>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div>
@@ -553,10 +558,10 @@ function FoodDatabasePage() {
     setCatFilter(ids); fetchAll(q, ids, favOnly)
   }
 
-  async function toggleFav(foodId: string) {
-    await fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, foodId }) })
+  function toggleFav(foodId: string) {
     setFavorites(prev => { const n = new Set(prev); n.has(foodId) ? n.delete(foodId) : n.add(foodId); return n })
     if (favOnly) setFoods(f => f.filter(x => x.id !== foodId))
+    fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, foodId }) }).catch(() => {})
   }
 
   function openEdit(food: Food) {
