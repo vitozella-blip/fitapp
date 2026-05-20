@@ -345,9 +345,9 @@ export default function TrainingDiaryPage() {
       return next
     })
   }
-  function toggleAbsExercise(id: string) {
+  function toggleAbsExercise(id: string, type: 'SS' | 'JS' = 'SS') {
     setAbsExIds(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      const next = prev.some(x => x.id === id) ? prev.filter(x => x.id !== id) : [...prev, { id, type }]
       if (schedaInfo) {
         try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
       }
@@ -356,9 +356,38 @@ export default function TrainingDiaryPage() {
   }
 
   const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
-  const [absExIds,   setAbsExIds]   = useState<string[]>([])
+  const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
   const [absPickerOpen, setAbsPickerOpen] = useState(false)
 
+  // Sync ABS pairs whenever selection or options change
+  useEffect(() => {
+    if (absOptions.length === 0) return
+    const absOptionIds = new Set(absOptions.map(o => o.id))
+    setPairs(prev => {
+      const cleaned: Record<string, ExPair> = {}
+      for (const [k, v] of Object.entries(prev)) {
+        if (!absOptionIds.has(k) && !absOptionIds.has(v.partnerId)) cleaned[k] = v
+      }
+      const ssSels = absExIds.filter(x => x.type === 'SS')
+      const jsSels = absExIds.filter(x => x.type === 'JS')
+      for (let i = 0; i + 1 < ssSels.length; i += 2) {
+        const a = ssSels[i], b = ssSels[i + 1]
+        const aName = absOptions.find(o => o.id === a.id)?.name ?? a.id
+        const bName = absOptions.find(o => o.id === b.id)?.name ?? b.id
+        cleaned[a.id] = { partnerId: b.id, partnerName: bName, type: 'SS' }
+        cleaned[b.id] = { partnerId: a.id, partnerName: aName, type: 'SS' }
+      }
+      for (let i = 0; i + 1 < jsSels.length; i += 2) {
+        const a = jsSels[i], b = jsSels[i + 1]
+        const aName = absOptions.find(o => o.id === a.id)?.name ?? a.id
+        const bName = absOptions.find(o => o.id === b.id)?.name ?? b.id
+        cleaned[a.id] = { partnerId: b.id, partnerName: bName, type: 'JS' }
+        cleaned[b.id] = { partnerId: a.id, partnerName: aName, type: 'JS' }
+      }
+      return cleaned
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [absExIds, absOptions])
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
   const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
@@ -443,9 +472,11 @@ export default function TrainingDiaryPage() {
     if (!schedaInfo) { setAbsOptions([]); setAbsExIds([]); return }
     try {
       const saved = JSON.parse(localStorage.getItem(`abs_sel_${schedaInfo.id}`) ?? '[]')
-      // support both old format [{id,type}] and new format [string]
+      // support both old format [string] and new format [{id,type}]
       setAbsExIds(Array.isArray(saved)
-        ? saved.flatMap((x: unknown) => typeof x === 'string' ? [x] : (x && typeof x === 'object' && 'id' in x ? [(x as AbsSel).id] : []))
+        ? saved.flatMap((x: unknown) =>
+            typeof x === 'string' ? [{ id: x, type: 'SS' as const }] :
+            (x && typeof x === 'object' && 'id' in x ? [x as AbsSel] : []))
         : [])
     } catch { setAbsExIds([]) }
     ;(async () => {
@@ -625,7 +656,7 @@ export default function TrainingDiaryPage() {
 
   const schedaExIds = new Set([
     ...(schedaInfo?.exercises ?? []).map(te => te.exercise.id),
-    ...absExIds,
+    ...absExIds.map(x => x.id),
   ])
   const extraGrouped = workoutSets
     .filter(s => !schedaExIds.has(s.exerciseId))
@@ -668,7 +699,7 @@ export default function TrainingDiaryPage() {
 
   const allExercisesForPicker: { id: string; name: string }[] = [
     ...(schedaInfo?.exercises.filter(te => !te.isAbs).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
-    ...absExIds.map(id => ({ id, name: absOptions.find(o => o.id === id)?.name ?? id })),
+    ...absExIds.map(x => ({ id: x.id, name: absOptions.find(o => o.id === x.id)?.name ?? x.id })),
     ...Object.entries(extraGrouped).map(([eId, { name }]) => ({ id: eId, name })),
   ]
 
@@ -1148,7 +1179,7 @@ export default function TrainingDiaryPage() {
 
         // ── ABS exercise groups ───────────────────────────────────────────
         const absTes: TemplateEx[] = absExIds
-          .map(id => absOptions.find(o => o.id === id))
+          .map(x => absOptions.find(o => o.id === x.id))
           .filter((o): o is { id: string; name: string; schedaName: string } => !!o)
           .map(o => ({
             id: `abs_${o.id}`,
@@ -1214,7 +1245,7 @@ export default function TrainingDiaryPage() {
                 <span className="text-xs font-bold" style={{ color: schedaColor }}>ABS</span>
                 <span className="flex-1 text-xs text-gray-400 text-left">
                   {absExIds.length > 0
-                    ? absExIds.map(id => absOptions.find(o => o.id === id)?.name ?? id).join(' · ')
+                    ? absExIds.map(x => absOptions.find(o => o.id === x.id)?.name ?? x.id).join(' · ')
                     : 'Seleziona esercizi addominali'}
                 </span>
                 <ChevronDown size={14} className={cn('text-gray-400 transition-transform', absPickerOpen && 'rotate-180')} />
@@ -1222,7 +1253,7 @@ export default function TrainingDiaryPage() {
               {absPickerOpen && (
                 <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1">
                   {absOptions.map(o => {
-                    const isSelected = absExIds.includes(o.id)
+                    const isSelected = absExIds.some(x => x.id === o.id)
                     return (
                       <div key={o.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
                         <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{o.name}</span>
