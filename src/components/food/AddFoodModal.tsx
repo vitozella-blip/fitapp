@@ -96,8 +96,8 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
   const showEmpty = !selected && searched && results.length === 0 && (q.length >= 2 || hasFilter)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 px-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
