@@ -709,7 +709,7 @@ function ExerciseFormModal({
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[80vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <p className="font-bold text-gray-900 dark:text-gray-100">Aggiungi esercizio</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={14} /></button>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {!selected ? (
@@ -1247,7 +1247,7 @@ function PlanCard({ plan, userId, onChanged }: {
                   <button onClick={createScheda} disabled={savingS || !schedaName.trim()} className="w-9 h-9 rounded-xl text-white flex items-center justify-center disabled:opacity-50" style={{ backgroundColor: CT }}>
                     {savingS ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
                   </button>
-                  <button onClick={() => setShowNewScheda(false)} className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={14} /></button>
+                  <button onClick={() => setShowNewScheda(false)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
                 </div>
               )}
               {loadingT ? (

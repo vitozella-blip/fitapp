@@ -431,7 +431,7 @@ function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onC
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <p className="font-bold text-gray-900 dark:text-gray-100">{editing ? 'Modifica alimento' : 'Nuovo alimento'}</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={14} /></button>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div>

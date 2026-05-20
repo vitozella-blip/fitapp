@@ -171,8 +171,8 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
             </p>
           </div>
           <button onClick={onClose}
-            className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500">
-            <X size={14} />
+            className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
+            <X size={16} />
           </button>
         </div>
 
@@ -1683,7 +1683,7 @@ export default function TrainingDiaryPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="w-8" />
               <h2 className="font-bold text-gray-900 dark:text-gray-100 flex-1 text-center">Aggiungi allenamento</h2>
-              <button onClick={() => setShowAllenamentoPicker(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={16} /></button>
+              <button onClick={() => setShowAllenamentoPicker(false)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0"><X size={16} /></button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
