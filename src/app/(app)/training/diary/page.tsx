@@ -1055,99 +1055,162 @@ export default function TrainingDiaryPage() {
                 {/* Logged sets — comparison view when history active, normal list otherwise */}
                 {historyView ?? (exSets.length > 0 ? (
                   <div className="border-t border-gray-50 dark:border-gray-800">
-                    {groupSets(exSets, setTags, warmups).map((group, gi) => (
-                      <div key={group.key}
-                        className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800', group.isGrouped && 'border-l-2 ml-2')}
-                        style={group.isGrouped ? { borderLeftColor: groupColor(group.type) } : {}}>
-                        {group.items.map(({ s, isW, label }, ii) => {
-                      const isEditing = editSetId === s.id
-                      return (
-                        <div key={s.id} className={cn(ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
-                          {isEditing ? (
-                            <div className="px-4 py-2 space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
-                                  <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                                    <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                                      onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
-                                    <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{editReps || '—'}</span>
-                                    <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
-                                      onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
+                    {groupSets(exSets, setTags, warmups).map((group, gi) => {
+                      // ── helper: renders one set row (no left padding when grouped) ──
+                      const renderSetRow = ({ s, isW, label }: { s: WorkoutSet; isW: boolean; label: string }, showIndividualTag: boolean) => {
+                        const isEditing = editSetId === s.id
+                        return (
+                          <div key={s.id}>
+                            {isEditing ? (
+                              <div className="px-4 py-2 space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 block mb-1">Reps</label>
+                                    <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                                      <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                        onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
+                                      <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{editReps || '—'}</span>
+                                      <button className="px-3 py-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold"
+                                        onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                                    <input type="number" step="0.5" min="0" value={editWeight}
+                                      onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                                   </div>
                                 </div>
-                                <div>
-                                  <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
-                                  <input type="number" step="0.5" min="0" value={editWeight}
-                                    onChange={e => setEditWeight(e.target.value)} placeholder="—"
-                                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button onClick={() => setEditSetId(null)}
+                                    className="py-1.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800">
+                                    Annulla
+                                  </button>
+                                  <button onClick={updateSet} disabled={editSaving || !editReps.trim()}
+                                    className="py-1.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
+                                    style={{ backgroundColor: CT }}>
+                                    {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salva
+                                  </button>
                                 </div>
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setEditSetId(null)}
-                                  className="py-1.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800">
-                                  Annulla
-                                </button>
-                                <button onClick={updateSet} disabled={editSaving || !editReps.trim()}
-                                  className="py-1.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
-                                  style={{ backgroundColor: CT }}>
-                                  {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salva
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <div className="flex items-center gap-2 px-4 py-2">
-                                <button
-                                  onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
-                                  className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0 transition-opacity"
-                                  style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
-                                  {label}
-                                </button>
-                                {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
-                                {setTags[s.id] && (
-                                  <span className="text-[10px] font-bold shrink-0" style={{ color: CT }}>{setTags[s.id]}</span>
+                            ) : (
+                              <div>
+                                <div className="flex items-center gap-2 px-4 py-2">
+                                  <button
+                                    onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
+                                    className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0 transition-opacity"
+                                    style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
+                                    {label}
+                                  </button>
+                                  {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                                  {showIndividualTag && setTags[s.id] && (
+                                    <span className="text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded border" style={{ color: CT, borderColor: CT + '99', backgroundColor: CT + '18' }}>{setTags[s.id]}</span>
+                                  )}
+                                  <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                                    onClick={() => openEdit(s)}>
+                                    {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                  </button>
+                                  <button onClick={() => deleteSet(s.id)}
+                                    className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                                {labelMenuSetId === s.id && (
+                                  <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
+                                      const active = setTags[s.id] === opt
+                                      return (
+                                        <button key={opt}
+                                          onClick={() => {
+                                            setSetTags(prev => {
+                                              const next = { ...prev }
+                                              if (active) delete next[s.id]; else next[s.id] = opt
+                                              return next
+                                            })
+                                            setLabelMenuSetId(null)
+                                          }}
+                                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
+                                          style={active
+                                            ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                                            : { borderColor: CT, color: CT }}>
+                                          {opt}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
                                 )}
-                                <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
+
+                      const anyEditing = group.isGrouped && group.items.some(i => editSetId === i.s.id)
+
+                      return (
+                        <div key={group.key} className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
+                          {group.isGrouped && !anyEditing ? (
+                            // Grouped: CSS grid — [set btn | spanning badge | reps | trash]
+                            <div className="grid" style={{ gridTemplateColumns: 'auto auto 1fr auto', gridTemplateRows: `repeat(${group.items.length}, auto)` }}>
+                              {/* Spanning badge — col 2, all rows */}
+                              <div
+                                style={{ gridColumn: 2, gridRow: `1 / span ${group.items.length}`, color: CT, borderColor: CT + '99', backgroundColor: CT + '18' }}
+                                className="flex flex-col mx-1.5 my-px rounded border shrink-0 w-7">
+                                {group.items.map((item, idx) => (
+                                  <span key={idx} className="flex-1 flex items-center justify-center text-[9px] font-bold leading-none">{setTags[item.s.id] ?? ''}</span>
+                                ))}
+                              </div>
+                              {group.items.map(({ s, isW, label }, ii) => [
+                                // col 1: set button — h-10 fixed height
+                                <div key={`${s.id}-l`} style={{ gridColumn: 1, gridRow: ii + 1 }}
+                                  className={cn('flex items-center gap-1 pl-4 h-10 pr-0', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
+                                  <button onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
+                                    className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
+                                    style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
+                                    {label}
+                                  </button>
+                                  {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
+                                </div>,
+                                // col 3: reps — h-10 fixed height
+                                <button key={`${s.id}-r`} style={{ gridColumn: 3, gridRow: ii + 1 }}
+                                  className={cn('flex items-center h-10 pl-1 text-left text-sm text-gray-900 dark:text-gray-100', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}
                                   onClick={() => openEdit(s)}>
                                   {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
-                                </button>
-                                <button onClick={() => deleteSet(s.id)}
-                                  className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                              {labelMenuSetId === s.id && (
-                                <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                  {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
-                                    const active = setTags[s.id] === opt
-                                    return (
-                                      <button key={opt}
-                                        onClick={() => {
-                                          setSetTags(prev => {
-                                            const next = { ...prev }
-                                            if (active) delete next[s.id]; else next[s.id] = opt
-                                            return next
-                                          })
-                                          setLabelMenuSetId(null)
-                                        }}
-                                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
-                                        style={active
-                                          ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
-                                          : { borderColor: CT, color: CT }}>
-                                        {opt}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
-                              )}
+                                </button>,
+                                // col 4: trash — h-10 fixed height
+                                <div key={`${s.id}-t`} style={{ gridColumn: 4, gridRow: ii + 1 }}
+                                  className={cn('flex items-center h-10 pr-4', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
+                                  <button onClick={() => deleteSet(s.id)}
+                                    className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>,
+                                // label menu — full width below its row
+                                labelMenuSetId === s.id && (
+                                  <div key={`${s.id}-menu`} style={{ gridColumn: '1 / -1' }}
+                                    className="flex flex-wrap gap-1.5 px-4 pb-2">
+                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
+                                      const active = setTags[s.id] === opt
+                                      return (
+                                        <button key={opt}
+                                          onClick={() => { setSetTags(prev => { const next = { ...prev }; if (active) delete next[s.id]; else next[s.id] = opt; return next }); setLabelMenuSetId(null) }}
+                                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
+                                          style={active ? { backgroundColor: CT, borderColor: CT, color: '#fff' } : { borderColor: CT, color: CT }}>
+                                          {opt}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                ),
+                              ])}
                             </div>
+                          ) : (
+                            // Ungrouped or editing: flat render
+                            group.items.map(item => renderSetRow(item, !group.isGrouped))
                           )}
                         </div>
                       )
-                        })}
-                      </div>
-                    ))}
+                    })}
                   </div>
                 ) : null)}
               </div>
@@ -1422,7 +1485,7 @@ export default function TrainingDiaryPage() {
                                       </button>
                                       {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
                                       {setTags[s.id] && (
-                                        <span className="text-[10px] font-bold shrink-0" style={{ color: schedaColor }}>{setTags[s.id]}</span>
+                                        <span className="text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded border" style={{ color: schedaColor, borderColor: schedaColor + '99', backgroundColor: schedaColor + '18' }}>{setTags[s.id]}</span>
                                       )}
                                       <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                         onClick={() => openEdit(s)}>
