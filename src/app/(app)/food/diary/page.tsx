@@ -152,7 +152,7 @@ export default function FoodDiaryPage() {
                   {meal}
                 </p>
                 {isFree && (
-                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>cheat meal</p>
+                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>Libero</p>
                 )}
                 {!isFree && mealCal > 0 && (
                   <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>{mealCal} kcal</p>
