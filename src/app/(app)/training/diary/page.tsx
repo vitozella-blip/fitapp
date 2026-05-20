@@ -1680,7 +1680,11 @@ export default function TrainingDiaryPage() {
           onClick={() => setShowAllenamentoPicker(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-sm shadow-2xl px-5 py-6"
             onClick={e => e.stopPropagation()}>
-            <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">Aggiungi allenamento</p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-8" />
+              <h2 className="font-bold text-gray-900 dark:text-gray-100 flex-1 text-center">Aggiungi allenamento</h2>
+              <button onClick={() => setShowAllenamentoPicker(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={16} /></button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => { toggleTennis(); setShowAllenamentoPicker(false) }}

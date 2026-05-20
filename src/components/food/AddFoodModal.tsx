@@ -101,7 +101,8 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-gray-900 dark:text-gray-100">Aggiungi a {meal}</h2>
+          <div className="w-8" />
+          <h2 className="font-bold text-gray-900 dark:text-gray-100 flex-1 text-center">Aggiungi a {meal}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"><X size={16} /></button>
         </div>
 
