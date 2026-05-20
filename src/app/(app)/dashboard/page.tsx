@@ -186,7 +186,7 @@ export default function DashboardPage() {
               return (
                 <div key={name} className="flex-1 flex flex-col">
                   <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
-                    <span style={{ flexShrink: 0 }}>{free ? <Em e="🍟" size={20} /> : renderIcon('', 20)}</span>
+                    <span style={{ flexShrink: 0 }}>{renderIcon('', 20)}</span>
                     <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{label}</span>
                   </div>
                   <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
