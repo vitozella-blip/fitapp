@@ -79,13 +79,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(rows)
   } catch (e) {
     console.error('GET /api/food error:', e)
-    // FoodCategory table may not exist yet — fall back to simple query without categoryIds
-    const fallback = `SELECT f.*, ARRAY[]::text[] AS "categoryIds" FROM "Food" f
-      WHERE (LOWER(f.name) LIKE LOWER($1) OR LOWER(COALESCE(f.brand,'')) LIKE LOWER($1))
-        AND (f."userId" IS NULL OR f."userId"=$2)
-      ORDER BY f.name LIMIT $3 OFFSET $4`
-    const { rows } = await pool.query(fallback, [`%${q}%`, userId, limit, offset])
-    return NextResponse.json(rows)
+    // FoodCategory subquery may fail — fall back to simpler query that still respects fav filter
+    let fb = `SELECT f.*, ARRAY[]::text[] AS "categoryIds" FROM "Food" f`
+    const fbp: unknown[] = []
+    let fi = 1
+    if (favOnly) {
+      fb += ` INNER JOIN "FoodFavorite" ff ON ff."foodId"=f.id AND ff."userId"=$${fi++}`
+      fbp.push(userId)
+    }
+    fb += ` WHERE (LOWER(f.name) LIKE LOWER($${fi++}) OR LOWER(COALESCE(f.brand,'')) LIKE LOWER($${fi++}))`
+    fbp.push(`%${q}%`, `%${q}%`)
+    fb += ` AND (f."userId" IS NULL OR f."userId"=$${fi++})`
+    fbp.push(userId)
+    fb += ` ORDER BY f.name LIMIT $${fi++} OFFSET $${fi++}`
+    fbp.push(limit, offset)
+    try {
+      const { rows } = await pool.query(fb, fbp)
+      return NextResponse.json(rows)
+    } catch {
+      return NextResponse.json([])
+    }
   }
 }
 
