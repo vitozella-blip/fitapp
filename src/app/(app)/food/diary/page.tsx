@@ -193,9 +193,12 @@ export default function FoodDiaryPage() {
                 {mealEntries.map(e => (
                   <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
+                      <div className="flex items-baseline gap-1.5 min-w-0">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
+                        <span className="text-xs text-gray-400 shrink-0">{e.quantity}g</span>
+                      </div>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {e.quantity}g · {calc(e.food.calories, e.quantity)} kcal ·{' '}
+                        <span style={{ color: C.kcal }}>{calc(e.food.calories, e.quantity)} kcal</span> ·{' '}
                         <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span> ·{' '}
                         <span style={{ color: C.carbs }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
                         <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span>

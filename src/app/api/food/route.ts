@@ -18,6 +18,14 @@ async function ensureSchema() {
       WHERE "categoryId" IS NOT NULL
       ON CONFLICT DO NOTHING
     `)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "FoodFavorite" (
+        id TEXT PRIMARY KEY,
+        "userId" TEXT NOT NULL,
+        "foodId" TEXT NOT NULL,
+        UNIQUE ("userId", "foodId")
+      )
+    `)
     schemaReady = true
   } catch (e) { console.error('ensureSchema error:', e) }
 }

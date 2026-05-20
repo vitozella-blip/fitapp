@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
+async function ensureTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "FoodFavorite" (
+      id TEXT PRIMARY KEY,
+      "userId" TEXT NOT NULL,
+      "foodId" TEXT NOT NULL,
+      UNIQUE ("userId", "foodId")
+    )
+  `)
+}
+
 export async function GET(req: NextRequest) {
+  await ensureTable()
   const userId = req.nextUrl.searchParams.get('userId')
   if (!userId) return NextResponse.json([])
   const { rows } = await pool.query(
@@ -11,6 +23,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  await ensureTable()
   const { userId, foodId } = await req.json()
   const { rows: existing } = await pool.query(
     `SELECT id FROM "FoodFavorite" WHERE "userId"=$1 AND "foodId"=$2`, [userId, foodId]

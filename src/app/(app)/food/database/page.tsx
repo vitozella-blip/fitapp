@@ -125,7 +125,12 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
               {selected && <Check size={11} className="text-white" />}
             </button>
           ) : (
-            <button onClick={onToggleFav} className="shrink-0">
+            <button
+              onClick={e => { e.stopPropagation(); onToggleFav() }}
+              onTouchStart={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
+              onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onToggleFav() }}
+              className="shrink-0 p-1 -m-1">
               <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
             </button>
           )}
@@ -553,10 +558,10 @@ function FoodDatabasePage() {
     setCatFilter(ids); fetchAll(q, ids, favOnly)
   }
 
-  async function toggleFav(foodId: string) {
-    await fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, foodId }) })
+  function toggleFav(foodId: string) {
     setFavorites(prev => { const n = new Set(prev); n.has(foodId) ? n.delete(foodId) : n.add(foodId); return n })
     if (favOnly) setFoods(f => f.filter(x => x.id !== foodId))
+    fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, foodId }) }).catch(() => {})
   }
 
   function openEdit(food: Food) {

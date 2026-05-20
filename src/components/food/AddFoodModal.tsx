@@ -229,7 +229,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded }: Props) {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-500 shrink-0">Quantità (g)</label>
               <input autoFocus type="number" min="0" value={qty} onChange={e => setQty(e.target.value)}
-                placeholder="es. 150"
+                placeholder=""
                 className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
             </div>
             <button onClick={addToCart} disabled={!qty.trim()}
