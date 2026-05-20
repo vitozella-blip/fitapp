@@ -44,12 +44,17 @@ export default function DashboardPage() {
   const [loading, setLoading]   = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number; color?: string; weekOrder?: number | null } | null>(null)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+  const [tennisMeta, setTennisMeta] = useState<{ type: string; hours: string } | null>(null)
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
       setSchedaInfo(raw ? JSON.parse(raw) : null)
     } catch { setSchedaInfo(null) }
+    try {
+      const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
+      setTennisMeta(raw ? JSON.parse(raw) : null)
+    } catch { setTennisMeta(null) }
   }, [selectedDate])
 
   const refreshCompleted = useCallback(() => {
@@ -173,17 +178,17 @@ export default function DashboardPage() {
               style={{ color: '#e8924a' }}>Pasti</p>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col justify-between px-2 py-1.5 gap-0">
+          <div className="flex-1 overflow-hidden flex flex-col px-2 py-1.5">
             {MEALS.map(({ name, label, renderIcon }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               return (
-                <div key={name}>
+                <div key={name} className="flex-1 flex flex-col">
                   <div className="flex items-center justify-center gap-1.5 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800">
                     <span style={{ flexShrink: 0 }}>{renderIcon('', 20)}</span>
                     <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{label}</span>
                   </div>
-                  <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
+                  <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
                     {kcal > 0 ? (
                       <>
                         <p className="text-xs font-semibold" style={{ color: C.kcal }}>{kcal} kcal</p>
@@ -217,34 +222,91 @@ export default function DashboardPage() {
               style={{ color: C.training }}>Allenamento</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2 pt-1.5 pb-2">
+          <div className="flex-1 overflow-y-auto px-2 py-1.5">
 
             {/* Pill */}
             {data?.workout.hasTennis && (data?.workout.exists || !!schedaInfo) ? (
-              <div className="flex gap-1 mb-1">
-                <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
-                  style={{ backgroundColor: '#7aaa4028' }}>
-                  <Em e="🎾" size={13} />
-                  <span className="text-[9px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
+              /* Combined: 5 flex-1 slots to align with food column */
+              <div className="h-full flex flex-col">
+                {/* Slot 1 — Tennis (aligns with Colazione) */}
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                    <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
+                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">Tennis</span>
+                  </div>
+                  <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
+                    {tennisMeta?.type || tennisMeta?.hours ? (
+                      <>
+                        <p className="text-xs font-semibold uppercase" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{tennisMeta?.hours ? `${tennisMeta.hours}h` : ''}&nbsp;</p>
+                      </>
+                    ) : (
+                      <><p className="text-xs text-gray-400 dark:text-gray-500">—</p><p className="text-xs">&nbsp;</p></>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-2xl"
-                  style={{ backgroundColor: C.training + '28' }}>
-                  <img src="/icon-training.png" alt="" style={{ width: 13, height: 13, objectFit: 'contain' }} />
-                  <span className="text-[9px] font-bold" style={{ color: C.training }}>{pillLabel}</span>
+                {/* Slot 2 — Workout (aligns with Sp. Mattina) */}
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800">
+                    <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
+                    <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{pillLabel}</span>
+                  </div>
+                  <div className="mt-0.5 px-0.5 leading-tight flex-1">
+                    {schedaInfo && (
+                      <p className="text-xs font-semibold truncate text-center" style={{ color: C.training }}>
+                        {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
+                      </p>
+                    )}
+                    {completedExercises.map(ex => (
+                      <div key={ex.id} className="flex items-center gap-1 py-0.5 text-left">
+                        <Check size={9} className="shrink-0" style={{ color: C.training }} />
+                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                {/* Slots 3-5 — spacers (align with Pranzo, Sp. Pomeriggio, Cena) */}
+                <div className="flex-1" />
+                <div className="flex-1" />
+                <div className="flex-1" />
               </div>
             ) : data?.workout.hasTennis ? (
-              <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
-                style={{ backgroundColor: '#7aaa4028' }}>
-                <Em e="🎾" size={18} />
-                <span className="text-[10px] font-bold" style={{ color: '#7aaa40' }}>Tennis</span>
-              </div>
+              <>
+                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
+                  <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
+                  <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">Tennis</span>
+                </div>
+                <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
+                  {tennisMeta?.type || tennisMeta?.hours ? (
+                    <>
+                      <p className="text-xs font-semibold capitalize" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{tennisMeta?.hours ? `${tennisMeta.hours}h` : ''}&nbsp;</p>
+                    </>
+                  ) : (
+                    <><p className="text-xs text-gray-400 dark:text-gray-500">—</p><p className="text-xs">&nbsp;</p></>
+                  )}
+                </div>
+              </>
             ) : (data?.workout.exists || !!schedaInfo) ? (
-              <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
-                style={{ backgroundColor: C.training + '28' }}>
-                <img src="/icon-training.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                <span className="text-[10px] font-bold" style={{ color: C.training }}>{pillLabel}</span>
-              </div>
+              <>
+                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-100 dark:bg-gray-800 mb-0.5">
+                  <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
+                  <span className="text-[10px] font-bold truncate text-gray-500 dark:text-gray-400">{pillLabel}</span>
+                </div>
+                <div className="mt-0.5 px-0.5 leading-tight">
+                  {schedaInfo && (
+                    <p className="text-xs font-semibold truncate text-center" style={{ color: C.training }}>
+                      {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
+                    </p>
+                  )}
+                  {completedExercises.map(ex => (
+                    <div key={ex.id} className="flex items-center gap-1 py-0.5 text-left">
+                      <Check size={9} className="shrink-0" style={{ color: C.training }} />
+                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
                 style={{ backgroundColor: '#b0b8c830' }}>
@@ -252,21 +314,6 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
               </div>
             )}
-
-            {/* Scheda name */}
-            {hasWorkout && schedaInfo && (
-              <p className="text-xs font-semibold px-0.5 mb-0.5 truncate" style={{ color: C.training }}>
-                {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
-              </p>
-            )}
-
-            {/* Completed exercises */}
-            {completedExercises.map(ex => (
-              <div key={ex.id} className="flex items-center gap-1 px-0.5 py-0.5">
-                <Check size={9} className="shrink-0" style={{ color: C.training }} />
-                <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
-              </div>
-            ))}
 
           </div>
         </button>
