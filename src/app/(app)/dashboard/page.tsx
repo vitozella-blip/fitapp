@@ -208,7 +208,7 @@ export default function DashboardPage() {
                 <div key={name} className="flex flex-col min-h-0 min-w-0">
                   <div className="flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0">
                     {renderIcon('', 16)}
-                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200 leading-tight truncate">{label}</span>
+                    <span className="hidden md:inline text-[10px] font-bold text-gray-700 dark:text-gray-200 leading-tight truncate">{label}</span>
                   </div>
                   <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                     {free ? (
@@ -276,11 +276,11 @@ export default function DashboardPage() {
                       {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
                     </p>
                   )}
-                  <div className="grid grid-cols-3 gap-x-1 gap-y-0.5 px-1">
+                  <div className="flex flex-col gap-0.5 px-1 md:grid md:grid-cols-3 md:gap-x-1">
                     {completedExercises.slice(0, 12).map(ex => (
                       <div key={ex.id} className="flex items-center gap-1 min-w-0">
                         <Check size={9} className="shrink-0" style={{ color: C.training }} />
-                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 leading-tight">{ex.name}</p>
                       </div>
                     ))}
                   </div>

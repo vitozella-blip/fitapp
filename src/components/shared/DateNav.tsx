@@ -169,7 +169,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
             className="w-10 h-10 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
             <ChevronLeft size={20} />
           </button>
-          <span className="flex-1 text-center text-base font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">
+          <span className="flex-1 text-center text-xs md:text-base font-semibold text-gray-900 dark:text-gray-100 capitalize whitespace-nowrap overflow-hidden">
             {dateLabel}
           </span>
           <button onClick={() => changeDate(1)}
