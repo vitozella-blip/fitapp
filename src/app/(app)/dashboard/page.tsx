@@ -174,7 +174,7 @@ export default function DashboardPage() {
                 { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
                 { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
               ].map(m => (
-                <div key={m.label} className="flex flex-col justify-center items-center gap-1.5 px-3">
+                <div key={m.label} className="flex flex-col justify-center gap-1.5 px-3">
                   <span className="text-xs font-bold uppercase tracking-wide" style={{ color: m.color }}>{m.label}</span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
@@ -206,9 +206,9 @@ export default function DashboardPage() {
               const free = m?.isFree ?? false
               return (
                 <div key={name} className="flex flex-col min-h-0 min-w-0">
-                  <div className="flex flex-col items-center justify-center py-2 rounded-xl bg-gray-200 dark:bg-gray-700 gap-0.5 shrink-0">
-                    {renderIcon('', 20)}
-                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200 leading-tight text-center px-0.5 w-full truncate text-center">{label}</span>
+                  <div className="flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0">
+                    {renderIcon('', 16)}
+                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200 leading-tight truncate">{label}</span>
                   </div>
                   <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                     {free ? (

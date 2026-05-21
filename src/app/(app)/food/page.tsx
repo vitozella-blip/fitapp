@@ -80,7 +80,7 @@ export default function FoodHubPage() {
   const avgCalPct  = stats && tg.calories > 0 ? Math.min(100, Math.round((stats.avgCalories / tg.calories) * 100)) : 0
 
   return (
-    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-4 md:h-full">
+    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full">
 
       {/* Header */}
       <div className="flex items-center gap-3 shrink-0">
@@ -92,7 +92,7 @@ export default function FoodHubPage() {
       </div>
 
       {/* Body */}
-      <div className="grid gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
+      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
 
         {/* TOP — statistics */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
@@ -132,7 +132,7 @@ export default function FoodHubPage() {
                 <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-gray-400">Media giornaliera</p>
                 <div className="flex items-baseline justify-between mb-0.5">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-extrabold leading-none" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>
+                    <span className="text-2xl font-extrabold leading-none" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>
                       {stats.avgCalories}
                     </span>
                     <span className="text-[10px] text-gray-400 font-medium">/ {tg.calories} kcal</span>
@@ -153,8 +153,8 @@ export default function FoodHubPage() {
                     <div key={m.label}>
                       <p className="text-[8px] font-bold uppercase tracking-wide mb-0.5 text-gray-400">{m.label}</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xs font-bold leading-none" style={{ color: m.color }}>{m.val}</span>
-                        <span className="text-[9px] text-gray-500">/ {m.tgt} g</span>
+                        <span className="text-base font-bold leading-none" style={{ color: m.color }}>{m.val}</span>
+                        <span className="text-[10px] text-gray-500">/ {m.tgt} g</span>
                       </div>
                       <div className="shrink-0 rounded-full overflow-hidden mt-0.5" style={{ height: 4, backgroundColor: m.color + '30' }}>
                         <div className="h-full rounded-full" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
@@ -171,9 +171,9 @@ export default function FoodHubPage() {
                   const kcal = meal.avgCalories
                   return (
                     <div key={meal.name} className="flex flex-col min-h-0 min-w-0">
-                      <div className="flex flex-col items-center justify-center py-2 rounded-xl bg-gray-100 dark:bg-gray-800 gap-0.5 shrink-0">
-                        <span style={{ fontSize: 18, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{meta?.emoji}</span>
-                        <span className="text-[9px] font-bold text-gray-600 dark:text-gray-300 leading-tight text-center px-0.5 w-full truncate">{meta?.label}</span>
+                      <div className="flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl bg-gray-100 dark:bg-gray-800 shrink-0">
+                        <span style={{ fontSize: 16, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{meta?.emoji}</span>
+                        <span className="text-[9px] font-bold text-gray-600 dark:text-gray-300 leading-tight truncate">{meta?.label}</span>
                       </div>
                       <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                         {kcal > 0 ? (
@@ -197,13 +197,13 @@ export default function FoodHubPage() {
         </div>
 
         {/* BOTTOM — quick links 3×2 */}
-        <div className="grid grid-cols-3 gap-3 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
+        <div className="grid grid-cols-3 gap-2 md:gap-3 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
           {SECTIONS.map(s => (
             <Link key={s.href} href={s.href}
-              className="flex flex-col items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
+              className="flex flex-col items-center justify-center gap-1.5 md:gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
               style={{ backgroundColor: COLOR + '20' }}>
-              <s.icon size={36} style={{ color: COLOR }} />
-              <span className="text-sm font-bold text-center leading-tight px-2" style={{ color: COLOR }}>{s.label}</span>
+              <s.icon className="!w-5 !h-5 md:!w-9 md:!h-9" style={{ color: COLOR }} />
+              <span className="text-xs md:text-sm font-bold text-center leading-tight px-1 md:px-2" style={{ color: COLOR }}>{s.label}</span>
             </Link>
           ))}
         </div>
