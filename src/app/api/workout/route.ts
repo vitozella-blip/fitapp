@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
+async function ensureSetColumns() {
+  await Promise.all([
+    pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "isWarmup" BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "tag" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {}),
+  ])
+}
+
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId')
   const date = req.nextUrl.searchParams.get('date')
@@ -18,7 +26,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
     const { rows } = await pool.query(
-      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'exercise',e) ORDER BY s."setNumber" ASC) as sets
+      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'exercise',e) ORDER BY s."setNumber" ASC) as sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
        LEFT JOIN "Exercise" e ON e.id = s."exerciseId"
@@ -34,21 +42,19 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, date, exerciseId, sets, reps, weight, weekId } = await req.json()
+  const { userId, date, exerciseId, sets, reps, weight, weekId, isWarmup } = await req.json()
   try {
     await pool.query(
       `INSERT INTO "User" (id, name, "targetCalories", "targetProtein", "targetCarbs", "targetFat", goal, "createdAt") VALUES ($1,'Utente',2000,150,220,65,'maintain',NOW()) ON CONFLICT (id) DO NOTHING`,
       [userId]
     )
-    // Ensure weekId column exists
-    await pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {})
+    await ensureSetColumns()
     let workoutId: string
     const { rows: existing } = await pool.query(
       `SELECT id FROM "WorkoutDiary" WHERE "userId" = $1 AND date = $2`, [userId, date]
     )
     if (existing.length > 0) {
       workoutId = existing[0].id
-      // Update weekId if provided and not yet set
       if (weekId) {
         await pool.query(`UPDATE "WorkoutDiary" SET "weekId"=$1 WHERE id=$2`, [weekId, workoutId])
       }
@@ -66,8 +72,8 @@ export async function POST(req: NextRequest) {
     const baseSetNumber = Number(maxRows[0].max)
     for (let i = 0; i < sets; i++) {
       await pool.query(
-        `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null]
+        `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight, "isWarmup") VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null, isWarmup ?? false]
       )
     }
     return NextResponse.json({ ok: true, workoutId })

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Plus, Trash2, Pencil, Copy, ChevronUp, ChevronDown, ChevronRight,
-  Check, X, Loader2, Search, MoreVertical,
+  Check, X, Loader2, Search, MoreVertical, ClipboardList,
   ChevronDown as Chevron,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
@@ -1287,7 +1287,7 @@ export default function TrainingPlanPage() {
 
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-6">
-      <PageHeader title="Piano Allenamento" accent="training"
+      <PageHeader title="Piano Allenamento" icon={ClipboardList} accent="training"
         action={
           !showWizard ? (
             <button onClick={() => setShowWizard(true)}

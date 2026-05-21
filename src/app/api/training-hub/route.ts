@@ -3,16 +3,29 @@ import { pool } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId')
+  const fromParam = req.nextUrl.searchParams.get('from')
+  const toParam   = req.nextUrl.searchParams.get('to')
   const year   = req.nextUrl.searchParams.get('year')
   const month  = req.nextUrl.searchParams.get('month')
 
-  if (!userId || !year || !month) return NextResponse.json({ templates: [] })
+  if (!userId) return NextResponse.json({ templates: [] })
 
-  const m    = String(month).padStart(2, '0')
-  const from = `${year}-${m}-01`
-  const next = Number(month) === 12
-    ? `${Number(year) + 1}-01-01`
-    : `${year}-${String(Number(month) + 1).padStart(2, '0')}-01`
+  let from: string, next: string
+  if (fromParam && toParam) {
+    from = fromParam
+    // next = day after toParam
+    const d = new Date(toParam + 'T00:00:00')
+    d.setDate(d.getDate() + 1)
+    next = d.toISOString().slice(0, 10)
+  } else if (year && month) {
+    const m = String(month).padStart(2, '0')
+    from = `${year}-${m}-01`
+    next = Number(month) === 12
+      ? `${Number(year) + 1}-01-01`
+      : `${year}-${String(Number(month) + 1).padStart(2, '0')}-01`
+  } else {
+    return NextResponse.json({ templates: [] })
+  }
 
   try {
     const { rows: plans } = await pool.query(
@@ -21,24 +34,39 @@ export async function GET(req: NextRequest) {
     )
     if (!plans.length) return NextResponse.json({ templates: [] })
 
-    const { rows } = await pool.query(
-      `SELECT
-         t.id, t.name, t."order",
-         COALESCE(
-           json_agg(DISTINCT wd.date::text)
-             FILTER (WHERE wd.date IS NOT NULL AND wd.date >= $2 AND wd.date < $3),
-           '[]'
-         ) AS dates
-       FROM "WorkoutTemplate" t
-       LEFT JOIN "WorkoutWeek" ww ON ww."templateId" = t.id
-       LEFT JOIN "WorkoutDiary" wd ON wd."weekId" = ww.id AND wd."userId" = $1
-       WHERE t."planId" = $4
-       GROUP BY t.id, t.name, t."order"
-       ORDER BY t."order"`,
-      [userId, from, next, plans[0].id]
-    )
+    const [{ rows }, { rows: tennisRows }] = await Promise.all([
+      pool.query(
+        `SELECT
+           t.id, t.name, t."order",
+           COALESCE(
+             json_agg(DISTINCT wd.date::text)
+               FILTER (WHERE wd.date IS NOT NULL AND wd.date >= $2 AND wd.date < $3),
+             '[]'
+           ) AS dates
+         FROM "WorkoutTemplate" t
+         LEFT JOIN "WorkoutWeek" ww ON ww."templateId" = t.id
+         LEFT JOIN "WorkoutDiary" wd ON wd."weekId" = ww.id AND wd."userId" = $1
+         WHERE t."planId" = $4
+         GROUP BY t.id, t.name, t."order"
+         ORDER BY t."order"`,
+        [userId, from, next, plans[0].id]
+      ),
+      pool.query(
+        `SELECT DISTINCT w.date::text AS date
+         FROM "WorkoutDiary" w
+         JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
+         JOIN "Exercise" e ON e.id = s."exerciseId"
+         WHERE w."userId" = $1 AND e.name = 'Tennis'
+           AND w.date >= $2 AND w.date < $3
+         ORDER BY date DESC`,
+        [userId, from, next]
+      ),
+    ])
 
-    return NextResponse.json({ templates: rows })
+    return NextResponse.json({
+      templates: rows,
+      tennisDates: tennisRows.map((r: { date: string }) => r.date),
+    })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ templates: [] })

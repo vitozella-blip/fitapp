@@ -16,14 +16,39 @@ const SECTIONS = [
   { label: 'Piano Alimentare',  href: '/food/plan',      icon: CalendarDays },
 ]
 
+const MEAL_META: Record<string, { label: string; emoji: string }> = {
+  'Colazione':           { label: 'Colazione',  emoji: '☕' },
+  'Spuntino mattina':    { label: 'Sp. Mattina', emoji: '🍫' },
+  'Pranzo':              { label: 'Pranzo',      emoji: '🍗' },
+  'Spuntino pomeriggio': { label: 'Sp. Pom.',    emoji: '🍌' },
+  'Cena':                { label: 'Cena',        emoji: '🐟' },
+}
+
 type MacroData = {
   totals:  { calories: number; protein: number; carbs: number; fat: number }
   targets: { calories: number; protein: number; carbs: number; fat: number }
 }
 
+type StatsData = {
+  days: number
+  avgCalories: number; avgProtein: number; avgCarbs: number; avgFat: number
+  meals: { name: string; avgCalories: number; avgProtein: number; avgCarbs: number; avgFat: number }[]
+}
+
+function toIso(d: Date) {
+  return d.toISOString().slice(0, 10)
+}
+
 export default function FoodHubPage() {
   const { userId, selectedDate, userProfile } = useAppStore()
   const [data, setData] = useState<MacroData | null>(null)
+
+  const today = selectedDate
+  const firstOfMonth = today.slice(0, 8) + '01'
+  const [from, setFrom] = useState(firstOfMonth)
+  const [to, setTo]     = useState(today)
+  const [stats, setStats] = useState<StatsData | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
 
   useEffect(() => {
     fetch(`/api/dashboard?userId=${userId}&date=${selectedDate}`)
@@ -31,6 +56,16 @@ export default function FoodHubPage() {
       .then(d => setData(d))
       .catch(() => {})
   }, [userId, selectedDate])
+
+  useEffect(() => {
+    if (!from || !to || from > to) return
+    setStatsLoading(true)
+    fetch(`/api/food-stats?userId=${userId}&from=${from}&to=${to}`)
+      .then(r => r.json())
+      .then(d => setStats(d))
+      .catch(() => setStats(null))
+      .finally(() => setStatsLoading(false))
+  }, [userId, from, to])
 
   const t  = data?.totals  ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
   const tg = data?.targets ?? {
@@ -40,6 +75,9 @@ export default function FoodHubPage() {
   const calPct  = tg.calories > 0 ? Math.min(100, Math.round((t.calories / tg.calories) * 100)) : 0
   const calOver = t.calories > tg.calories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
+
+  const avgCalOver = stats ? stats.avgCalories > tg.calories : false
+  const avgCalPct  = stats && tg.calories > 0 ? Math.min(100, Math.round((stats.avgCalories / tg.calories) * 100)) : 0
 
   return (
     <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-4 md:h-full">
@@ -53,54 +91,109 @@ export default function FoodHubPage() {
         </div>
       </div>
 
-      {/* Body — 50/50 top/bottom split */}
+      {/* Body */}
       <div className="grid gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
 
-        {/* TOP — macro recap, full width */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-6 py-4 flex flex-col justify-center min-h-0">
-          <div className="flex flex-col justify-between h-full">
-            {/* KCAL */}
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.kcal }}>Calorie</p>
-              <div className="flex items-end justify-between mb-3">
-                <div className="flex items-baseline gap-3">
-                  <span className="text-6xl font-extrabold leading-none" style={{ color: calOver ? '#f87171' : C.kcal }}>
-                    {t.calories}
-                  </span>
-                  <span className="text-xl text-gray-400 font-medium">/ {tg.calories} kcal</span>
-                </div>
-                <span className="text-2xl font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
-                  {calOver ? `+${t.calories - tg.calories} kcal` : `${calPct}%`}
-                </span>
-              </div>
-              <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: C.kcal + '38' }}>
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
-              </div>
-            </div>
+        {/* TOP — statistics */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
 
-            {/* P / C / G */}
-            <div className="grid grid-cols-3 gap-6">
-              {[
-                { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
-                { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
-                { label: 'Grassi',      val: t.fat,     tgt: tg.fat,     color: C.fat },
-              ].map(m => (
-                <div key={m.label}>
-                  <span className="text-sm font-bold uppercase tracking-wide" style={{ color: m.color }}>{m.label}</span>
-                  <div className="flex items-baseline gap-1 mt-1 mb-1">
-                    <span className="text-3xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
-                    <span className="text-base text-gray-500 font-medium">g</span>
-                  </div>
-                  <p className="text-xs text-gray-400 text-right mb-1">/ {m.tgt} g</p>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '30' }}>
-                    <div className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
-                  </div>
-                </div>
-              ))}
+          <div className="px-4 pt-3 pb-2 shrink-0 border-b border-gray-100 dark:border-gray-800"
+            style={{ backgroundColor: COLOR + '12' }}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[10px] font-bold uppercase tracking-widest mr-1" style={{ color: COLOR }}>Statistiche</p>
+              <div className="flex items-center gap-1.5 flex-1">
+                <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+                  className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-orange-300" style={{ width: 110 }} />
+                <span className="text-[10px] text-gray-400 shrink-0">→</span>
+                <input type="date" value={to} onChange={e => setTo(e.target.value)}
+                  className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-orange-300" style={{ width: 110 }} />
+                {stats && stats.days > 0 && (
+                  <span className="text-[10px] font-semibold shrink-0" style={{ color: COLOR }}>
+                    {stats.days} giorni
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+
+          {statsLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: COLOR, borderTopColor: 'transparent' }} />
+            </div>
+          ) : !stats || stats.days === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-gray-400">Nessun dato nel periodo selezionato</p>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 grid overflow-hidden" style={{ gridTemplateRows: '1fr 1fr' }}>
+
+              {/* Row 1 — avg macros */}
+              <div className="px-4 py-3 min-h-0 border-b border-gray-100 dark:border-gray-800 flex flex-col justify-center">
+                <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-gray-400">Media giornaliera</p>
+                <div className="flex items-baseline justify-between mb-0.5">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-extrabold leading-none" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>
+                      {stats.avgCalories}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">/ {tg.calories} kcal</span>
+                  </div>
+                  <span className="text-sm font-extrabold" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>
+                    {avgCalOver ? `+${stats.avgCalories - tg.calories}` : `${avgCalPct}%`}
+                  </span>
+                </div>
+                <div className="shrink-0 rounded-full overflow-hidden mb-2" style={{ height: 8, backgroundColor: C.kcal + '40' }}>
+                  <div style={{ height: '100%', width: `${avgCalPct}%`, borderRadius: 9999, backgroundColor: avgCalOver ? '#f87171' : C.kcal }} />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Grassi',      val: stats.avgFat,     tgt: tg.fat,     color: C.fat },
+                    { label: 'Carboidrati', val: stats.avgCarbs,   tgt: tg.carbs,   color: C.carbs },
+                    { label: 'Proteine',    val: stats.avgProtein, tgt: tg.protein, color: C.protein },
+                  ].map(m => (
+                    <div key={m.label}>
+                      <p className="text-[8px] font-bold uppercase tracking-wide mb-0.5 text-gray-400">{m.label}</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs font-bold leading-none" style={{ color: m.color }}>{m.val}</span>
+                        <span className="text-[9px] text-gray-500">/ {m.tgt} g</span>
+                      </div>
+                      <div className="shrink-0 rounded-full overflow-hidden mt-0.5" style={{ height: 4, backgroundColor: m.color + '30' }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 2 — avg per meal (dashboard structure) */}
+              <div className="flex-1 min-h-0 overflow-hidden px-2 py-2 grid grid-cols-5 gap-1.5">
+                {stats.meals.map(meal => {
+                  const meta = MEAL_META[meal.name]
+                  const kcal = meal.avgCalories
+                  return (
+                    <div key={meal.name} className="flex flex-col min-h-0 min-w-0">
+                      <div className="flex flex-col items-center justify-center py-2 rounded-xl bg-gray-100 dark:bg-gray-800 gap-0.5 shrink-0">
+                        <span style={{ fontSize: 18, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{meta?.emoji}</span>
+                        <span className="text-[9px] font-bold text-gray-600 dark:text-gray-300 leading-tight text-center px-0.5 w-full truncate">{meta?.label}</span>
+                      </div>
+                      <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
+                        {kcal > 0 ? (
+                          <>
+                            <p className="text-xs font-bold text-center leading-tight" style={{ color: C.kcal }}>{kcal}<span className="text-[10px] font-medium"> kcal</span></p>
+                            <p className="text-xs font-semibold leading-tight text-center"><span style={{ color: C.fat }}>G </span><span style={{ color: C.fat }}>{meal.avgFat}</span></p>
+                            <p className="text-xs font-semibold leading-tight text-center"><span style={{ color: C.carbs }}>C </span><span style={{ color: C.carbs }}>{meal.avgCarbs}</span></p>
+                            <p className="text-xs font-semibold leading-tight text-center"><span style={{ color: C.protein }}>P </span><span style={{ color: C.protein }}>{meal.avgProtein}</span></p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-gray-400 text-center">—</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+            </div>
+          )}
         </div>
 
         {/* BOTTOM — quick links 3×2 */}
@@ -109,8 +202,8 @@ export default function FoodHubPage() {
             <Link key={s.href} href={s.href}
               className="flex flex-col items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
               style={{ backgroundColor: COLOR + '20' }}>
-              <s.icon size={28} style={{ color: COLOR }} />
-              <span className="text-sm font-semibold text-center leading-tight px-2" style={{ color: COLOR }}>{s.label}</span>
+              <s.icon size={36} style={{ color: COLOR }} />
+              <span className="text-sm font-bold text-center leading-tight px-2" style={{ color: COLOR }}>{s.label}</span>
             </Link>
           ))}
         </div>

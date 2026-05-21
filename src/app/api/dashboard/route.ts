@@ -8,6 +8,18 @@ export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
   if (!userId || !date) return NextResponse.json(null)
 
+  await Promise.all([
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "templateId" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "templateName" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "schedaOrder" INT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "schedaColor" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekName" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekOrder" INT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisType" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisHours" TEXT`).catch(() => {}),
+  ])
+
   try {
     const [userRes, entriesRes, workoutRes, tennisRes, exercisesRes, freeMealsRes] = await Promise.all([
       pool.query(`SELECT * FROM "User" WHERE id=$1`, [userId]),
@@ -18,7 +30,9 @@ export async function GET(req: NextRequest) {
         [userId, date]
       ),
       pool.query(
-        `SELECT w.id, COUNT(DISTINCT s."exerciseId") as "exerciseCount", COUNT(s.id) as "setCount"
+        `SELECT w.id, COUNT(DISTINCT s."exerciseId") as "exerciseCount", COUNT(s.id) as "setCount",
+                w."templateId", w."templateName", w."schedaOrder", w."schedaColor",
+                w."weekId", w."weekName", w."weekOrder", w."tennisType", w."tennisHours"
          FROM "WorkoutDiary" w LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId"=w.id
          WHERE w."userId"=$1 AND w.date=$2 GROUP BY w.id`,
         [userId, date]
@@ -47,6 +61,7 @@ export async function GET(req: NextRequest) {
     const user = userRes.rows[0]
     const entries = entriesRes.rows
     const freeMealSet = new Set(freeMealsRes.rows.map((r: { meal: string }) => r.meal))
+    const wr = workoutRes.rows[0]
 
     const calc = (v: number, q: number) => Math.round((v * q) / 100)
 
@@ -69,25 +84,39 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    const workout = workoutRes.rows[0] ? {
+    const hasTennis = tennisRes.rows.length > 0
+    const workout = wr ? {
       exists: true,
-      exerciseCount: Number(workoutRes.rows[0].exerciseCount),
-      setCount: Number(workoutRes.rows[0].setCount),
-      hasTennis: tennisRes.rows.length > 0,
+      exerciseCount: Number(wr.exerciseCount),
+      setCount: Number(wr.setCount),
+      hasTennis,
       exercises: exercisesRes.rows.map((r: { exerciseId: string; name: string }) => ({ id: r.exerciseId, name: r.name })),
-    } : { exists: false, hasTennis: tennisRes.rows.length > 0, exercises: [] }
+    } : { exists: false, hasTennis, exercises: [] }
+
+    const schedaInfo = wr?.templateId ? {
+      templateId: wr.templateId,
+      name: wr.templateName,
+      order: wr.schedaOrder,
+      color: wr.schedaColor,
+      weekId: wr.weekId,
+      weekName: wr.weekName,
+      weekOrder: wr.weekOrder,
+    } : null
+
+    const tennisMeta = wr?.tennisType ? {
+      type: wr.tennisType,
+      hours: wr.tennisHours ?? '',
+    } : null
 
     return NextResponse.json({
-      user,
-      totals,
+      user, totals,
       targets: {
         calories: user?.targetCalories ?? 2000,
         protein: user?.targetProtein ?? 150,
         carbs: user?.targetCarbs ?? 220,
         fat: user?.targetFat ?? 65,
       },
-      meals,
-      workout,
+      meals, workout, schedaInfo, tennisMeta,
     })
   } catch (e) {
     console.error(e)
