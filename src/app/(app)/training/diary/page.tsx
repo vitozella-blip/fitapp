@@ -980,6 +980,7 @@ export default function TrainingDiaryPage() {
           <div key={te.id}
             className={cn('transition-colors',
               nextUpExId === exId ? 'bg-blue-50/40 dark:bg-blue-950/20' :
+              (isOpen || addOpen) ? 'bg-[#7aafc8]/[0.07] dark:bg-[#7aafc8]/[0.08]' :
               isDone ? 'bg-green-50/30 dark:bg-green-950/10' : '')}>
 
             {/* Next-up banner (superset/jumpset) */}
@@ -1146,7 +1147,7 @@ export default function TrainingDiaryPage() {
 
                 {/* Add set form */}
                 {addOpen && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 grid grid-cols-4 gap-1.5">
+                  <div className="border-t px-3 py-3 grid grid-cols-4 gap-2" style={{ borderColor: CT + '40', backgroundColor: CT + '10' }}>
                     <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
                       <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                         onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
@@ -1413,7 +1414,6 @@ export default function TrainingDiaryPage() {
             {!schedaCollapsed && (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {schedaCards}
-                {absCards}
               </div>
             )}
           </div>
@@ -1481,6 +1481,7 @@ export default function TrainingDiaryPage() {
                 <div key={exId}
                   className={cn('bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
                     nextUpExId === exId ? 'border-blue-300 dark:border-blue-600' :
+                    (isOpen || addOpen) ? 'border-[#7aafc8]/60 dark:border-[#7aafc8]/40' :
                     isDone ? 'border-green-200/60 dark:border-green-900/40' : 'border-gray-100 dark:border-gray-800')}>
                   {nextUpExId === exId && (
                     <div className="px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: schedaColor + '28' }}>
@@ -1651,41 +1652,6 @@ export default function TrainingDiaryPage() {
               )
             })}
 
-            {/* ABS picker button */}
-            <div className="bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
-              <button className="w-full flex items-center gap-2 px-4 py-3"
-                onClick={() => setAbsPickerOpen(p => !p)}>
-                <span className="text-xs font-bold" style={{ color: schedaColor }}>ABS</span>
-                <span className="flex-1 text-xs text-gray-400 text-left">
-                  {absExIds.length > 0
-                    ? absExIds.map(x => absOptions.find(o => o.id === x.id)?.name ?? x.id).join(' · ')
-                    : 'Seleziona esercizi addominali'}
-                </span>
-                <ChevronDown size={14} className={cn('text-gray-400 transition-transform', absPickerOpen && 'rotate-180')} />
-              </button>
-              {absPickerOpen && (
-                <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1">
-                  {absOptions.map(o => {
-                    const sel = absExIds.find(x => x.id === o.id)
-                    return (
-                      <div key={o.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
-                        <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{o.name}</span>
-                        <button onClick={() => toggleAbsExercise(o.id, 'SS')}
-                          className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
-                          style={sel?.type === 'SS'
-                            ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
-                            : { borderColor: CT, color: CT }}>SS</button>
-                        <button onClick={() => toggleAbsExercise(o.id, 'JS')}
-                          className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
-                          style={sel?.type === 'JS'
-                            ? { backgroundColor: '#9d8fcc', borderColor: '#9d8fcc', color: '#fff' }
-                            : { borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
           </>
         )
       })()}

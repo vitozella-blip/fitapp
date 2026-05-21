@@ -18,6 +18,13 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+function abbrevTemplate(name: string) {
+  const m = name.match(/(?:workout|wo)\s*(\d+)\s*[—–\-]+\s*(.+)/i)
+  if (!m) return name
+  const abbrev = m[2].trim().split(/[\s+&,]+/).filter(Boolean).map((w: string) => w[0].toUpperCase()).join('')
+  return `WO ${m[1]} — ${abbrev}`
+}
+
 type Template = { id: string; name: string; order: number; dates: string[] }
 
 function toIso(d: Date) { return d.toISOString().slice(0, 10) }
@@ -44,7 +51,7 @@ export default function TrainingHubPage() {
   const totalTennis = tennisDates.length
 
   return (
-    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-4 md:h-full">
+    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full">
 
       {/* Header */}
       <div className="flex items-center gap-3 shrink-0">
@@ -56,7 +63,7 @@ export default function TrainingHubPage() {
       </div>
 
       {/* Body — 50/50 */}
-      <div className="grid gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
+      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
 
         {/* TOP — una colonna per scheda */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
@@ -89,19 +96,18 @@ export default function TrainingHubPage() {
             >
               {/* Tennis column */}
               <div className="flex flex-col min-h-0">
-                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center gap-1.5">
+                <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
                   <span style={{ fontSize: 13, lineHeight: 1 }}>🎾</span>
-                  <p className="text-xs font-bold" style={{ color: COLOR }}>Tennis</p>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   {tennisDates.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-gray-400">—</p>
+                    <p className="px-2 py-3 text-xs text-gray-400">—</p>
                   ) : (
                     tennisDates.map(date => (
                       <Link key={date} href={`/training/diary?date=${date}`}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
-                        <span className="text-xs text-gray-600 dark:text-gray-300 capitalize">{fmtDate(date)}</span>
+                        className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                        <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
+                        <span className="text-[10px] text-gray-600 dark:text-gray-300 capitalize leading-tight">{fmtDate(date)}</span>
                       </Link>
                     ))
                   )}
@@ -111,18 +117,18 @@ export default function TrainingHubPage() {
               {/* Workout template columns */}
               {templates.map(t => (
                 <div key={t.id} className="flex flex-col min-h-0">
-                  <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
-                    <p className="text-xs font-bold truncate" style={{ color: COLOR }}>{t.name}</p>
+                  <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
+                    <p className="text-[10px] font-bold truncate" style={{ color: COLOR }}>{abbrevTemplate(t.name)}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto">
                     {t.dates.length === 0 ? (
-                      <p className="px-3 py-3 text-xs text-gray-400">—</p>
+                      <p className="px-2 py-3 text-xs text-gray-400">—</p>
                     ) : (
                       [...t.dates].sort().reverse().map(date => (
                         <Link key={date} href={`/training/diary?date=${date}`}
-                          className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
-                          <span className="text-xs text-gray-600 dark:text-gray-300 capitalize">{fmtDate(date)}</span>
+                          className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                          <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
+                          <span className="text-[10px] text-gray-600 dark:text-gray-300 capitalize leading-tight">{fmtDate(date)}</span>
                         </Link>
                       ))
                     )}
@@ -134,13 +140,13 @@ export default function TrainingHubPage() {
         </div>
 
         {/* BOTTOM — tasti 3 per riga */}
-        <div className="grid grid-cols-3 gap-3 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
+        <div className="grid grid-cols-3 gap-2 md:gap-3 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
           {SECTIONS.map(s => (
             <Link key={s.href} href={s.href}
-              className="flex flex-col items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
+              className="flex flex-col items-center justify-center gap-1.5 md:gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
               style={{ backgroundColor: COLOR + '20' }}>
-              <s.icon size={28} style={{ color: COLOR }} />
-              <span className="text-sm font-semibold text-center leading-tight px-2" style={{ color: COLOR }}>{s.label}</span>
+              <s.icon className="!w-5 !h-5 md:!w-7 md:!h-7" style={{ color: COLOR }} />
+              <span className="text-xs md:text-sm font-semibold text-center leading-tight px-1 md:px-2" style={{ color: COLOR }}>{s.label}</span>
             </Link>
           ))}
         </div>
