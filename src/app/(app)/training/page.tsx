@@ -20,20 +20,28 @@ function fmtDate(iso: string) {
 
 type Template = { id: string; name: string; order: number; dates: string[] }
 
+function toIso(d: Date) { return d.toISOString().slice(0, 10) }
+
 export default function TrainingHubPage() {
   const { userId } = useAppStore()
   const [templates, setTemplates] = useState<Template[]>([])
+  const [tennisDates, setTennisDates] = useState<string[]>([])
+
+  const today = toIso(new Date())
+  const firstOfMonth = today.slice(0, 8) + '01'
+  const [from, setFrom] = useState(firstOfMonth)
+  const [to, setTo]     = useState(today)
 
   useEffect(() => {
-    const now = new Date()
-    fetch(`/api/training-hub?userId=${userId}&year=${now.getFullYear()}&month=${now.getMonth() + 1}`)
+    if (!from || !to || from > to) return
+    fetch(`/api/training-hub?userId=${userId}&from=${from}&to=${to}`)
       .then(r => r.json())
-      .then(d => setTemplates(d.templates ?? []))
+      .then(d => { setTemplates(d.templates ?? []); setTennisDates(d.tennisDates ?? []) })
       .catch(() => {})
-  }, [userId])
+  }, [userId, from, to])
 
-  const monthLabel  = new Date().toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
   const totalDates  = new Set(templates.flatMap(t => t.dates)).size
+  const totalTennis = tennisDates.length
 
   return (
     <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-4 md:h-full">
@@ -52,21 +60,55 @@ export default function TrainingHubPage() {
 
         {/* TOP — una colonna per scheda */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest capitalize" style={{ color: COLOR }}>
-              {monthLabel} · {totalDates} allenamenti
-            </p>
+          <div className="px-4 pt-3 pb-2 shrink-0 border-b border-gray-100 dark:border-gray-800"
+            style={{ backgroundColor: COLOR + '12' }}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[10px] font-bold uppercase tracking-widest mr-1" style={{ color: COLOR }}>
+                Allenamenti · {totalDates} wo · {totalTennis} tennis
+              </p>
+              <div className="flex items-center gap-1.5 flex-1">
+                <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+                  className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none"
+                  style={{ width: 110 }} />
+                <span className="text-[10px] text-gray-400 shrink-0">→</span>
+                <input type="date" value={to} onChange={e => setTo(e.target.value)}
+                  className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none"
+                  style={{ width: 110 }} />
+              </div>
+            </div>
           </div>
 
-          {templates.length === 0 ? (
+          {templates.length === 0 && tennisDates.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
               Nessun piano attivo
             </div>
           ) : (
             <div
               className="flex-1 min-h-0 grid divide-x divide-gray-100 dark:divide-gray-800"
-              style={{ gridTemplateColumns: `repeat(${templates.length}, 1fr)` }}
+              style={{ gridTemplateColumns: `repeat(${templates.length + 1}, 1fr)` }}
             >
+              {/* Tennis column */}
+              <div className="flex flex-col min-h-0">
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center gap-1.5">
+                  <span style={{ fontSize: 13, lineHeight: 1 }}>🎾</span>
+                  <p className="text-xs font-bold" style={{ color: COLOR }}>Tennis</p>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {tennisDates.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-gray-400">—</p>
+                  ) : (
+                    tennisDates.map(date => (
+                      <Link key={date} href={`/training/diary?date=${date}`}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
+                        <span className="text-xs text-gray-600 dark:text-gray-300 capitalize">{fmtDate(date)}</span>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Workout template columns */}
               {templates.map(t => (
                 <div key={t.id} className="flex flex-col min-h-0">
                   <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">

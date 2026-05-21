@@ -518,15 +518,20 @@ function FoodDatabasePage() {
     setOffset(0)
     const catStr = Array.isArray(cat) ? cat.join(',') : cat
     const p = new URLSearchParams({ q: query || '', userId, limit: String(PAGE), offset: '0', ...(catStr ? { categoryId: catStr } : {}), ...(fav ? { fav: '1' } : {}) })
-    const [fr, favr] = await Promise.all([
-      fetch(`/api/food?${p}`).then(r => r.json()),
-      fetch(`/api/favorites?userId=${userId}`).then(r => r.json()),
-    ])
-    const list = Array.isArray(fr) ? fr : []
-    setFoods(list)
-    setHasMore(list.length === PAGE)
-    setFavorites(new Set(Array.isArray(favr) ? favr : []))
-    setLoading(false)
+    try {
+      const [fr, favr] = await Promise.all([
+        fetch(`/api/food?${p}`).then(r => r.json()),
+        fetch(`/api/favorites?userId=${userId}`).then(r => r.json()).catch(() => []),
+      ])
+      const list = Array.isArray(fr) ? fr : []
+      setFoods(list)
+      setHasMore(list.length === PAGE)
+      setFavorites(new Set(Array.isArray(favr) ? favr : []))
+    } catch {
+      setFoods([])
+    } finally {
+      setLoading(false)
+    }
   }, [userId, q, catFilter, favOnly])
 
   async function loadMore() {

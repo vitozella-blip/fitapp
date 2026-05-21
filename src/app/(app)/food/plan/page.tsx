@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Check, X, MoreVertical, Trash2, Pencil, Copy, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Check, X, MoreVertical, Trash2, Pencil, Copy, ChevronUp, ChevronDown, CalendarDays } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
@@ -477,7 +477,7 @@ export default function FoodPlanPage() {
 
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-4">
-      <PageHeader title="Piano Alimentare" accent="food"
+      <PageHeader title="Piano Alimentare" icon={CalendarDays} accent="food"
         action={
           <button onClick={() => { setShowNew(true); setExpanded(null); setEditing(null) }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-400 hover:bg-orange-500 text-white text-sm font-semibold transition-colors">

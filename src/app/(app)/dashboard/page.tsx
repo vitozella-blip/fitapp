@@ -1,9 +1,10 @@
 'use client'
 import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
-import { Check } from 'lucide-react'
+import { Check, LayoutDashboard } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { DateNav } from '@/components/shared/DateNav'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 
@@ -35,6 +36,8 @@ type DashData = {
   targets: { calories: number; protein: number; carbs: number; fat: number }
   meals:   { name: string; isFree?: boolean; calories: number; protein: number; carbs: number; fat: number }[]
   workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean; exercises?: Exercise[] }
+  schedaInfo: { templateId: string; name: string; order: number; color?: string; weekId?: string | null; weekName?: string | null; weekOrder?: number | null } | null
+  tennisMeta: { type: string; hours: string } | null
 }
 
 export default function DashboardPage() {
@@ -46,24 +49,18 @@ export default function DashboardPage() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [tennisMeta, setTennisMeta] = useState<{ type: string; hours: string } | null>(null)
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
-      setSchedaInfo(raw ? JSON.parse(raw) : null)
-    } catch { setSchedaInfo(null) }
-    try {
-      const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-      setTennisMeta(raw ? JSON.parse(raw) : null)
-    } catch { setTennisMeta(null) }
-  }, [selectedDate])
-
   const refreshCompleted = useCallback(() => {
-    try {
-      const raw = localStorage.getItem('workout_completed_v1')
-      const arr: string[] = raw ? JSON.parse(raw) : []
-      setCompletedIds(new Set(arr))
-    } catch { setCompletedIds(new Set()) }
-  }, [])
+    fetch(`/api/exercise-completion?userId=${userId}`)
+      .then(r => r.json())
+      .then((arr: string[]) => setCompletedIds(new Set(arr)))
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem('workout_completed_v1')
+          const arr: string[] = raw ? JSON.parse(raw) : []
+          setCompletedIds(new Set(arr))
+        } catch { setCompletedIds(new Set()) }
+      })
+  }, [userId])
 
   useEffect(() => { refreshCompleted() }, [refreshCompleted, selectedDate])
 
@@ -71,7 +68,25 @@ export default function DashboardPage() {
     setLoading(true)
     try {
       const r = await fetch(`/api/dashboard?userId=${userId}&date=${selectedDate}`)
-      setData(await r.json())
+      const d: DashData = await r.json()
+      setData(d)
+      if (d?.schedaInfo) {
+        setSchedaInfo({ name: d.schedaInfo.name, order: d.schedaInfo.order, color: d.schedaInfo.color, weekOrder: d.schedaInfo.weekOrder ?? null })
+      } else {
+        // Fallback to localStorage for data not yet migrated to DB
+        try {
+          const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
+          setSchedaInfo(raw ? JSON.parse(raw) : null)
+        } catch { setSchedaInfo(null) }
+      }
+      if (d?.tennisMeta) {
+        setTennisMeta(d.tennisMeta)
+      } else {
+        try {
+          const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
+          setTennisMeta(raw ? JSON.parse(raw) : null)
+        } catch { setTennisMeta(null) }
+      }
     } catch { setData(null) }
     setLoading(false)
   }, [userId, selectedDate])
@@ -119,10 +134,13 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-full" {...swipe}>
 
       <div className="shrink-0">
+        <PageHeader title="Dashboard" icon={LayoutDashboard} accent="primary" />
+      </div>
+
+      <div className="shrink-0">
         <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} />
       </div>
 
-      {/* 3 equal rows on PC */}
       <div className="flex flex-col gap-2 flex-1 min-h-0 md:grid md:gap-3" style={{ gridTemplateRows: '1fr 1fr 1fr' }}>
 
         {/* MACRO */}
@@ -135,15 +153,15 @@ export default function DashboardPage() {
             {/* Kcal */}
             <div className="flex-1 flex flex-col justify-center px-4 gap-2">
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold leading-none" style={{ color: calOver ? '#f87171' : C.kcal }}>
+                <span className="text-4xl font-extrabold leading-none" style={{ color: calOver ? '#f87171' : C.kcal }}>
                   {t.calories}
                 </span>
-                <span className="text-base text-gray-400 font-medium">/ {tg.calories} kcal</span>
-                <span className="ml-auto text-2xl font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
+                <span className="text-sm text-gray-400 font-medium">/ {tg.calories} kcal</span>
+                <span className="ml-auto text-xl font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
                   {calOver ? `+${t.calories - tg.calories}` : `${calPct}%`}
                 </span>
               </div>
-              <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: C.kcal + '30' }}>
+              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: C.kcal + '30' }}>
                 <div className="h-full rounded-full transition-all duration-500"
                   style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
               </div>
@@ -158,11 +176,13 @@ export default function DashboardPage() {
               ].map(m => (
                 <div key={m.label} className="flex flex-col justify-center items-center gap-1.5 px-3">
                   <span className="text-xs font-bold uppercase tracking-wide" style={{ color: m.color }}>{m.label}</span>
-                  <span className="text-3xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '30' }}>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
+                    <span className="text-xs text-gray-400 font-medium">/ {m.tgt} g</span>
+                  </div>
+                  <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '30' }}>
                     <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
                   </div>
-                  <span className="text-xs text-gray-400">/ {m.tgt}g</span>
                 </div>
               ))}
             </div>
@@ -227,20 +247,18 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-200 dark:bg-gray-700">
                     <Em e="🎾" size={18} />
-                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">Tennis</span>
+                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200 capitalize">
+                      {tennisMeta?.type ?? 'Tennis'}
+                    </span>
                   </div>
-                  {(tennisMeta?.type || tennisMeta?.hours) && (
-                    <div className="px-1">
-                      <p className="text-xs font-semibold uppercase" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
-                      {tennisMeta?.hours && <p className="text-xs text-gray-400">{tennisMeta.hours}h</p>}
-                    </div>
+                  {tennisMeta?.hours && (
+                    <p className="text-xs font-semibold px-1" style={{ color: C.training }}>{tennisMeta.hours}h</p>
                   )}
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 py-2 rounded-xl h-full"
-                  style={{ backgroundColor: '#b0b8c810' }}>
-                  <Em e="🎾" size={16} />
-                  <span className="text-[10px] text-gray-400">—</span>
+                <div className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-200 dark:bg-gray-700">
+                  <Em e="🎾" size={18} />
+                  <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">Riposo</span>
                 </div>
               )}
             </div>
@@ -258,18 +276,19 @@ export default function DashboardPage() {
                       {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
                     </p>
                   )}
-                  {completedExercises.map(ex => (
-                    <div key={ex.id} className="flex items-center gap-1 px-1">
-                      <Check size={9} className="shrink-0" style={{ color: C.training }} />
-                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-3 gap-x-1 gap-y-0.5 px-1">
+                    {completedExercises.slice(0, 12).map(ex => (
+                      <div key={ex.id} className="flex items-center gap-1 min-w-0">
+                        <Check size={9} className="shrink-0" style={{ color: C.training }} />
+                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 py-2 rounded-xl h-full"
-                  style={{ backgroundColor: '#b0b8c810' }}>
-                  <Em e="🛋️" size={16} />
-                  <span className="text-[10px] text-gray-400">Riposo</span>
+                <div className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-200 dark:bg-gray-700">
+                  <Em e="🛋️" size={18} />
+                  <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">Riposo</span>
                 </div>
               )}
             </div>

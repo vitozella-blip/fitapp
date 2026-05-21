@@ -2,8 +2,10 @@
 
 import React, { useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
+import { Download } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/shared/PageHeader'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -288,26 +290,23 @@ export default function ImportPage() {
   const accent = TYPES.find(x => x.type === importType)!.color
 
   return (
-    <div className="max-w-2xl mx-auto space-y-3">
+    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-3 md:h-full">
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Importa dati</h1>
-        <p className="text-sm text-gray-400 mt-1">Carica un Excel o CSV per importare alimenti o il piano di allenamento</p>
-      </div>
+      <PageHeader title="Importa dati" icon={Download} accent="primary" />
 
       {/* ── Tipo ── */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Cosa vuoi importare?</p>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Cosa vuoi importare?</p>
+        <div className="grid grid-cols-2 gap-3">
           {TYPES.map(opt => (
             <button key={opt.type} onClick={() => { setImportType(opt.type); reset() }}
-              className="flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all"
+              className="flex items-center justify-center gap-3 py-4 rounded-2xl font-bold text-base transition-all"
               style={{
                 backgroundColor: opt.color + '28',
                 color: opt.color,
                 boxShadow: importType === opt.type ? `0 0 0 2px ${opt.color}` : 'none',
               }}>
-              <span style={{ fontSize: 20, lineHeight: 1 }}>{opt.e}</span>
+              <span style={{ fontSize: 26, lineHeight: 1 }}>{opt.e}</span>
               {opt.label}
             </button>
           ))}
@@ -315,10 +314,10 @@ export default function ImportPage() {
       </div>
 
       {/* ── Template ── */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Template Excel</p>
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Template Excel</p>
         <button onClick={() => downloadTemplate(importType)}
-          className="text-xs font-semibold px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          className="text-sm font-semibold px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           📥 Scarica template {importType === 'food' ? 'Alimenti' : 'Allenamento'}
         </button>
       </div>
@@ -330,12 +329,12 @@ export default function ImportPage() {
           onDragLeave={() => setDragOver(false)}
           onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }}
           onClick={() => fileRef.current?.click()}
-          className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40"
+          className="flex-1 min-h-0 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40"
           style={{ borderColor: dragOver ? accent : undefined }}>
-          <p className="text-4xl mb-3">📂</p>
-          <p className="font-semibold text-gray-700 dark:text-gray-300">Trascina il file qui</p>
-          <p className="text-sm text-gray-400 mt-1">oppure clicca per selezionare</p>
-          <p className="text-xs text-gray-300 dark:text-gray-600 mt-2">.xlsx · .xls · .csv</p>
+          <p className="text-6xl mb-4">📂</p>
+          <p className="text-xl font-bold text-gray-700 dark:text-gray-300">Trascina il file qui</p>
+          <p className="text-base text-gray-400 mt-2">oppure clicca per selezionare</p>
+          <p className="text-sm text-gray-300 dark:text-gray-600 mt-2">.xlsx · .xls · .csv</p>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="sr-only"
             onChange={e => handleFile(e.target.files?.[0])} />
         </div>

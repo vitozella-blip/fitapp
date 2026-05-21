@@ -12,7 +12,15 @@ const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
 const C_TENNIS      = '#6aaa6a'
 const TENNIS_NAME   = 'Tennis'
-const SCHEDA_COLORS = ['#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#e8a5a5']
+const SCHEDA_COLORS = ['#5b9ec9', '#3a78a8', '#1f5580', '#7aafc8', '#9d8fcc', '#f0aa78']
+function schedaAbbrev(name: string) {
+  return name
+    .replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '')
+    .split(/[\s+]+/)
+    .filter(w => /[a-zA-Z]/.test(w))
+    .map(w => w[0].toUpperCase())
+    .join('')
+}
 const WARMUP_KEY    = 'workout_warmup_v1'
 const COMPLETED_KEY = 'workout_completed_v1'
 const SET_TAGS_KEY  = 'workout_set_tags_v1'
@@ -21,7 +29,7 @@ const PAIRS_KEY     = 'workout_pairs_v1'
 type Exercise   = { id: string; name: string; muscleGroup: string }
 type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null; isAbs: boolean }
 type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[] }
-type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; exercise: Exercise }
+type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; isWarmup?: boolean; tag?: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
 type Template   = { id: string; name: string; exercises: TemplateEx[] }
 type Plan       = { id: string; name: string; isActive?: boolean }
@@ -193,7 +201,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                     style={{ backgroundColor: color }}>
-                    {String(i + 1).padStart(2, '0')}
+                    {schedaAbbrev(t.name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-gray-400 truncate">{label1}</p>
@@ -304,6 +312,17 @@ export default function TrainingDiaryPage() {
     setSetTagsRaw(prev => {
       const next = fn(prev)
       try { localStorage.setItem(SET_TAGS_KEY, JSON.stringify(next)) } catch {}
+      // Detect the changed set ID and sync to DB
+      const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)])
+      for (const k of allKeys) {
+        if (prev[k] !== next[k]) {
+          fetch(`/api/workout/set/${k}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag: next[k] ?? null }),
+          }).catch(() => {})
+          break
+        }
+      }
       return next
     })
   }
@@ -311,6 +330,10 @@ export default function TrainingDiaryPage() {
     setPairsRaw(prev => {
       const next = fn(prev)
       try { localStorage.setItem(PAIRS_KEY, JSON.stringify(next)) } catch {}
+      fetch('/api/exercise-pairs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, pairs: next }),
+      }).catch(() => {})
       return next
     })
   }
@@ -355,6 +378,10 @@ export default function TrainingDiaryPage() {
           : [...prev, { id, type }]
       if (schedaInfo) {
         try { localStorage.setItem(`abs_sel_${schedaInfo.id}`, JSON.stringify(next)) } catch {}
+        fetch('/api/abs-selections', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, templateId: schedaInfo.id, selections: next }),
+        }).catch(() => {})
       }
       return next
     })
@@ -405,12 +432,34 @@ export default function TrainingDiaryPage() {
 
   useEffect(() => {
     setWarmups(loadSet(WARMUP_KEY))
-    setCompleted(loadSet(COMPLETED_KEY))
-  }, [])
+    // Load completed from API (authoritative), fallback to localStorage
+    fetch(`/api/exercise-completion?userId=${userId}`)
+      .then(r => r.json())
+      .then((arr: string[]) => { if (arr.length > 0) setCompleted(new Set(arr)) })
+      .catch(() => setCompleted(loadSet(COMPLETED_KEY)))
+  }, [userId])
+
+  // Load pairs from API (authoritative), fallback to localStorage
+  useEffect(() => {
+    fetch(`/api/exercise-pairs?userId=${userId}`)
+      .then(r => r.json())
+      .then((dbPairs: Record<string, { partnerId: string; partnerName: string; type: 'SS' | 'JS' }>) => {
+        if (Object.keys(dbPairs).length > 0) setPairsRaw(dbPairs)
+      })
+      .catch(() => {})
+  }, [userId])
 
   const fetchWorkout = useCallback(async () => {
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
-    setWorkout(await r.json())
+    const w: Workout = await r.json()
+    setWorkout(w)
+    if (w?.sets) {
+      // Merge DB isWarmup/tag with localStorage (DB wins for each set)
+      const dbWarmups = new Set(w.sets.filter(s => s.isWarmup).map(s => s.id))
+      setWarmups(prev => new Set([...prev, ...dbWarmups]))
+      const dbTags = Object.fromEntries(w.sets.filter(s => s.tag).map(s => [s.id, s.tag as string]))
+      if (Object.keys(dbTags).length > 0) setSetTagsRaw(prev => ({ ...prev, ...dbTags }))
+    }
   }, [userId, selectedDate])
 
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
@@ -442,43 +491,102 @@ export default function TrainingDiaryPage() {
     setTennisMetaRaw(prev => {
       const next = { ...prev, ...update }
       try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(next)) } catch {}
+      fetch('/api/tennis-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours }),
+      }).catch(() => {})
       return next
     })
   }
 
-  // Load tennis meta when date changes
+  // Load tennis meta when date changes — DB authoritative, localStorage fallback
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-      setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
-    } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
     setTennisCollapsed(true)
-  }, [selectedDate])
+    fetch(`/api/tennis-session?userId=${userId}&date=${selectedDate}`)
+      .then(r => r.json())
+      .then(dbMeta => {
+        if (dbMeta) {
+          setTennisMetaRaw(dbMeta)
+          try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(dbMeta)) } catch {}
+        } else {
+          try {
+            const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
+            setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
+          } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
+        }
+      })
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
+          setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
+        } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
+      })
+  }, [selectedDate, userId])
 
-  // Load scheda + week params from localStorage when date changes
+  // Load scheda + week params — DB authoritative, localStorage fallback
   useEffect(() => {
     setSchedaInfo(null)
     if (typeof window === 'undefined') return
-    const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
-    if (!raw) return
-    ;(async () => {
-      try {
-        const info = JSON.parse(raw)
-        if (!info.templateId) return
-        const t: Template = await fetch(`/api/workout-templates/${info.templateId}`).then(r => r.json())
-        if (!t?.id) return
-        const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
-        setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged })
-      } catch {}
-    })()
-  }, [selectedDate])
+
+    async function loadScheda(info: { templateId: string; weekId?: string | null; weekName?: string | null }) {
+      const t: Template = await fetch(`/api/workout-templates/${info.templateId}`).then(r => r.json())
+      if (!t?.id) return
+      const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
+      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged })
+    }
+
+    // Load from DB first
+    fetch(`/api/workout-scheda?userId=${userId}&date=${selectedDate}`)
+      .then(r => r.json())
+      .then(async dbInfo => {
+        if (dbInfo?.templateId) {
+          try {
+            await loadScheda(dbInfo)
+            // Sync back to localStorage
+            try { localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify(dbInfo)) } catch {}
+          } catch {}
+        } else {
+          // Fallback to localStorage
+          try {
+            const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
+            if (!raw) return
+            const info = JSON.parse(raw)
+            if (info.templateId) await loadScheda(info)
+          } catch {}
+        }
+      })
+      .catch(async () => {
+        // On network error, use localStorage
+        try {
+          const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
+          if (!raw) return
+          const info = JSON.parse(raw)
+          if (info.templateId) await loadScheda(info)
+        } catch {}
+      })
+  }, [selectedDate, userId])
 
   useEffect(() => {
     if (!schedaInfo) { setAbsOptions([]); setAbsExIds([]); return }
-    try {
-      const saved = JSON.parse(localStorage.getItem(`abs_sel_${schedaInfo.id}`) ?? '[]')
-      setAbsExIds(Array.isArray(saved) ? saved.filter((x: unknown) => x && typeof x === 'object' && 'id' in x && 'type' in x) : [])
-    } catch { setAbsExIds([]) }
+    // Load abs selections from DB (authoritative), fallback to localStorage
+    fetch(`/api/abs-selections?userId=${userId}&templateId=${schedaInfo.id}`)
+      .then(r => r.json())
+      .then((dbSels: { id: string; type: string }[]) => {
+        if (dbSels.length > 0) {
+          setAbsExIds(dbSels as AbsSel[])
+        } else {
+          try {
+            const saved = JSON.parse(localStorage.getItem(`abs_sel_${schedaInfo.id}`) ?? '[]')
+            setAbsExIds(Array.isArray(saved) ? saved.filter((x: unknown) => x && typeof x === 'object' && 'id' in x && 'type' in x) : [])
+          } catch { setAbsExIds([]) }
+        }
+      })
+      .catch(() => {
+        try {
+          const saved = JSON.parse(localStorage.getItem(`abs_sel_${schedaInfo.id}`) ?? '[]')
+          setAbsExIds(Array.isArray(saved) ? saved.filter((x: unknown) => x && typeof x === 'object' && 'id' in x && 'type' in x) : [])
+        } catch { setAbsExIds([]) }
+      })
     ;(async () => {
       try {
         const plans: Plan[] = await fetch(`/api/workout-plans?userId=${userId}`).then(r => r.json())
@@ -502,7 +610,12 @@ export default function TrainingDiaryPage() {
 
   async function pickScheda(t: Template, idx: number, weekId: string | null, weekName: string | null, weekOrder: number | null) {
     const color = SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
-    localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify({ templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder }))
+    const schedaPayload = { templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder }
+    localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify(schedaPayload))
+    fetch('/api/workout-scheda', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, date: selectedDate, ...schedaPayload }),
+    }).catch(() => {})
     const merged = await mergeWeekParams(t.exercises, weekId)
     setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged })
     setSchedaCollapsed(false)
@@ -515,7 +628,7 @@ export default function TrainingDiaryPage() {
     setFormSaving(true)
     await fetch('/api/workout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null }),
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null, isWarmup }),
     })
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     const w: Workout = await r.json()
@@ -587,11 +700,16 @@ export default function TrainingDiaryPage() {
     const nc  = new Set(completed)
     nc.has(key) ? nc.delete(key) : nc.add(key)
     setCompleted(nc); saveSet(COMPLETED_KEY, nc)
+    fetch('/api/exercise-completion', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId, completed: nc.has(key) }),
+    }).catch(() => {})
     bumpWorkoutVersion()
   }
 
   function removeScheda() {
     localStorage.removeItem(`workout_scheda_${selectedDate}`)
+    fetch(`/api/workout-scheda?userId=${userId}&date=${selectedDate}`, { method: 'DELETE' }).catch(() => {})
     setSchedaInfo(null)
     setAbsOptions([])
     setAbsExIds([])

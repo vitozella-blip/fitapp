@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronLeft, TrendingUp, Dumbbell } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Search, TrendingUp, Dumbbell, ChevronDown, ChevronRight } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -61,24 +61,20 @@ function VolumeTooltip({ active, payload, label }: any) {
   )
 }
 
-type Step = 'template' | 'exercise' | 'detail'
-
 export default function ProgressiPage() {
   const userId = useAppStore(s => s.userId)
-  const router = useRouter()
 
-  const [step, setStep]               = useState<Step>('template')
-  const [templates, setTemplates]     = useState<WorkoutTemplate[]>([])
-  const [selTemplate, setSelTemplate] = useState<WorkoutTemplate | null>(null)
-  const [exercises, setExercises]     = useState<ExerciseSummary[]>([])
-  const [selEx, setSelEx]             = useState<ExerciseSummary | null>(null)
-  const [q, setQ]                     = useState('')
-  const [routineWeeks, setRoutineWeeks] = useState<WorkoutWeek[]>([])
-  const [selWeekIds, setSelWeekIds]   = useState<Set<string>>(new Set())
-  const [sessions, setSessions]       = useState<SessionData[]>([])
-  const [loading, setLoading]         = useState(false)
+  const [templates, setTemplates]         = useState<WorkoutTemplate[]>([])
+  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null)
+  const [exercises, setExercises]         = useState<Record<string, ExerciseSummary[]>>({})
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null)
+  const [q, setQ]                         = useState('')
+  const [routineWeeks, setRoutineWeeks]   = useState<Record<string, WorkoutWeek[]>>({})
+  const [selWeekIds, setSelWeekIds]       = useState<Set<string>>(new Set())
+  const [sessions, setSessions]           = useState<SessionData[]>([])
+  const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null)
+  const [loadingExerciseId, setLoadingExerciseId] = useState<string | null>(null)
 
-  // Load templates on mount
   useEffect(() => {
     if (!userId) return
     fetch(`/api/training/progress?userId=${userId}&templates=1`)
@@ -86,48 +82,52 @@ export default function ProgressiPage() {
       .then(data => setTemplates(Array.isArray(data) ? data : []))
   }, [userId])
 
-  // Load exercises + routine weeks when template selected
-  useEffect(() => {
-    if (!selTemplate) return
-    setLoading(true)
+  async function toggleTemplate(t: WorkoutTemplate) {
+    if (expandedTemplateId === t.id) {
+      setExpandedTemplateId(null)
+      setExpandedExerciseId(null)
+      return
+    }
+    setExpandedTemplateId(t.id)
+    setExpandedExerciseId(null)
     setSelWeekIds(new Set())
-    Promise.all([
-      fetch(`/api/training/progress?userId=${userId}&templateId=${selTemplate.id}`).then(r => r.json()),
-      fetch(`/api/workout-weeks?templateId=${selTemplate.id}`).then(r => r.json()),
-    ]).then(([exData, wkData]) => {
-      setExercises(Array.isArray(exData) ? exData : [])
-      setRoutineWeeks(Array.isArray(wkData) ? wkData : [])
-    }).finally(() => setLoading(false))
-  }, [selTemplate, userId])
+    if (exercises[t.id]) return
+    setLoadingTemplateId(t.id)
+    const [exData, wkData] = await Promise.all([
+      fetch(`/api/training/progress?userId=${userId}&templateId=${t.id}`).then(r => r.json()),
+      fetch(`/api/workout-weeks?templateId=${t.id}`).then(r => r.json()),
+    ])
+    setExercises(prev => ({ ...prev, [t.id]: Array.isArray(exData) ? exData : [] }))
+    setRoutineWeeks(prev => ({ ...prev, [t.id]: Array.isArray(wkData) ? wkData : [] }))
+    setLoadingTemplateId(null)
+  }
 
-  // Load sessions when exercise or week-filter changes
   const loadSessions = useCallback(async (ex: ExerciseSummary, weekIds: Set<string>) => {
-    setLoading(true)
+    setLoadingExerciseId(ex.id)
     const p = new URLSearchParams({ userId, exerciseId: ex.id })
     if (weekIds.size > 0) p.set('weekIds', [...weekIds].join(','))
     const data = await fetch(`/api/training/progress?${p}`).then(r => r.json()).catch(() => [])
     setSessions(Array.isArray(data) ? data : [])
-    setLoading(false)
+    setLoadingExerciseId(null)
   }, [userId])
 
-  useEffect(() => {
-    if (selEx) loadSessions(selEx, selWeekIds)
-  }, [selEx, selWeekIds, loadSessions])
-
-  function goBack() {
-    if (step === 'detail')   { setSelEx(null); setSelWeekIds(new Set()); setStep('exercise') }
-    else if (step === 'exercise') { setSelTemplate(null); setExercises([]); setRoutineWeeks([]); setStep('template') }
-    else router.push('/training')
+  async function toggleExercise(ex: ExerciseSummary) {
+    if (expandedExerciseId === ex.id) {
+      setExpandedExerciseId(null)
+      return
+    }
+    setExpandedExerciseId(ex.id)
+    setSelWeekIds(new Set())
+    await loadSessions(ex, new Set())
   }
 
-  const title = step === 'template' ? 'Progressi'
-    : step === 'exercise' ? selTemplate!.name
-    : selEx!.name
+  const currentExercises = expandedTemplateId ? (exercises[expandedTemplateId] ?? []) : []
+  const currentWeeks     = expandedTemplateId ? (routineWeeks[expandedTemplateId] ?? []) : []
+  const filtered = currentExercises.filter(e => !q || e.name.toLowerCase().includes(q.toLowerCase()))
 
-  const filtered = exercises.filter(e =>
-    !q || e.name.toLowerCase().includes(q.toLowerCase())
-  )
-
+  const selEx = expandedExerciseId
+    ? currentExercises.find(e => e.id === expandedExerciseId) ?? null
+    : null
   const isDuration = selEx?.isDuration ?? false
   const chartData = sessions.map(s => ({
     date: s.date,
@@ -141,221 +141,237 @@ export default function ProgressiPage() {
   return (
     <div className="max-w-2xl mx-auto md:max-w-none space-y-3">
 
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={goBack}
-          className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
-          <ChevronLeft size={16} />
-        </button>
-        <div className="flex items-center gap-2 min-w-0">
-          <TrendingUp size={20} style={{ color: C.training }} className="shrink-0" />
-          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">{title}</h1>
-        </div>
-      </div>
+      <PageHeader title="Progressi" icon={TrendingUp} accent="training" />
 
-      {/* ── STEP 0: TEMPLATE PICKER ── */}
-      {step === 'template' && (
-        templates.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-10">Nessun piano di allenamento trovato</p>
-        ) : (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-            {templates.map((t, i) => (
-              <button key={t.id}
-                onClick={() => { setSelTemplate(t); setStep('exercise') }}
-                className={cn('w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
-                  style={{ backgroundColor: C.training + '22', color: C.training }}>
-                  {t.order}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
-                  <p className="text-xs text-gray-400 truncate">{t.planName}</p>
-                </div>
-                <ChevronLeft size={14} className="text-gray-300 rotate-180 shrink-0" />
-              </button>
-            ))}
-          </div>
-        )
-      )}
+      {templates.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-10">Nessun piano di allenamento trovato</p>
+      ) : (
+        <div className="space-y-2">
+          {templates.map((t) => {
+            const isOpen = expandedTemplateId === t.id
+            const badge = t.name
+              .replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '')
+              .split(/[\s+]+/)
+              .filter(w => /[a-zA-Z]/.test(w))
+              .map(w => w[0].toUpperCase())
+              .join('')
+            return (
+              <div key={t.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
 
-      {/* ── STEP 1: EXERCISE LIST ── */}
-      {step === 'exercise' && (
-        <>
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Cerca esercizio..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
-            </div>
-          ) : exercises.length === 0 ? (
-            <div className="text-center py-10 space-y-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Nessun esercizio in questa scheda</p>
-              <p className="text-xs text-gray-400">Aggiungi esercizi dal <span className="font-semibold">Piano Allenamento</span></p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-10">Nessun esercizio trovato</p>
-          ) : (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-              {filtered.map((ex, i) => (
-                <button key={ex.id}
-                  onClick={() => { setSelEx(ex); setStep('detail') }}
-                  className={cn('w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: C.training + '22' }}>
-                    <Dumbbell size={14} style={{ color: C.training }} />
+                {/* Template row */}
+                <button
+                  onClick={() => toggleTemplate(t)}
+                  className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
+                    style={{ backgroundColor: C.training + '22', color: C.training }}>
+                    {badge}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.name}</p>
-                    {ex.muscleGroup && <p className="text-xs text-gray-400 truncate">{ex.muscleGroup}</p>}
+                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{t.planName}</p>
                   </div>
-                  <div className="text-right shrink-0">
-                    {ex.sessions > 0 ? (
-                      <>
-                        <p className="text-xs font-bold" style={{ color: C.training }}>{ex.sessions} sess.</p>
-                        {ex.isDuration
-                          ? ex.maxDuration && <p className="text-xs text-gray-400">{fmtMin(ex.maxDuration)}</p>
-                          : ex.maxWeight && <p className="text-xs text-gray-400">max {ex.maxWeight} kg</p>}
-                      </>
+                  {isOpen
+                    ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                    : <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                  }
+                </button>
+
+                {/* Expanded exercise list */}
+                {isOpen && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+
+                    {/* Search */}
+                    <div className="px-4 py-2.5">
+                      <div className="relative">
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input value={q} onChange={e => setQ(e.target.value)}
+                          placeholder="Cerca esercizio..."
+                          className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
+                      </div>
+                    </div>
+
+                    {loadingTemplateId === t.id ? (
+                      <div className="flex justify-center py-6">
+                        <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
+                      </div>
+                    ) : filtered.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-6 px-4">
+                        {currentExercises.length === 0 ? 'Nessun esercizio in questa scheda' : 'Nessun esercizio trovato'}
+                      </p>
                     ) : (
-                      <p className="text-xs text-gray-300">nessuna</p>
+                      filtered.map((ex, j) => {
+                        const exOpen = expandedExerciseId === ex.id
+                        return (
+                          <div key={ex.id} className={cn(j > 0 && 'border-t border-gray-100 dark:border-gray-800')}>
+
+                            {/* Exercise row */}
+                            <button
+                              onClick={() => toggleExercise(ex)}
+                              className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: C.training + '22' }}>
+                                <Dumbbell size={12} style={{ color: C.training }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.name}</p>
+                                {ex.muscleGroup && <p className="text-xs text-gray-400 truncate">{ex.muscleGroup}</p>}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {ex.sessions > 0 ? (
+                                  <div className="text-right">
+                                    <p className="text-xs font-bold" style={{ color: C.training }}>{ex.sessions} sess.</p>
+                                    {ex.isDuration
+                                      ? ex.maxDuration && <p className="text-xs text-gray-400">{fmtMin(ex.maxDuration)}</p>
+                                      : ex.maxWeight && <p className="text-xs text-gray-400">max {ex.maxWeight} kg</p>}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-300">nessuna</p>
+                                )}
+                                {exOpen
+                                  ? <ChevronDown size={13} className="text-gray-400" />
+                                  : <ChevronRight size={13} className="text-gray-300" />
+                                }
+                              </div>
+                            </button>
+
+                            {/* Exercise detail */}
+                            {exOpen && (
+                              <div className="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+
+                                {/* Routine filter pills */}
+                                {currentWeeks.length > 0 && (
+                                  <div className="flex gap-1.5 flex-wrap pt-3">
+                                    <button
+                                      onClick={() => { setSelWeekIds(new Set()); loadSessions(ex, new Set()) }}
+                                      className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
+                                        selWeekIds.size === 0
+                                          ? 'text-white border-transparent'
+                                          : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
+                                      )}
+                                      style={selWeekIds.size === 0 ? { backgroundColor: C.training } : {}}>
+                                      Tutto
+                                    </button>
+                                    {currentWeeks.map(w => {
+                                      const active = selWeekIds.has(w.id)
+                                      return (
+                                        <button key={w.id}
+                                          onClick={() => {
+                                            const next = new Set(selWeekIds)
+                                            active ? next.delete(w.id) : next.add(w.id)
+                                            setSelWeekIds(next)
+                                            loadSessions(ex, next)
+                                          }}
+                                          className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
+                                            active
+                                              ? 'text-white border-transparent'
+                                              : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
+                                          )}
+                                          style={active ? { backgroundColor: C.accent } : {}}>
+                                          {w.name}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+
+                                {loadingExerciseId === ex.id ? (
+                                  <div className="flex justify-center py-6">
+                                    <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
+                                  </div>
+                                ) : sessions.length === 0 ? (
+                                  <p className="text-xs text-gray-400 text-center py-4">Nessuna sessione nel periodo selezionato</p>
+                                ) : (
+                                  <>
+                                    {/* PR + sessions */}
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 flex items-center justify-between">
+                                      <div>
+                                        <p className="text-xs text-gray-400 mb-0.5">Record personale</p>
+                                        <p className="text-xl font-bold" style={{ color: C.training }}>
+                                          {isDuration ? fmtMin(pr) : `${pr} kg`}
+                                        </p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-xs text-gray-400 mb-0.5">Sessioni</p>
+                                        <p className="text-xl font-bold" style={{ color: C.accent }}>{sessions.length}</p>
+                                      </div>
+                                    </div>
+
+                                    {/* Session history */}
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden">
+                                      <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                                        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Storico sessioni</p>
+                                      </div>
+                                      {[...sessions].reverse().map((s, k) => (
+                                        <div key={s.date} className={cn('px-4 py-2.5', k > 0 && 'border-t border-gray-100 dark:border-gray-700')}>
+                                          <div className="flex items-center justify-between mb-1">
+                                            <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                                              {new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </p>
+                                            {isDuration
+                                              ? <p className="text-xs font-semibold" style={{ color: C.training }}>{fmtMin(s.totalDuration)}</p>
+                                              : <p className="text-xs font-semibold" style={{ color: C.training }}>max {s.maxWeight ?? '—'} kg</p>
+                                            }
+                                          </div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {s.sets.map((set, l) => (
+                                              <span key={l} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                                style={{ backgroundColor: C.training + '18', color: C.training }}>
+                                                {isDuration ? fmtMin(set.duration) : `${set.reps ?? '?'} × ${set.weight ?? '?'} kg`}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* Line chart */}
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                                      <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.training }}>
+                                        {isDuration ? 'Durata per sessione (min)' : 'Peso massimo per sessione (kg)'}
+                                      </p>
+                                      <ResponsiveContainer width="100%" height={140}>
+                                        <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
+                                          <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
+                                          <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
+                                          <Tooltip content={<CustomTooltip isDuration={isDuration} />} />
+                                          <Line type="monotone" dataKey="main" stroke={C.training} strokeWidth={2.5}
+                                            dot={{ r: 3, fill: C.training }} activeDot={{ r: 5 }} />
+                                        </LineChart>
+                                      </ResponsiveContainer>
+                                    </div>
+
+                                    {/* Volume bar chart */}
+                                    {!isDuration && (
+                                      <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                                        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.bar }}>
+                                          Volume per sessione (kg × reps)
+                                        </p>
+                                        <ResponsiveContainer width="100%" height={120}>
+                                          <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
+                                            <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
+                                            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
+                                            <Tooltip content={<VolumeTooltip />} />
+                                            <Bar dataKey="vol" fill={C.bar} radius={[4, 4, 0, 0]} />
+                                          </BarChart>
+                                        </ResponsiveContainer>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
                     )}
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── STEP 2: CHARTS ── */}
-      {step === 'detail' && (
-        <>
-          {/* Routine filter pills (multi-select) */}
-          <div className="flex gap-1.5 flex-wrap">
-            {/* "Tutto" pill — deselects all */}
-            <button
-              onClick={() => setSelWeekIds(new Set())}
-              className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
-                selWeekIds.size === 0
-                  ? 'text-white border-transparent'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
-              )}
-              style={selWeekIds.size === 0 ? { backgroundColor: C.training } : {}}>
-              Tutto
-            </button>
-            {routineWeeks.map(w => {
-              const active = selWeekIds.has(w.id)
-              return (
-                <button key={w.id}
-                  onClick={() => setSelWeekIds(prev => {
-                    const next = new Set(prev)
-                    active ? next.delete(w.id) : next.add(w.id)
-                    return next
-                  })}
-                  className={cn('px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
-                    active
-                      ? 'text-white border-transparent'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900'
-                  )}
-                  style={active ? { backgroundColor: C.accent } : {}}>
-                  {w.name}
-                </button>
-              )
-            })}
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
-            </div>
-          ) : sessions.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-10">Nessuna sessione nel periodo selezionato</p>
-          ) : (
-            <>
-              {/* PR + sessions */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Record personale</p>
-                  <p className="text-2xl font-bold" style={{ color: C.training }}>
-                    {isDuration ? fmtMin(pr) : `${pr} kg`}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400 mb-0.5">Sessioni</p>
-                  <p className="text-2xl font-bold" style={{ color: C.accent }}>{sessions.length}</p>
-                </div>
+                )}
               </div>
-
-              {/* Session history */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Storico sessioni</p>
-                </div>
-                {[...sessions].reverse().map((s, i) => (
-                  <div key={s.date} className={cn('px-4 py-3', i > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                        {new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
-                      {isDuration
-                        ? <p className="text-xs font-semibold" style={{ color: C.training }}>{fmtMin(s.totalDuration)}</p>
-                        : <p className="text-xs font-semibold" style={{ color: C.training }}>max {s.maxWeight ?? '—'} kg</p>
-                      }
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.sets.map((set, j) => (
-                        <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: C.training + '18', color: C.training }}>
-                          {isDuration ? fmtMin(set.duration) : `${set.reps ?? '?'} × ${set.weight ?? '?'} kg`}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Line chart */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.training }}>
-                  {isDuration ? 'Durata per sessione (min)' : 'Peso massimo per sessione (kg)'}
-                </p>
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
-                    <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomTooltip isDuration={isDuration} />} />
-                    <Line type="monotone" dataKey="main" stroke={C.training} strokeWidth={2.5}
-                      dot={{ r: 3, fill: C.training }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Volume bar chart (weight exercises only) */}
-              {!isDuration && (
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                  <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: C.bar }}>
-                    Volume per sessione (kg × reps)
-                  </p>
-                  <ResponsiveContainer width="100%" height={140}>
-                    <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
-                      <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
-                      <Tooltip content={<VolumeTooltip />} />
-                      <Bar dataKey="vol" fill={C.bar} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-            </>
-          )}
-        </>
+            )
+          })}
+        </div>
       )}
     </div>
   )

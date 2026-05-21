@@ -162,32 +162,32 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
     <>
       <div className="flex items-center gap-2">
         {/* Date band */}
-        <div className={cn("flex-1 min-w-0 h-9 rounded-2xl px-2 flex items-center gap-1 border transition-colors",
+        <div className={cn("flex-1 min-w-0 h-12 rounded-2xl px-2 flex items-center gap-1 border transition-colors",
             !schedaColor && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
           style={schedaColor ? { backgroundColor: schedaColor + '18', borderColor: schedaColor + '50' } : undefined}>
           <button onClick={() => changeDate(-1)}
-            className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
-            <ChevronLeft size={17} />
+            className="w-10 h-10 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
+            <ChevronLeft size={20} />
           </button>
-          <span className="flex-1 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">
+          <span className="flex-1 text-center text-base font-semibold text-gray-900 dark:text-gray-100 capitalize truncate">
             {dateLabel}
           </span>
           <button onClick={() => changeDate(1)}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
-            <ChevronRight size={17} />
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 shrink-0 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+            <ChevronRight size={20} />
           </button>
         </div>
 
         {/* Calendar button */}
         <button onClick={() => setOpen(true)}
-          className="w-9 h-9 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl flex items-center justify-center shrink-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          <Calendar size={16} style={{ color: accent }} />
+          className="w-12 h-12 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl flex items-center justify-center shrink-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          <Calendar size={20} style={{ color: accent }} />
         </button>
 
         {/* Oggi button */}
         <button onClick={() => onChange(today)} disabled={isToday}
           className={cn(
-            'shrink-0 h-9 px-3 rounded-xl text-xs font-bold border transition-colors',
+            'shrink-0 h-12 px-4 rounded-xl text-sm font-bold border transition-colors',
             isToday
               ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'
               : 'border-transparent text-white'
