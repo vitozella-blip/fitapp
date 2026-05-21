@@ -56,7 +56,6 @@ export default function FoodDiaryPage() {
     setEntries(e => e.filter(x => x.id !== id))
   }
 
-
   function toggleFreeMeal(meal: string) {
     setFreeMeals(prev => {
       const next = new Set(prev)
@@ -87,13 +86,17 @@ export default function FoodDiaryPage() {
   const swipe = useDateSwipe(selectedDate, setSelectedDate)
 
   return (
-    <div className="space-y-3 max-w-2xl mx-auto md:max-w-none" {...swipe}>
-      <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
+    <div className="flex flex-col gap-3 max-w-2xl mx-auto md:max-w-none md:h-full" {...swipe}>
+      <div className="shrink-0">
+        <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
+      </div>
 
-      <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} showWorkoutColors={false} />
+      <div className="shrink-0">
+        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} showWorkoutColors={false} />
+      </div>
 
-      {/* Macro summary — same as dashboard */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3">
+      {/* Macro summary — full width */}
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3">
         <p className="text-center text-[10px] font-bold uppercase tracking-widest mb-1.5"
           style={{ color: C.kcal }}>Macro</p>
 
@@ -141,74 +144,78 @@ export default function FoodDiaryPage() {
         </div>
       </div>
 
-      {/* Meals */}
-      {MEALS.map(meal => {
-        const mealEntries = entries.filter(e => e.meal === meal)
-        const isFree = freeMeals.has(meal)
-        const mealCal = mealEntries.reduce((s, e) => s + calc(e.food.calories, e.quantity), 0)
+      {/* Meals — one column each, side by side on desktop */}
+      <div className="grid grid-cols-1 gap-3 md:flex-1 md:min-h-0 md:grid-cols-5">
+        {MEALS.map(meal => {
+          const mealEntries = entries.filter(e => e.meal === meal)
+          const isFree = freeMeals.has(meal)
+          const mealCal = mealEntries.reduce((s, e) => s + calc(e.food.calories, e.quantity), 0)
 
-        return (
-          <div key={meal} className={cn(
-            'bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden transition-colors',
-            isFree ? 'border-amber-100 dark:border-amber-900/50' : 'border-gray-100 dark:border-gray-800'
-          )}>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800"
-              style={{ backgroundColor: C.carbs + '18' }}>
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C.carbs }} />
-                <p className="font-bold text-sm truncate uppercase" style={{ color: C.carbs }}>
-                  {meal}
-                </p>
-                {isFree && (
-                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>Libero</p>
-                )}
-                {!isFree && mealCal > 0 && (
-                  <p className="text-xs shrink-0" style={{ color: C.carbs + 'bb' }}>{mealCal} kcal</p>
-                )}
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
+          return (
+            <div key={meal} className={cn(
+              'flex flex-col bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden md:min-h-0',
+              isFree ? 'border-amber-100 dark:border-amber-900/50' : 'border-gray-100 dark:border-gray-800'
+            )}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 shrink-0"
+                style={{ backgroundColor: C.carbs + '18' }}>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C.carbs }} />
+                  <p className="font-bold text-xs truncate uppercase" style={{ color: C.carbs }}>
+                    {meal}
+                  </p>
+                  {isFree && (
+                    <p className="text-[10px] shrink-0" style={{ color: C.carbs + 'bb' }}>Libero</p>
+                  )}
+                  {!isFree && mealCal > 0 && (
+                    <p className="text-[10px] shrink-0" style={{ color: C.carbs + 'bb' }}>{mealCal} kcal</p>
+                  )}
+                </div>
                 <button onClick={() => setModal(meal)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white"
+                  className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors text-white shrink-0"
                   style={{ backgroundColor: C.carbs + 'cc' }}>
-                  <Plus size={14} />
+                  <Plus size={12} />
                 </button>
               </div>
-            </div>
 
-            {isFree ? (
-              <div className="px-4 py-2.5 flex items-center gap-2">
-                <p className="text-sm font-medium" style={{ color: C.carbs }}>Cheat meal</p>
-                <span className="text-base">🍟</span>
-              </div>
-            ) : mealEntries.length === 0 ? (
-              <p className="text-xs text-gray-400 px-4 py-2.5">Nessun alimento registrato</p>
-            ) : (
-              <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                {mealEntries.map(e => (
-                  <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-1.5 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
-                        <span className="text-xs text-gray-400 shrink-0">{e.quantity}g</span>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        <span style={{ color: C.kcal }}>{calc(e.food.calories, e.quantity)} kcal</span> ·{' '}
-                        <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span> ·{' '}
-                        <span style={{ color: C.carbs }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
-                        <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span>
-                      </p>
-                    </div>
-                    <button onClick={() => deleteEntry(e.id)}
-                      className="ml-2 w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 hover:text-red-400 flex items-center justify-center transition-colors">
-                      <Trash2 size={13} />
-                    </button>
+              {/* Content */}
+              <div className="md:flex-1 md:overflow-y-auto">
+                {isFree ? (
+                  <div className="px-3 py-2.5 flex items-center gap-2">
+                    <p className="text-sm font-medium" style={{ color: C.carbs }}>Cheat meal</p>
+                    <span className="text-base">🍟</span>
                   </div>
-                ))}
+                ) : mealEntries.length === 0 ? (
+                  <p className="text-xs text-gray-400 px-3 py-2.5">Nessun alimento</p>
+                ) : (
+                  <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                    {mealEntries.map(e => (
+                      <div key={e.id} className="flex items-center justify-between px-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
+                            <span className="text-[10px] text-gray-400 shrink-0">{e.quantity}g</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            <span style={{ color: C.kcal }}>{calc(e.food.calories, e.quantity)} kcal</span> ·{' '}
+                            <span style={{ color: C.fat }}>G {calc(e.food.fat, e.quantity)}g</span> ·{' '}
+                            <span style={{ color: C.carbs }}>C {calc(e.food.carbs, e.quantity)}g</span> ·{' '}
+                            <span style={{ color: C.protein }}>P {calc(e.food.protein, e.quantity)}g</span>
+                          </p>
+                        </div>
+                        <button onClick={() => deleteEntry(e.id)}
+                          className="ml-1 w-6 h-6 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 hover:text-red-400 flex items-center justify-center transition-colors shrink-0">
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )
-      })}
+            </div>
+          )
+        })}
+      </div>
 
       {modal && (
         <AddFoodModal meal={modal} date={selectedDate} onClose={() => setModal(null)} onAdded={fetchEntries}

@@ -96,13 +96,14 @@ export function Sidebar() {
           if (group.href) {
             const SectionIcon = sectionIcon[group.label]
             const sectionActive = pathname === group.href
+            const childActive = group.items.some(item => pathname === item.href || pathname.startsWith(item.href))
             return (
               <div key={group.label}>
                 {/* Section hub link */}
                 <Link href={group.href}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all',
-                    sectionActive ? accentCls[group.accent] : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    sectionActive ? accentCls[group.accent] : childActive ? accentText[group.accent] + ' hover:bg-gray-100 dark:hover:bg-gray-800' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   )}>
                   {SectionIcon && (
                     <SectionIcon size={16} className={sectionActive ? '' : accentText[group.accent]} aria-hidden="true" />
@@ -131,22 +132,17 @@ export function Sidebar() {
 
           // Groups without href (primary = Dashboard, tools): render items flat
           return (
-            <div key={group.label || 'main'} className={group.label ? 'pt-2' : ''}>
-              {group.label && (
-                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  {group.label}
-                </p>
-              )}
+            <div key={group.label || 'main'} className={group.label ? 'pt-1' : ''}>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const active = pathname === item.href
                   return (
                     <Link key={item.href} href={item.href}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                        active ? accentCls[group.accent] : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all',
+                        active ? accentCls[group.accent] : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                       )}>
-                      <item.icon size={16} aria-hidden="true" />
+                      <item.icon size={16} className={active ? '' : accentText[group.accent]} aria-hidden="true" />
                       {item.label}
                     </Link>
                   )

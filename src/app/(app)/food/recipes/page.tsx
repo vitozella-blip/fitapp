@@ -284,8 +284,8 @@ function RecipeCard({ recipe, userId, onDelete }: { recipe: Recipe; userId: stri
 
   async function del() {
     if (!confirm('Eliminare questa ricetta?')) return
-    await fetch(`/api/recipes/${recipe.id}`, { method: 'DELETE' })
-    onDelete()
+    const res = await fetch(`/api/recipes/${recipe.id}`, { method: 'DELETE' })
+    if (res.ok) onDelete()
   }
 
   return (

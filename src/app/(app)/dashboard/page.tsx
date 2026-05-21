@@ -116,101 +116,92 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-auto h-[calc(100dvh-7.5rem)]" {...swipe}>
+    <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-full" {...swipe}>
 
       <div className="shrink-0">
         <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} />
       </div>
 
-      {/* Macro card */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3 shrink-0">
-        <p className="text-center text-[10px] font-bold uppercase tracking-widest mb-1.5"
-          style={{ color: C.kcal }}>Macro</p>
+      {/* 3 equal rows on PC */}
+      <div className="flex flex-col gap-2 flex-1 min-h-0 md:grid md:gap-3" style={{ gridTemplateRows: '1fr 1fr 1fr' }}>
 
-        <div className="flex items-baseline justify-between mb-1.5">
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
-              {t.calories}
-            </span>
-            <span className="text-sm font-medium text-gray-500">/ {tg.calories} kcal</span>
-          </div>
-          <span className="text-xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
-            {calOver ? `+${t.calories - tg.calories} kcal` : `${calPct}%`}
-          </span>
-        </div>
+        {/* MACRO */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
+          <p className="text-center text-sm font-bold uppercase tracking-widest py-1.5 shrink-0"
+            style={{ color: C.kcal }}>Macro</p>
 
-        <div className="h-1.5 rounded-full overflow-hidden mb-2.5"
-          style={{ backgroundColor: C.kcal + '38' }}>
-          <div className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
-        </div>
+          <div className="flex-1 min-h-0 flex flex-col">
 
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: 'Grassi',      val: t.fat,     tgt: tg.fat,     color: C.fat },
-            { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
-            { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
-          ].map(m => (
-            <div key={m.label}>
-              <p className="text-[10px] font-bold mb-0.5" style={{ color: m.color }}>{m.label}</p>
-              <p className="text-lg font-bold leading-none" style={{ color: m.color }}>
-                {m.val}<span className="text-xs font-medium text-gray-500"> / {m.tgt} g</span>
-              </p>
-              <div className="h-1 rounded-full overflow-hidden mt-1"
-                style={{ backgroundColor: m.color + '40' }}>
-                <div className="h-full rounded-full transition-all"
-                  style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+            {/* Kcal */}
+            <div className="flex-1 flex flex-col justify-center px-4 gap-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-extrabold leading-none" style={{ color: calOver ? '#f87171' : C.kcal }}>
+                  {t.calories}
+                </span>
+                <span className="text-base text-gray-400 font-medium">/ {tg.calories} kcal</span>
+                <span className="ml-auto text-2xl font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
+                  {calOver ? `+${t.calories - tg.calories}` : `${calPct}%`}
+                </span>
+              </div>
+              <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: C.kcal + '30' }}>
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
               </div>
             </div>
-          ))}
+
+            {/* G / C / P */}
+            <div className="flex-1 grid grid-cols-3">
+              {[
+                { label: 'Grassi',      val: t.fat,     tgt: tg.fat,     color: C.fat },
+                { label: 'Carboidrati', val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
+                { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
+              ].map(m => (
+                <div key={m.label} className="flex flex-col justify-center items-center gap-1.5 px-3">
+                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: m.color }}>{m.label}</span>
+                  <span className="text-3xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '30' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+                  </div>
+                  <span className="text-xs text-gray-400">/ {m.tgt}g</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
         </div>
-      </div>
 
-      {/* Bottom cards */}
-      <div className="grid grid-cols-2 gap-2 min-h-0 flex-1">
-
-        {/* PASTI */}
+        {/* PASTI — meals in a horizontal row */}
         <button onClick={() => router.push('/food/diary')}
-          className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200/70 dark:border-orange-900/50 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
+          className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200/70 dark:border-orange-900/50 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform">
 
-          <div className="px-3 py-2 border-b border-orange-200/70 dark:border-orange-900/50 shrink-0">
-            <p className="text-center text-[11px] font-bold uppercase tracking-wide"
+          <div className="px-3 py-2 shrink-0">
+            <p className="text-center text-sm font-bold uppercase tracking-wide"
               style={{ color: '#e8924a' }}>Pasti</p>
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col px-2 py-1.5">
+          <div className="flex-1 min-h-0 px-2 py-2 grid grid-cols-5 gap-1.5">
             {MEALS.map(({ name, label, renderIcon }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               const free = m?.isFree ?? false
               return (
-                <div key={name} className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700">
-                    <span style={{ flexShrink: 0 }}>{renderIcon('', 20)}</span>
-                    <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">{label}</span>
+                <div key={name} className="flex flex-col min-h-0 min-w-0">
+                  <div className="flex flex-col items-center justify-center py-2 rounded-xl bg-gray-200 dark:bg-gray-700 gap-0.5 shrink-0">
+                    {renderIcon('', 20)}
+                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200 leading-tight text-center px-0.5 w-full truncate text-center">{label}</span>
                   </div>
-                  <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
+                  <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                     {free ? (
-                      <>
-                        <p className="text-xs font-semibold" style={{ color: C.carbs }}>Cheat meal</p>
-                        <p className="text-xs">&nbsp;</p>
-                      </>
+                      <p className="text-sm font-semibold text-center" style={{ color: C.carbs }}>Cheat</p>
                     ) : kcal > 0 ? (
                       <>
-                        <p className="text-xs font-semibold" style={{ color: C.kcal }}>{kcal} kcal</p>
-                        <p className="text-xs">
-                          <span style={{ color: C.fat }}>G {m!.fat}</span>
-                          <span className="text-gray-400 dark:text-gray-500"> · </span>
-                          <span style={{ color: C.carbs }}>C {m!.carbs}</span>
-                          <span className="text-gray-400 dark:text-gray-500"> · </span>
-                          <span style={{ color: C.protein }}>P {m!.protein}</span>
-                        </p>
+                        <p className="text-sm font-bold text-center leading-tight" style={{ color: C.kcal }}>{kcal} <span className="text-xs font-medium">kcal</span></p>
+                        <p className="text-sm font-semibold leading-tight text-center"><span style={{ color: C.fat }}>G </span><span style={{ color: C.fat }}>{m!.fat}</span></p>
+                        <p className="text-sm font-semibold leading-tight text-center"><span style={{ color: C.carbs }}>C </span><span style={{ color: C.carbs }}>{m!.carbs}</span></p>
+                        <p className="text-sm font-semibold leading-tight text-center"><span style={{ color: C.protein }}>P </span><span style={{ color: C.protein }}>{m!.protein}</span></p>
                       </>
                     ) : (
-                      <>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">—</p>
-                        <p className="text-xs">&nbsp;</p>
-                      </>
+                      <p className="text-sm text-gray-400 text-center">—</p>
                     )}
                   </div>
                 </div>
@@ -221,110 +212,72 @@ export default function DashboardPage() {
 
         {/* ALLENAMENTO */}
         <button onClick={() => router.push('/training/diary')}
-          className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 rounded-2xl overflow-hidden flex flex-col text-left min-h-0 active:scale-[0.98] transition-transform">
+          className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform">
 
-          <div className="px-3 py-2 border-b border-blue-200/70 dark:border-blue-900/50 shrink-0">
-            <p className="text-center text-[11px] font-bold uppercase tracking-wide"
+          <div className="px-3 py-2 shrink-0">
+            <p className="text-center text-sm font-bold uppercase tracking-wide"
               style={{ color: C.training }}>Allenamento</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2 py-1.5">
+          <div className="flex-1 min-h-0 grid grid-cols-2">
 
-            {/* Pill */}
-            {data?.workout.hasTennis && (data?.workout.exists || !!schedaInfo) ? (
-              /* Combined: 5 flex-1 slots to align with food column */
-              <div className="h-full flex flex-col">
-                {/* Slot 1 — Tennis (aligns with Colazione) */}
-                <div className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700">
-                    <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
-                    <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">Tennis</span>
+            {/* Colonna sinistra — Tennis */}
+            <div className="px-3 py-2 overflow-y-auto">
+              {data?.workout.hasTennis ? (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-200 dark:bg-gray-700">
+                    <Em e="🎾" size={18} />
+                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">Tennis</span>
                   </div>
-                  <div className="mt-0.5 text-center px-0.5 leading-tight flex-1 flex flex-col justify-start">
-                    {tennisMeta?.type || tennisMeta?.hours ? (
-                      <>
-                        <p className="text-xs font-semibold uppercase" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">{tennisMeta?.hours ? `${tennisMeta.hours}h` : ''}&nbsp;</p>
-                      </>
-                    ) : (
-                      <><p className="text-xs text-gray-400 dark:text-gray-500">—</p><p className="text-xs">&nbsp;</p></>
-                    )}
-                  </div>
-                </div>
-                {/* Slot 2 — Workout (aligns with Sp. Mattina) */}
-                <div className="flex-1 flex flex-col">
-                  <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700">
-                    <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
-                    <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">{pillLabel}</span>
-                  </div>
-                  <div className="mt-0.5 px-0.5 leading-tight flex-1">
-                    {schedaInfo && (
-                      <p className="text-xs font-semibold truncate text-center" style={{ color: C.training }}>
-                        {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
-                      </p>
-                    )}
-                    {completedExercises.map(ex => (
-                      <div key={ex.id} className="flex items-center gap-1 py-0.5 text-left">
-                        <Check size={9} className="shrink-0" style={{ color: C.training }} />
-                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Slots 3-5 — spacers (align with Pranzo, Sp. Pomeriggio, Cena) */}
-                <div className="flex-1" />
-                <div className="flex-1" />
-                <div className="flex-1" />
-              </div>
-            ) : data?.workout.hasTennis ? (
-              <>
-                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700 mb-0.5">
-                  <span style={{ flexShrink: 0 }}><Em e="🎾" size={20} /></span>
-                  <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">Tennis</span>
-                </div>
-                <div className="mt-0.5 text-center px-0.5 leading-tight h-[1.875rem] flex flex-col justify-center">
-                  {tennisMeta?.type || tennisMeta?.hours ? (
-                    <>
-                      <p className="text-xs font-semibold capitalize" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">{tennisMeta?.hours ? `${tennisMeta.hours}h` : ''}&nbsp;</p>
-                    </>
-                  ) : (
-                    <><p className="text-xs text-gray-400 dark:text-gray-500">—</p><p className="text-xs">&nbsp;</p></>
+                  {(tennisMeta?.type || tennisMeta?.hours) && (
+                    <div className="px-1">
+                      <p className="text-xs font-semibold uppercase" style={{ color: C.training }}>{tennisMeta?.type ?? ''}</p>
+                      {tennisMeta?.hours && <p className="text-xs text-gray-400">{tennisMeta.hours}h</p>}
+                    </div>
                   )}
                 </div>
-              </>
-            ) : (data?.workout.exists || !!schedaInfo) ? (
-              <>
-                <div className="flex items-center justify-center gap-1.5 py-2 min-h-[2.5rem] rounded-2xl bg-gray-200 dark:bg-gray-700 mb-0.5">
-                  <span style={{ flexShrink: 0 }}><img src="/icon-training.png" alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /></span>
-                  <span className="text-[10px] font-bold truncate text-gray-700 dark:text-gray-200">{pillLabel}</span>
+              ) : (
+                <div className="flex items-center justify-center gap-2 py-2 rounded-xl h-full"
+                  style={{ backgroundColor: '#b0b8c810' }}>
+                  <Em e="🎾" size={16} />
+                  <span className="text-[10px] text-gray-400">—</span>
                 </div>
-                <div className="mt-0.5 px-0.5 leading-tight">
+              )}
+            </div>
+
+            {/* Colonna destra — Allenamento */}
+            <div className="px-3 py-2 overflow-y-auto">
+              {data?.workout.exists ? (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-200 dark:bg-gray-700">
+                    <img src="/icon-training.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} />
+                    <span className="text-[10px] font-bold text-gray-700 dark:text-gray-200">{pillLabel}</span>
+                  </div>
                   {schedaInfo && (
-                    <p className="text-xs font-semibold truncate text-center" style={{ color: C.training }}>
+                    <p className="text-xs font-semibold px-1" style={{ color: C.training }}>
                       {schedaInfo.name.replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '').toUpperCase()}
                     </p>
                   )}
                   {completedExercises.map(ex => (
-                    <div key={ex.id} className="flex items-center gap-1 py-0.5 text-left">
+                    <div key={ex.id} className="flex items-center gap-1 px-1">
                       <Check size={9} className="shrink-0" style={{ color: C.training }} />
                       <p className="text-xs text-gray-400 dark:text-gray-500 truncate leading-tight">{ex.name}</p>
                     </div>
                   ))}
                 </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-center gap-2 py-2 rounded-2xl mb-1"
-                style={{ backgroundColor: '#b0b8c830' }}>
-                <Em e="🛋️" size={18} />
-                <span className="text-[10px] font-bold" style={{ color: '#b0b8c8' }}>Riposo</span>
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center justify-center gap-2 py-2 rounded-xl h-full"
+                  style={{ backgroundColor: '#b0b8c810' }}>
+                  <Em e="🛋️" size={16} />
+                  <span className="text-[10px] text-gray-400">Riposo</span>
+                </div>
+              )}
+            </div>
 
           </div>
         </button>
 
-      </div>
+      </div>{/* end 3-col wrapper */}
     </div>
   )
 }
