@@ -1,18 +1,20 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown } from 'lucide-react'
+import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 
-const OC = '#fb923c' // orange accent
+const OC = '#fb923c'
 
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
 type Ingredient = { localId: string; food: Food; quantityG: number }
+type EditIngredient = { localId: string; foodId: string; foodName: string; brand?: string; quantityG: number }
 type SavedIngredient = { foodId: string; foodName: string; brand?: string; quantityG: number; calories: number; protein: number; carbs: number; fat: number }
-type Recipe = { id: string; name: string; createdAt: string; ingredients: SavedIngredient[] }
+type Recipe = { id: string; name: string; createdAt: string; servings: number; ingredients: SavedIngredient[] }
+type Totals = { totalWeight: number; cal: number; pro: number; carb: number; fat: number; p100: { calories: number; protein: number; carbs: number; fat: number } | null }
 
-function calcTotals(ingredients: Ingredient[]) {
+function calcTotals(ingredients: Ingredient[]): Totals {
   const totalWeight = ingredients.reduce((s, i) => s + i.quantityG, 0)
   const cal  = ingredients.reduce((s, i) => s + i.food.calories * i.quantityG / 100, 0)
   const pro  = ingredients.reduce((s, i) => s + i.food.protein  * i.quantityG / 100, 0)
@@ -24,17 +26,10 @@ function calcTotals(ingredients: Ingredient[]) {
     carbs:    Math.round(carb / totalWeight * 1000) / 10,
     fat:      Math.round(fat  / totalWeight * 1000) / 10,
   } : null
-  return {
-    totalWeight: Math.round(totalWeight),
-    cal:  Math.round(cal),
-    pro:  Math.round(pro  * 10) / 10,
-    carb: Math.round(carb * 10) / 10,
-    fat:  Math.round(fat  * 10) / 10,
-    p100,
-  }
+  return { totalWeight: Math.round(totalWeight), cal: Math.round(cal), pro: Math.round(pro * 10) / 10, carb: Math.round(carb * 10) / 10, fat: Math.round(fat * 10) / 10, p100 }
 }
 
-function calcTotalsFromSaved(ingredients: SavedIngredient[]) {
+function calcTotalsFromSaved(ingredients: SavedIngredient[]): Totals {
   const totalWeight = ingredients.reduce((s, i) => s + i.quantityG, 0)
   const cal  = ingredients.reduce((s, i) => s + i.calories * i.quantityG / 100, 0)
   const pro  = ingredients.reduce((s, i) => s + i.protein  * i.quantityG / 100, 0)
@@ -49,36 +44,76 @@ function calcTotalsFromSaved(ingredients: SavedIngredient[]) {
   return { totalWeight: Math.round(totalWeight), cal: Math.round(cal), pro: Math.round(pro * 10) / 10, carb: Math.round(carb * 10) / 10, fat: Math.round(fat * 10) / 10, p100 }
 }
 
-// ── Macros pill row ───────────────────────────────────────────────────────────
-function MacroRow({ calories, protein, carbs, fat, label }: { calories: number; protein: number; carbs: number; fat: number; label: string }) {
+// ── Macro pills ───────────────────────────────────────────────────────────────
+function MacroPills({ calories, protein, carbs, fat, size = 'sm' }: {
+  calories: number; protein: number; carbs: number; fat: number; size?: 'sm' | 'lg'
+}) {
   return (
-    <div>
-      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
-      <div className="flex gap-1.5 flex-wrap">
-        {[
-          { l: 'Kcal', v: calories, c: '#6abf6a' },
-          { l: 'G',    v: `${fat}g`,     c: '#5b9bd5' },
-          { l: 'C',    v: `${carbs}g`,   c: '#f0aa78' },
-          { l: 'P',    v: `${protein}g`, c: '#9d8fcc' },
-        ].map(m => (
-          <span key={m.l} className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
-            style={{ backgroundColor: m.c + '18', color: m.c }}>
-            {m.l} {m.v}
-          </span>
-        ))}
+    <div className="flex gap-1.5 flex-wrap justify-center">
+      {[
+        { l: 'Kcal', v: String(calories),  c: '#6abf6a' },
+        { l: 'G',    v: `${fat}g`,         c: '#5b9bd5' },
+        { l: 'C',    v: `${carbs}g`,       c: '#f0aa78' },
+        { l: 'P',    v: `${protein}g`,     c: '#9d8fcc' },
+      ].map(m => (
+        <span key={m.l}
+          className={cn('font-bold rounded-lg', size === 'lg' ? 'text-sm px-2.5 py-1' : 'text-[11px] px-2 py-0.5')}
+          style={{ backgroundColor: m.c + '18', color: m.c }}>
+          {m.l} {m.v}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ── Totals box (gerarchia: totale → porzione → per 100g) ──────────────────────
+function TotalsBox({ totals, servings = 1 }: { totals: Totals; servings?: number }) {
+  if (!totals.p100) return null
+  const s = Math.max(1, servings)
+  const portionWeight = Math.round(totals.totalWeight / s)
+  const portion = {
+    calories: Math.round(totals.cal / s),
+    protein:  Math.round(totals.pro * 10 / s) / 10,
+    carbs:    Math.round(totals.carb * 10 / s) / 10,
+    fat:      Math.round(totals.fat * 10 / s) / 10,
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ backgroundColor: OC + '0f' }}>
+      {/* 1 — Totale (piccolo) */}
+      <div className="px-3 pt-3 pb-2.5 text-center space-y-1.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Ricetta completa · {totals.totalWeight}g</p>
+        <MacroPills size="sm" calories={totals.cal} protein={totals.pro} carbs={totals.carb} fat={totals.fat} />
+      </div>
+
+      {/* 2 — Per porzione (piccolo) */}
+      <div className="px-3 py-2.5 text-center space-y-1.5 border-t" style={{ borderColor: OC + '20' }}>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+          Per porzione · {portionWeight}g{s > 1 ? ` (${s} porz.)` : ''}
+        </p>
+        <MacroPills size="sm" calories={portion.calories} protein={portion.protein} carbs={portion.carbs} fat={portion.fat} />
+      </div>
+
+      {/* 3 — Per 100g (grande, sfondo più intenso) */}
+      <div className="px-3 py-3 text-center space-y-2 border-t" style={{ borderColor: OC + '20', backgroundColor: OC + '18' }}>
+        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OC }}>Per 100g</p>
+        <MacroPills size="lg" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
       </div>
     </div>
   )
 }
 
 // ── Food search input ─────────────────────────────────────────────────────────
-function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Food) => void }) {
+function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Food, qty: number) => void }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Food[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState<Food | null>(null)
+  const [qty, setQty] = useState('100')
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
   const ref = useRef<HTMLDivElement>(null)
+  const qtyRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
@@ -99,36 +134,66 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
     }, 300)
   }, [q, userId])
 
-  function select(food: Food) {
-    onSelect(food)
-    setQ('')
-    setResults([])
-    setOpen(false)
+  function pickFood(food: Food) {
+    setPending(food); setQty('100'); setQ(''); setResults([]); setOpen(false)
+    setTimeout(() => qtyRef.current?.select(), 50)
+  }
+
+  function confirm() {
+    if (!pending) return
+    onSelect(pending, Math.max(1, Number(qty) || 100))
+    setPending(null); setQty('100')
+  }
+
+  function cancel() { setPending(null); setQty('100') }
+
+  if (pending) {
+    return (
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate min-w-0">
+            {pending.name}{pending.brand && <span className="text-gray-400 font-normal"> — {pending.brand}</span>}
+          </p>
+          <button onClick={cancel} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors shrink-0">
+            <X size={12} />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <input ref={qtyRef} type="number" value={qty} onChange={e => setQty(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && confirm()}
+            className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+            min="1" />
+          <span className="text-xs text-gray-400">g</span>
+          <button onClick={confirm} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: OC }}>
+            <Plus size={13} /> Aggiungi
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div ref={ref} className="relative">
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Cerca alimento..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
-        />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca alimento..."
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
         {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
       </div>
       {open && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto">
           {results.map(f => (
-            <button key={f.id} onClick={() => select(f)}
-              className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {f.name}{f.brand ? <span className="font-normal text-gray-400"> — {f.brand}</span> : null}
-              </p>
-              <p className="text-xs text-gray-400">
-                {f.calories} kcal · G {f.fat}g · C {f.carbs}g · P {f.protein}g
-              </p>
+            <button key={f.id} onClick={() => pickFood(f)}
+              className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  {f.name}{f.brand ? <span className="font-normal text-gray-400"> — {f.brand}</span> : null}
+                </p>
+                <p className="text-xs text-gray-400">{f.calories} kcal · G {f.fat}g · C {f.carbs}g · P {f.protein}g</p>
+              </div>
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: OC }}>
+                <Plus size={14} />
+              </span>
             </button>
           ))}
         </div>
@@ -137,23 +202,43 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
   )
 }
 
+// ── Ingredient row ─────────────────────────────────────────────────────────────
+function IngredientRow({ name, brand, qty, onQtyChange, onRemove }: {
+  name: string; brand?: string; qty: number
+  onQtyChange?: (val: string) => void
+  onRemove: () => void
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
+      <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate min-w-0">
+        {name}{brand && <span className="text-gray-400 font-normal"> — {brand}</span>}
+      </p>
+      {onQtyChange ? (
+        <>
+          <input type="number" value={qty || ''} onChange={e => onQtyChange(e.target.value)}
+            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none"
+            min="1" />
+          <span className="text-xs text-gray-400">g</span>
+        </>
+      ) : (
+        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">{qty}g</span>
+      )}
+      <button onClick={onRemove} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors shrink-0">
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
+
 // ── Recipe creation form ──────────────────────────────────────────────────────
 function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () => void; onClose: () => void }) {
   const [name, setName] = useState('')
+  const [servings, setServings] = useState('1')
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [saving, setSaving] = useState(false)
 
-  function addFood(food: Food) {
-    setIngredients(prev => [...prev, { localId: crypto.randomUUID(), food, quantityG: 100 }])
-  }
-
-  function updateQty(localId: string, val: string) {
-    const n = Math.max(0, Number(val) || 0)
-    setIngredients(prev => prev.map(i => i.localId === localId ? { ...i, quantityG: n } : i))
-  }
-
-  function remove(localId: string) {
-    setIngredients(prev => prev.filter(i => i.localId !== localId))
+  function addFood(food: Food, qty: number) {
+    setIngredients(prev => [...prev, { localId: crypto.randomUUID(), food, quantityG: qty }])
   }
 
   const totals = calcTotals(ingredients)
@@ -167,6 +252,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId, name: name.trim(),
+        servings: Math.max(1, Number(servings) || 1),
         ingredients: ingredients.map(i => ({ foodId: i.food.id, quantityG: i.quantityG })),
       }),
     })
@@ -182,65 +268,31 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
           <X size={14} />
         </button>
       </div>
-
       <div className="p-4 space-y-4">
-        {/* Name */}
-        <input
-          autoFocus
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Nome ricetta..."
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
-        />
+        <div className="flex gap-2">
+          <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
+            className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+          <div className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
+            <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
+              className="w-8 bg-transparent text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none" />
+            <span className="text-xs text-gray-400 whitespace-nowrap">porz.</span>
+          </div>
+        </div>
 
-        {/* Food search */}
         <FoodSearch userId={userId} onSelect={addFood} />
 
-        {/* Ingredient list */}
         {ingredients.length > 0 && (
           <div className="space-y-1.5">
             {ingredients.map(ing => (
-              <div key={ing.localId} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2">
-                <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate min-w-0">
-                  {ing.food.name}
-                  {ing.food.brand && <span className="text-gray-400 font-normal"> — {ing.food.brand}</span>}
-                </p>
-                <div className="flex items-center gap-1 shrink-0">
-                  <input
-                    type="number"
-                    value={ing.quantityG || ''}
-                    onChange={e => updateQty(ing.localId, e.target.value)}
-                    className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none"
-                    min="0"
-                  />
-                  <span className="text-xs text-gray-400">g</span>
-                </div>
-                <button onClick={() => remove(ing.localId)} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                  <X size={12} />
-                </button>
-              </div>
+              <IngredientRow key={ing.localId} name={ing.food.name} brand={ing.food.brand} qty={ing.quantityG}
+                onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
             ))}
           </div>
         )}
 
-        {/* Totals */}
-        {ingredients.length > 0 && (
-          <div className="rounded-xl p-3 space-y-2.5" style={{ backgroundColor: OC + '0f' }}>
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400">Peso totale</p>
-              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{totals.totalWeight} g</p>
-            </div>
-            <MacroRow label="Totale ricetta" calories={totals.cal} protein={totals.pro} carbs={totals.carb} fat={totals.fat} />
-            {totals.p100 && (
-              <MacroRow label="Per 100g" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
-            )}
-          </div>
-        )}
+        {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} />}
 
-        {/* Save */}
-        <button
-          onClick={save}
-          disabled={!canSave || saving}
+        <button onClick={save} disabled={!canSave || saving}
           className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
           style={{ backgroundColor: OC }}>
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
@@ -252,34 +304,45 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
 }
 
 // ── Recipe card ───────────────────────────────────────────────────────────────
-function RecipeCard({ recipe, userId, onDelete }: { recipe: Recipe; userId: string; onDelete: () => void }) {
+function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; userId: string; onDelete: () => void; onUpdate: () => void }) {
   const [open, setOpen] = useState(false)
-  const [adding, setAdding] = useState(false)
-  const [added, setAdded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editIngredients, setEditIngredients] = useState<EditIngredient[]>([])
+  const [editServings, setEditServings] = useState('1')
+  const [saving, setSaving] = useState(false)
   const totals = calcTotalsFromSaved(recipe.ingredients)
 
-  async function addToFoods() {
-    if (!totals.p100) return
-    setAdding(true)
-    await fetch('/api/food', {
-      method: 'POST',
+  function startEdit() {
+    setEditIngredients(recipe.ingredients.map(i => ({
+      localId: crypto.randomUUID(), foodId: i.foodId, foodName: i.foodName, brand: i.brand, quantityG: i.quantityG,
+    })))
+    setEditServings(String(recipe.servings ?? 1))
+    setEditing(true)
+  }
+
+  function cancelEdit() { setEditing(false); setEditIngredients([]) }
+
+  function addEditFood(food: Food, qty: number) {
+    setEditIngredients(prev => [...prev, { localId: crypto.randomUUID(), foodId: food.id, foodName: food.name, brand: food.brand, quantityG: qty }])
+  }
+
+  function updateEditQty(localId: string, val: string) {
+    setEditIngredients(prev => prev.map(i => i.localId === localId ? { ...i, quantityG: Math.max(1, Number(val) || 1) } : i))
+  }
+
+  async function saveEdit() {
+    if (editIngredients.length === 0) return
+    setSaving(true)
+    const res = await fetch(`/api/recipes/${recipe.id}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId,
-        name: recipe.name,
-        brand: 'Ricetta',
-        calories: totals.p100.calories,
-        protein: totals.p100.protein,
-        carbs: totals.p100.carbs,
-        fat: totals.p100.fat,
-        saturatedFat: 0,
-        sugars: 0,
-        salt: 0,
+        servings: Math.max(1, Number(editServings) || 1),
+        ingredients: editIngredients.map(i => ({ foodId: i.foodId, quantityG: i.quantityG })),
       }),
     })
-    setAdding(false)
-    setAdded(true)
-    setTimeout(() => setAdded(false), 3000)
+    setSaving(false)
+    if (res.ok) { cancelEdit(); onUpdate() }
   }
 
   async function del() {
@@ -291,26 +354,28 @@ function RecipeCard({ recipe, userId, onDelete }: { recipe: Recipe; userId: stri
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
       {/* Header */}
-      <div className="flex items-start gap-3 px-4 py-3">
-        <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
+      <div className="flex items-start gap-3 px-4 py-3 cursor-pointer" onClick={() => { if (!editing) setOpen(o => !o) }}>
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{recipe.name}</p>
           {totals.p100 && (
             <p className="text-xs text-gray-400 mt-0.5">
-              {totals.totalWeight}g totali ·{' '}
-              <span style={{ color: '#6abf6a' }}>{totals.p100.calories} kcal</span>
-              {' · '}
-              <span style={{ color: '#5b9bd5' }}>G {totals.p100.fat}g</span>
-              {' · '}
-              <span style={{ color: '#f0aa78' }}>C {totals.p100.carbs}g</span>
-              {' · '}
+              {totals.totalWeight}g ·{' '}
+              <span style={{ color: '#6abf6a' }}>{totals.p100.calories} kcal</span>{' · '}
+              <span style={{ color: '#5b9bd5' }}>G {totals.p100.fat}g</span>{' · '}
+              <span style={{ color: '#f0aa78' }}>C {totals.p100.carbs}g</span>{' · '}
               <span style={{ color: '#9d8fcc' }}>P {totals.p100.protein}g</span>
               <span className="text-gray-300"> /100g</span>
             </p>
           )}
-        </button>
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setOpen(o => !o)} className="w-7 h-7 flex items-center justify-center text-gray-400">
-            <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
+        </div>
+        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+          {!editing && (
+            <ChevronDown size={14} className={cn('text-gray-400 transition-transform', open && 'rotate-180')} />
+          )}
+          <button onClick={editing ? cancelEdit : startEdit}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={editing ? { color: OC } : { color: '#9ca3af' }}>
+            <Pencil size={13} />
           </button>
           <button onClick={del} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
             <Trash2 size={13} />
@@ -318,42 +383,56 @@ function RecipeCard({ recipe, userId, onDelete }: { recipe: Recipe; userId: stri
         </div>
       </div>
 
-      {/* Expanded */}
-      {open && (
+      {/* Edit mode */}
+      {editing && (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OC }}>Modifica ingredienti</p>
+            <div className="flex items-center gap-1.5">
+              <input type="number" value={editServings} onChange={e => setEditServings(e.target.value)} min="1"
+                className="w-10 px-1 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none" />
+              <span className="text-xs text-gray-400">porz.</span>
+            </div>
+          </div>
+          {editIngredients.map(ing => (
+            <IngredientRow key={ing.localId} name={ing.foodName} brand={ing.brand} qty={ing.quantityG}
+              onQtyChange={v => updateEditQty(ing.localId, v)}
+              onRemove={() => setEditIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
+          ))}
+          <FoodSearch userId={userId} onSelect={addEditFood} />
+          <button onClick={saveEdit} disabled={saving || editIngredients.length === 0}
+            className="w-full py-2.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+            style={{ backgroundColor: OC }}>
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            Salva modifiche
+          </button>
+        </div>
+      )}
+
+      {/* View mode expanded */}
+      {open && !editing && (
         <div className="border-t border-gray-50 dark:border-gray-800">
-          {/* Ingredients */}
           <div className="px-4 pt-3 pb-1 space-y-1.5">
             <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Ingredienti</p>
-            {recipe.ingredients.map((ing, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-300 w-4 shrink-0">{i + 1}.</span>
-                <p className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
-                  {ing.foodName}{ing.brand && ing.brand !== 'Generico' ? <span className="font-normal text-gray-400"> — {ing.brand}</span> : null}
-                </p>
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">{ing.quantityG}g</span>
-              </div>
-            ))}
+            {recipe.ingredients.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-1">Nessun ingrediente</p>
+            ) : (
+              recipe.ingredients.map((ing, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-300 w-4 shrink-0">{i + 1}.</span>
+                  <p className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
+                    {ing.foodName}{ing.brand && ing.brand !== 'Generico' ? <span className="font-normal text-gray-400"> — {ing.brand}</span> : null}
+                  </p>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">{ing.quantityG}g</span>
+                </div>
+              ))
+            )}
           </div>
-
-          {/* Totals */}
           {totals.p100 && (
-            <div className="mx-4 my-3 rounded-xl p-3 space-y-2" style={{ backgroundColor: OC + '0f' }}>
-              <MacroRow label="Totale ricetta" calories={totals.cal} protein={totals.pro} carbs={totals.carb} fat={totals.fat} />
-              <MacroRow label="Per 100g" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
+            <div className="mx-4 my-3">
+              <TotalsBox totals={totals} servings={recipe.servings ?? 1} />
             </div>
           )}
-
-          {/* Add to foods */}
-          <div className="px-4 pb-4">
-            <button
-              onClick={addToFoods}
-              disabled={adding || !totals.p100}
-              className="w-full py-2.5 rounded-xl border font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
-              style={added ? { backgroundColor: '#6abf6a18', borderColor: '#6abf6a', color: '#6abf6a' } : { borderColor: OC + '80', color: OC }}>
-              {adding ? <Loader2 size={13} className="animate-spin" /> : added ? <Check size={13} /> : null}
-              {added ? 'Aggiunto agli alimenti' : 'Aggiungi agli alimenti'}
-            </button>
-          </div>
         </div>
       )}
     </div>
@@ -391,11 +470,7 @@ export default function RecipesPage() {
       />
 
       {showForm && (
-        <RecipeForm
-          userId={userId}
-          onSaved={() => { setShowForm(false); load() }}
-          onClose={() => setShowForm(false)}
-        />
+        <RecipeForm userId={userId} onSaved={() => { setShowForm(false); load() }} onClose={() => setShowForm(false)} />
       )}
 
       {loading ? (
@@ -410,7 +485,7 @@ export default function RecipesPage() {
         </div>
       ) : (
         recipes.map(r => (
-          <RecipeCard key={r.id} recipe={r} userId={userId} onDelete={load} />
+          <RecipeCard key={r.id} recipe={r} userId={userId} onDelete={load} onUpdate={load} />
         ))
       )}
     </div>
