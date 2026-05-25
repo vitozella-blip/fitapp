@@ -142,12 +142,12 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
             onClick={handleRowClick}
             className="flex-1 min-w-0 text-left select-none">
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{food.name}</p>
-            {food.brand && <p className="text-xs text-gray-400 truncate">{food.brand}</p>}
+            {food.brand && <p className="text-xs text-gray-500 dark:text-gray-300 truncate">{food.brand}</p>}
             <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
-              <span className="font-bold text-gray-600 dark:text-gray-400">{food.calories} kcal</span>
-              <span style={{ color: '#5b9bd5' }}>G {food.fat}g</span>
-              <span style={{ color: '#f0aa78' }}>C {food.carbs}g</span>
-              <span style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
+              <span className="font-bold" style={{ color: '#6abf6a' }}>{food.calories} kcal</span>
+              <span className="font-semibold" style={{ color: '#5b9bd5' }}>G {food.fat}g</span>
+              <span className="font-semibold" style={{ color: '#f0aa78' }}>C {food.carbs}g</span>
+              <span className="font-semibold" style={{ color: '#9d8fcc' }}>P {food.protein}g</span>
             </div>
             {food.categoryIds && food.categoryIds.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
@@ -427,7 +427,7 @@ function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onC
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[92vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <p className="font-bold text-gray-900 dark:text-gray-100">{editing ? 'Modifica alimento' : 'Nuovo alimento'}</p>
@@ -556,7 +556,7 @@ function FoodDatabasePage() {
 
   function handleSearch(val: string) {
     setQ(val); clearTimeout(timer.current)
-    timer.current = setTimeout(() => fetchAll(val, catFilter, favOnly), 300)
+    timer.current = setTimeout(() => fetchAll(val, catFilter, favOnly), 0)
   }
 
   function handleCatChange(ids: string[]) {

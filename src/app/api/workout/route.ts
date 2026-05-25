@@ -6,6 +6,8 @@ async function ensureSetColumns() {
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "isWarmup" BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "tag" TEXT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisType" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisHours" TEXT`).catch(() => {}),
   ])
 }
 
@@ -17,11 +19,28 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json([])
   try {
     if (all) {
+      const from = req.nextUrl.searchParams.get('from')
+      const to   = req.nextUrl.searchParams.get('to')
       const { rows } = await pool.query(
-        `SELECT w.*, COUNT(s.id) as "setCount", COUNT(DISTINCT s."exerciseId") as "exerciseCount"
-         FROM "WorkoutDiary" w LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
-         WHERE w."userId" = $1 GROUP BY w.id ORDER BY w.date DESC LIMIT 30`,
-        [userId]
+        `SELECT w.id, w.date,
+           COUNT(s.id)::int                        AS "setCount",
+           COUNT(DISTINCT s."exerciseId")::int      AS "exerciseCount",
+           wt.name                                  AS "templateName",
+           BOOL_OR(LOWER(e.name) = 'tennis')        AS "isTennis",
+           w."tennisType"                            AS "tennisTag",
+           w."tennisHours"                           AS "tennisHours"
+         FROM "WorkoutDiary" w
+         LEFT JOIN "WorkoutSet"      s  ON s."workoutDiaryId" = w.id
+         LEFT JOIN "Exercise"        e  ON e.id = s."exerciseId"
+         LEFT JOIN "WorkoutWeek"     ww ON ww.id = w."weekId"
+         LEFT JOIN "WorkoutTemplate" wt ON wt.id = ww."templateId"
+         WHERE w."userId" = $1
+           AND ($2::text IS NULL OR w.date >= $2)
+           AND ($3::text IS NULL OR w.date <= $3)
+         GROUP BY w.id, w.date, wt.name, w."tennisType", w."tennisHours"
+         ORDER BY w.date DESC
+         LIMIT 120`,
+        [userId, from || null, to || null]
       )
       return NextResponse.json(rows)
     }

@@ -92,7 +92,7 @@ export default function FoodHubPage() {
       </div>
 
       {/* Body */}
-      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 1fr' }}>
+      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 0.75fr' }}>
 
         {/* TOP — statistics */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
@@ -107,9 +107,9 @@ export default function FoodHubPage() {
                 <span className="text-[10px] text-gray-400 shrink-0">→</span>
                 <input type="date" value={to} onChange={e => setTo(e.target.value)}
                   className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-orange-300" style={{ width: 110 }} />
-                {stats && stats.days > 0 && (
+                {from && to && from <= to && (
                   <span className="text-[10px] font-semibold shrink-0" style={{ color: COLOR }}>
-                    {stats.days} giorni
+                    {Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1} giorni
                   </span>
                 )}
               </div>

@@ -138,7 +138,7 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
 
   useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 2) { setResults([]); setOpen(false); return }
+    if (q.length < 1) { setResults([]); setOpen(false); return }
     setOpen(true) // immediately open to show free-text option
     timer.current = setTimeout(async () => {
       setLoading(true)
@@ -146,7 +146,7 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
       const data = await r.json()
       setResults(Array.isArray(data) ? data : [])
       setLoading(false)
-    }, 300)
+    }, 0)
   }, [q, userId])
 
   function pick(food?: Food, freeName?: string) {
