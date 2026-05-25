@@ -247,14 +247,13 @@ function IngredientRow({ name, brand, qty, unit, onQtyChange, onUnitChange, onRe
 }) {
   const qtyLabel = qty != null ? `${qty} ${unit}` : `— ${unit}`
   return (
-    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
+    <div className="flex items-center gap-2 px-3 py-2.5">
       <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate min-w-0">
         {name}{brand && <span className="text-gray-400 font-normal"> — {brand}</span>}
       </p>
       {onQtyChange ? (
         <>
           <input type="number" value={qty ?? ''} onChange={e => onQtyChange(e.target.value)}
-            placeholder="qtà"
             className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
             min="0.01" />
           <UnitSelect value={unit} onChange={v => onUnitChange?.(v)} />
@@ -319,7 +318,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         <FoodSearch userId={userId} onSelect={addFood} />
 
         {ingredients.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
             {ingredients.map(ing => (
               <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
                 onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
@@ -448,12 +447,16 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
               <span className="text-xs text-gray-400">porz.</span>
             </div>
           </div>
-          {editIngredients.map(ing => (
-            <IngredientRow key={ing.localId} name={ing.foodName} brand={ing.brand} qty={ing.qty} unit={ing.unit}
-              onQtyChange={v => updateEditQty(ing.localId, v)}
-              onUnitChange={v => updateEditUnit(ing.localId, v)}
-              onRemove={() => setEditIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
-          ))}
+          {editIngredients.length > 0 && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {editIngredients.map(ing => (
+                <IngredientRow key={ing.localId} name={ing.foodName} brand={ing.brand} qty={ing.qty} unit={ing.unit}
+                  onQtyChange={v => updateEditQty(ing.localId, v)}
+                  onUnitChange={v => updateEditUnit(ing.localId, v)}
+                  onRemove={() => setEditIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
+              ))}
+            </div>
+          )}
           <FoodSearch userId={userId} onSelect={addEditFood} />
           <button onClick={saveEdit} disabled={saving || editIngredients.length === 0}
             className="w-full py-2.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
@@ -466,25 +469,25 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
 
       {/* View mode expanded */}
       {open && !editing && (
-        <div className="border-t border-gray-50 dark:border-gray-800">
-          <div className="px-4 pt-3 pb-1 space-y-1.5">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">Ingredienti</p>
-            {recipe.ingredients.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-1">Nessun ingrediente</p>
-            ) : (
-              recipe.ingredients.map((ing, i) => (
-                <div key={i} className="flex items-center gap-2">
+        <div className="border-t border-gray-100 dark:border-gray-800">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 px-4 pt-3 pb-1">Ingredienti</p>
+          {recipe.ingredients.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-3">Nessun ingrediente</p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {recipe.ingredients.map((ing, i) => (
+                <div key={i} className="flex items-center gap-2 px-4 py-2.5">
                   <span className="text-[10px] text-gray-300 w-4 shrink-0">{i + 1}.</span>
-                  <p className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
+                  <p className="flex-1 text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
                     {ing.foodName}{ing.brand && ing.brand !== 'Generico' ? <span className="font-normal text-gray-400"> — {ing.brand}</span> : null}
                   </p>
-                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
-                    {ing.qty != null ? `${ing.qty} ${ing.unit ?? 'g'}` : `— ${ing.unit ?? 'g'}`}
+                  <span className="text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                    {ing.qty != null ? `${ing.qty} ${ing.unit ?? 'g'}` : `— ${ing.unit ?? 'g'}`}
                   </span>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
           {totals.p100 && (
             <div className="mx-4 my-3">
               <TotalsBox totals={totals} servings={recipe.servings ?? 1} />
