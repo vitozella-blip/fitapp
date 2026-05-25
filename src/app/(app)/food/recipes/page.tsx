@@ -161,7 +161,7 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
         <div className="flex items-center gap-2">
           <input ref={qtyRef} type="number" value={qty} onChange={e => setQty(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && confirm()}
-            className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+            className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 selection:bg-orange-400/30"
             min="1" />
           <span className="text-xs text-gray-400">g</span>
           <button onClick={confirm} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: OC }}>
@@ -261,7 +261,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <p className="text-xs font-bold uppercase tracking-widest" style={{ color: OC }}>Nuova Ricetta</p>
         <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -269,14 +269,12 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         </button>
       </div>
       <div className="p-4 space-y-4">
-        <div className="flex gap-2">
-          <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
-            className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-          <div className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
-            <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-              className="w-8 bg-transparent text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none" />
-            <span className="text-xs text-gray-400 whitespace-nowrap">porz.</span>
-          </div>
+        <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
+          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">Porzioni:</span>
+          <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
+            className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
         </div>
 
         <FoodSearch userId={userId} onSelect={addFood} />
