@@ -88,12 +88,12 @@ function TotalsBox({ totals, servings = 1 }: { totals: Totals; servings?: number
   return (
     <div className="rounded-xl overflow-hidden" style={{ backgroundColor: OC + '0f' }}>
       <div className="px-3 pt-3 pb-2.5 text-center space-y-1.5">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Ricetta completa · {totals.totalWeight}g</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Totale</p>
         <MacroPills size="sm" calories={totals.cal} protein={totals.pro} carbs={totals.carb} fat={totals.fat} />
       </div>
       <div className="px-3 py-2.5 text-center space-y-1.5 border-t" style={{ borderColor: OC + '20' }}>
         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-          Per porzione · {portionWeight}g{s > 1 ? ` (${s} porz.)` : ''}
+          Per porzione
         </p>
         <MacroPills size="sm" calories={portion.calories} protein={portion.protein} carbs={portion.carbs} fat={portion.fat} />
       </div>
