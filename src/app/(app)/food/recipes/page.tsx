@@ -355,6 +355,13 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
             <span className="text-xs text-gray-400">Porzioni:</span>
             <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
               className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+            {totals.totalWeight > 0 && (
+              <span className="text-xs text-gray-400">
+                → <span className="font-bold text-gray-600 dark:text-gray-300">
+                  {Math.round(totals.totalWeight / Math.max(1, Number(servings) || 1))}g
+                </span> a porzione
+              </span>
+            )}
           </div>
         )}
 
