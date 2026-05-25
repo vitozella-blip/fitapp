@@ -816,8 +816,13 @@ export default function TrainingDiaryPage() {
     sets.forEach(s => newWarmups.delete(s.id))
     if (newWarmups.size !== warmups.size) { setWarmups(newWarmups); saveSet(WARMUP_KEY, newWarmups) }
     const compKey = `${selectedDate}_${exerciseId}`
-    if (completed.has(compKey)) {
-      const nc = new Set(completed); nc.delete(compKey); setCompleted(nc); saveSet(COMPLETED_KEY, nc)
+    if (exStatus[compKey]) {
+      setExStatus(prev => {
+        const updated = { ...prev }
+        delete updated[compKey]
+        try { localStorage.setItem(EX_STATUS_KEY, JSON.stringify(updated)) } catch {}
+        return updated
+      })
     }
     bumpWorkoutVersion()
   }
@@ -1649,7 +1654,7 @@ export default function TrainingDiaryPage() {
                   return Number(a.id) - Number(b.id)
                 })
               const compKey = `${selectedDate}_${exId}`
-              const isDone = completed.has(compKey)
+              const isDone = !!exStatus[compKey]
               const isOpen = expandedExId === exId
               const addOpen = addExId === exId
               let workIdx = 0, warmIdx = 0
@@ -1673,7 +1678,7 @@ export default function TrainingDiaryPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2 px-4 py-3">
-                    <button onClick={() => toggleCompleted(exId)}
+                    <button onClick={() => cycleStatus(exId)}
                       className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors border',
                         isDone ? 'border-transparent text-white' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400')}
                       style={isDone ? { backgroundColor: '#7dbf7d' } : {}}>
@@ -2184,25 +2189,26 @@ export default function TrainingDiaryPage() {
 
       {/* Timer bar */}
       {recTimer && (() => {
-        const isCountdown = recTimer.mode === 'countdown'
-        const done = isCountdown && recTimer.rem === 0
-        const m   = Math.floor(recTimer.rem / 60)
-        const sec = recTimer.rem % 60
+        const rt = recTimer
+        const isCountdown = rt.mode === 'countdown'
+        const done = isCountdown && rt.rem === 0
+        const m   = Math.floor(rt.rem / 60)
+        const sec = rt.rem % 60
         const timeLabel = `${m}:${String(sec).padStart(2, '0')}`
-        const pct = isCountdown && recTimer.init > 0 ? recTimer.rem / recTimer.init : 0
+        const pct = isCountdown && rt.init > 0 ? rt.rem / rt.init : 0
         const barColor = done ? '#6abf6a' : CT
 
         function handleMainBtn() {
           if (done) {
             // restart countdown from beginning
-            const s = recTimer.init
+            const s = rt.init
             setRecTimer(t => t ? { ...t, rem: s, on: true, endTs: Date.now() + s * 1000 } : null)
-          } else if (recTimer.on) {
+          } else if (rt.on) {
             // pause — clear timestamps, keep rem
             setRecTimer(t => t ? { ...t, on: false, endTs: undefined, startTs: undefined } : null)
           } else {
             // resume with fresh timestamps
-            if (recTimer.mode === 'countdown') {
+            if (rt.mode === 'countdown') {
               setRecTimer(t => t ? { ...t, on: true, endTs: Date.now() + t.rem * 1000 } : null)
             } else {
               setRecTimer(t => t ? { ...t, on: true, startTs: Date.now() - t.rem * 1000 } : null)
@@ -2258,10 +2264,10 @@ export default function TrainingDiaryPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={handleMainBtn}
                     className="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
-                    style={{ backgroundColor: done ? '#6abf6a' : recTimer.on ? CT + '30' : CT }}>
+                    style={{ backgroundColor: done ? '#6abf6a' : rt.on ? CT + '30' : CT }}>
                     {done
                       ? <RotateCcw size={18} color="white" />
-                      : recTimer.on
+                      : rt.on
                         ? <Pause size={18} color="white" />
                         : <Play  size={18} color="white" />}
                   </button>
