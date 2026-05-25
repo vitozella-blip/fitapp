@@ -326,8 +326,6 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
           </div>
         )}
 
-        {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} />}
-
         {ingredients.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400">Porzioni:</span>
@@ -342,6 +340,8 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
             )}
           </div>
         )}
+
+        {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} />}
 
         <button onClick={save} disabled={!canSave || saving}
           className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
