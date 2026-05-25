@@ -6,22 +6,28 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 
 const OC = '#fb923c'
+type Unit = 'g' | 'ml' | 'pz'
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
-type Ingredient = { localId: string; food: Food; quantityG: number }
-type EditIngredient = { localId: string; foodId: string; foodName: string; brand?: string; quantityG: number }
-type SavedIngredient = { foodId: string; foodName: string; brand?: string; quantityG: number; calories: number; protein: number; carbs: number; fat: number }
-type Recipe = { id: string; name: string; createdAt: string; servings: number; ingredients: SavedIngredient[] }
-type Totals = { totalWeight: number; cal: number; pro: number; carb: number; fat: number; p100: { calories: number; protein: number; carbs: number; fat: number } | null }
+type SelectedItem = { food?: Food; name: string; brand?: string; qty?: number; unit: Unit }
+type DraftIngredient = { localId: string; foodId?: string; food?: Food; name: string; brand?: string; qty?: number; unit: Unit }
+type EditIngredient  = { localId: string; foodId?: string; foodName: string; brand?: string; qty?: number; unit: Unit }
+type SavedIngredient = { foodId?: string; foodName: string; brand?: string; qty?: number; unit: Unit; calories: number; protein: number; carbs: number; fat: number }
+type Recipe  = { id: string; name: string; createdAt: string; servings: number; ingredients: SavedIngredient[] }
+type Totals  = { totalWeight: number; cal: number; pro: number; carb: number; fat: number; p100: { calories: number; protein: number; carbs: number; fat: number } | null }
 
-function calcTotals(ingredients: Ingredient[]): Totals {
-  const totalWeight = ingredients.reduce((s, i) => s + i.quantityG, 0)
-  const cal  = ingredients.reduce((s, i) => s + i.food.calories * i.quantityG / 100, 0)
-  const pro  = ingredients.reduce((s, i) => s + i.food.protein  * i.quantityG / 100, 0)
-  const carb = ingredients.reduce((s, i) => s + i.food.carbs    * i.quantityG / 100, 0)
-  const fat  = ingredients.reduce((s, i) => s + i.food.fat      * i.quantityG / 100, 0)
+// ── Calc helpers ──────────────────────────────────────────────────────────────
+function calcTotals(ingredients: DraftIngredient[]): Totals {
+  const weighed = ingredients.filter(i => i.unit !== 'pz' && i.qty != null)
+  const totalWeight = weighed.reduce((s, i) => s + i.qty!, 0)
+  const dbFoods = weighed.filter(i => i.food)
+  const cal  = dbFoods.reduce((s, i) => s + i.food!.calories * i.qty! / 100, 0)
+  const pro  = dbFoods.reduce((s, i) => s + i.food!.protein  * i.qty! / 100, 0)
+  const carb = dbFoods.reduce((s, i) => s + i.food!.carbs    * i.qty! / 100, 0)
+  const fat  = dbFoods.reduce((s, i) => s + i.food!.fat      * i.qty! / 100, 0)
   const p100 = totalWeight > 0 ? {
-    calories: Math.round(cal  / totalWeight * 100),
+    calories: Math.round(cal / totalWeight * 100),
     protein:  Math.round(pro  / totalWeight * 1000) / 10,
     carbs:    Math.round(carb / totalWeight * 1000) / 10,
     fat:      Math.round(fat  / totalWeight * 1000) / 10,
@@ -30,13 +36,15 @@ function calcTotals(ingredients: Ingredient[]): Totals {
 }
 
 function calcTotalsFromSaved(ingredients: SavedIngredient[]): Totals {
-  const totalWeight = ingredients.reduce((s, i) => s + i.quantityG, 0)
-  const cal  = ingredients.reduce((s, i) => s + i.calories * i.quantityG / 100, 0)
-  const pro  = ingredients.reduce((s, i) => s + i.protein  * i.quantityG / 100, 0)
-  const carb = ingredients.reduce((s, i) => s + i.carbs    * i.quantityG / 100, 0)
-  const fat  = ingredients.reduce((s, i) => s + i.fat      * i.quantityG / 100, 0)
+  const weighed = ingredients.filter(i => i.unit !== 'pz' && i.qty != null)
+  const totalWeight = weighed.reduce((s, i) => s + i.qty!, 0)
+  const dbFoods = weighed.filter(i => i.foodId)
+  const cal  = dbFoods.reduce((s, i) => s + i.calories * i.qty! / 100, 0)
+  const pro  = dbFoods.reduce((s, i) => s + i.protein  * i.qty! / 100, 0)
+  const carb = dbFoods.reduce((s, i) => s + i.carbs    * i.qty! / 100, 0)
+  const fat  = dbFoods.reduce((s, i) => s + i.fat      * i.qty! / 100, 0)
   const p100 = totalWeight > 0 ? {
-    calories: Math.round(cal  / totalWeight * 100),
+    calories: Math.round(cal / totalWeight * 100),
     protein:  Math.round(pro  / totalWeight * 1000) / 10,
     carbs:    Math.round(carb / totalWeight * 1000) / 10,
     fat:      Math.round(fat  / totalWeight * 1000) / 10,
@@ -44,17 +52,17 @@ function calcTotalsFromSaved(ingredients: SavedIngredient[]): Totals {
   return { totalWeight: Math.round(totalWeight), cal: Math.round(cal), pro: Math.round(pro * 10) / 10, carb: Math.round(carb * 10) / 10, fat: Math.round(fat * 10) / 10, p100 }
 }
 
-// ── Macro pills ───────────────────────────────────────────────────────────────
+// ── MacroPills ────────────────────────────────────────────────────────────────
 function MacroPills({ calories, protein, carbs, fat, size = 'sm' }: {
   calories: number; protein: number; carbs: number; fat: number; size?: 'sm' | 'lg'
 }) {
   return (
     <div className="flex gap-1.5 flex-wrap justify-center">
       {[
-        { l: 'Kcal', v: String(calories),  c: '#6abf6a' },
-        { l: 'G',    v: `${fat}g`,         c: '#5b9bd5' },
-        { l: 'C',    v: `${carbs}g`,       c: '#f0aa78' },
-        { l: 'P',    v: `${protein}g`,     c: '#9d8fcc' },
+        { l: 'Kcal', v: String(calories), c: '#6abf6a' },
+        { l: 'G',    v: `${fat}g`,        c: '#5b9bd5' },
+        { l: 'C',    v: `${carbs}g`,      c: '#f0aa78' },
+        { l: 'P',    v: `${protein}g`,    c: '#9d8fcc' },
       ].map(m => (
         <span key={m.l}
           className={cn('font-bold rounded-lg', size === 'lg' ? 'text-sm px-2.5 py-1' : 'text-[11px] px-2 py-0.5')}
@@ -66,35 +74,29 @@ function MacroPills({ calories, protein, carbs, fat, size = 'sm' }: {
   )
 }
 
-// ── Totals box (gerarchia: totale → porzione → per 100g) ──────────────────────
+// ── TotalsBox ─────────────────────────────────────────────────────────────────
 function TotalsBox({ totals, servings = 1 }: { totals: Totals; servings?: number }) {
   if (!totals.p100) return null
   const s = Math.max(1, servings)
   const portionWeight = Math.round(totals.totalWeight / s)
   const portion = {
     calories: Math.round(totals.cal / s),
-    protein:  Math.round(totals.pro * 10 / s) / 10,
+    protein:  Math.round(totals.pro  * 10 / s) / 10,
     carbs:    Math.round(totals.carb * 10 / s) / 10,
-    fat:      Math.round(totals.fat * 10 / s) / 10,
+    fat:      Math.round(totals.fat  * 10 / s) / 10,
   }
-
   return (
     <div className="rounded-xl overflow-hidden" style={{ backgroundColor: OC + '0f' }}>
-      {/* 1 — Totale (piccolo) */}
       <div className="px-3 pt-3 pb-2.5 text-center space-y-1.5">
         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Ricetta completa · {totals.totalWeight}g</p>
         <MacroPills size="sm" calories={totals.cal} protein={totals.pro} carbs={totals.carb} fat={totals.fat} />
       </div>
-
-      {/* 2 — Per porzione (piccolo) */}
       <div className="px-3 py-2.5 text-center space-y-1.5 border-t" style={{ borderColor: OC + '20' }}>
         <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
           Per porzione · {portionWeight}g{s > 1 ? ` (${s} porz.)` : ''}
         </p>
         <MacroPills size="sm" calories={portion.calories} protein={portion.protein} carbs={portion.carbs} fat={portion.fat} />
       </div>
-
-      {/* 3 — Per 100g (grande, sfondo più intenso) */}
       <div className="px-3 py-3 text-center space-y-2 border-t" style={{ borderColor: OC + '20', backgroundColor: OC + '18' }}>
         <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OC }}>Per 100g</p>
         <MacroPills size="lg" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
@@ -103,14 +105,27 @@ function TotalsBox({ totals, servings = 1 }: { totals: Totals; servings?: number
   )
 }
 
-// ── Food search input ─────────────────────────────────────────────────────────
-function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Food, qty: number) => void }) {
+// ── UnitSelect ────────────────────────────────────────────────────────────────
+function UnitSelect({ value, onChange }: { value: Unit; onChange: (v: Unit) => void }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value as Unit)}
+      className="h-9 px-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 shrink-0 cursor-pointer">
+      <option value="g">g</option>
+      <option value="ml">ml</option>
+      <option value="pz">pz</option>
+    </select>
+  )
+}
+
+// ── FoodSearch ────────────────────────────────────────────────────────────────
+function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: SelectedItem) => void }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Food[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState<Food | null>(null)
+  const [pending, setPending] = useState<{ name: string; brand?: string; food?: Food } | null>(null)
   const [qty, setQty] = useState('')
+  const [unit, setUnit] = useState<Unit>('g')
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
   const ref = useRef<HTMLDivElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
@@ -124,47 +139,55 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
   useEffect(() => {
     clearTimeout(timer.current)
     if (q.length < 2) { setResults([]); setOpen(false); return }
+    setOpen(true) // immediately open to show free-text option
     timer.current = setTimeout(async () => {
       setLoading(true)
       const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
       const data = await r.json()
       setResults(Array.isArray(data) ? data : [])
-      setOpen(true)
       setLoading(false)
     }, 300)
   }, [q, userId])
 
-  function pickFood(food: Food) {
-    setPending(food); setQty(''); setQ(''); setResults([]); setOpen(false)
+  function pick(food?: Food, freeName?: string) {
+    const name = food?.name ?? freeName ?? ''
+    setPending({ name, brand: food?.brand, food })
+    setQty(''); setUnit('g')
+    setQ(''); setResults([]); setOpen(false)
     setTimeout(() => qtyRef.current?.focus(), 50)
   }
 
   function confirm() {
-    if (!pending || !qty) return
-    onSelect(pending, Math.max(1, Number(qty)))
-    setPending(null); setQty('')
+    if (!pending) return
+    const qtyNum = qty ? Math.max(0.01, Number(qty)) : undefined
+    onSelect({ food: pending.food, name: pending.name, brand: pending.brand, qty: qtyNum, unit })
+    setPending(null); setQty(''); setUnit('g')
   }
 
-  function cancel() { setPending(null); setQty('') }
+  function cancel() { setPending(null); setQty(''); setUnit('g') }
 
   if (pending) {
     return (
       <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5 space-y-2.5">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate min-w-0">
-            {pending.name}{pending.brand && <span className="text-gray-400 font-normal"> — {pending.brand}</span>}
+            {pending.name}
+            {pending.brand && <span className="text-gray-400 font-normal"> — {pending.brand}</span>}
           </p>
-          <button onClick={cancel} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors shrink-0">
+          <button onClick={cancel} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 shrink-0">
             <X size={12} />
           </button>
         </div>
         <div className="flex items-center gap-2">
           <input ref={qtyRef} type="number" value={qty} onChange={e => setQty(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && confirm()}
-            className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 selection:bg-orange-400/30"
-            min="1" />
-          <span className="text-xs text-gray-400">g</span>
-          <button onClick={confirm} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: OC }}>
+            placeholder="quantità"
+            className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+            min="0.01" />
+          <UnitSelect value={unit} onChange={setUnit} />
+          <button onClick={confirm}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-sm font-semibold shrink-0"
+            style={{ backgroundColor: OC }}>
             <Plus size={13} /> Aggiungi
           </button>
         </div>
@@ -180,10 +203,11 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
           className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
         {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
       </div>
-      {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto">
+
+      {open && (results.length > 0 || q.trim().length >= 2) && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto">
           {results.map(f => (
-            <button key={f.id} onClick={() => pickFood(f)}
+            <button key={f.id} onClick={() => pick(f)}
               className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 flex items-center gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
@@ -196,18 +220,33 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
               </span>
             </button>
           ))}
+          {/* Free-text option — always shown when query has 2+ chars */}
+          <button onClick={() => pick(undefined, q.trim())}
+            className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate" style={{ color: OC }}>
+                Aggiungi &ldquo;{q.trim()}&rdquo;
+              </p>
+              <p className="text-xs text-gray-400">senza valori nutrizionali</p>
+            </div>
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: OC + '30', color: OC }}>
+              <Plus size={14} />
+            </span>
+          </button>
         </div>
       )}
     </div>
   )
 }
 
-// ── Ingredient row ─────────────────────────────────────────────────────────────
-function IngredientRow({ name, brand, qty, onQtyChange, onRemove }: {
-  name: string; brand?: string; qty: number
+// ── IngredientRow ─────────────────────────────────────────────────────────────
+function IngredientRow({ name, brand, qty, unit, onQtyChange, onUnitChange, onRemove }: {
+  name: string; brand?: string; qty?: number; unit: Unit
   onQtyChange?: (val: string) => void
+  onUnitChange?: (val: Unit) => void
   onRemove: () => void
 }) {
+  const qtyLabel = qty != null ? `${qty} ${unit}` : `— ${unit}`
   return (
     <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5">
       <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate min-w-0">
@@ -215,13 +254,14 @@ function IngredientRow({ name, brand, qty, onQtyChange, onRemove }: {
       </p>
       {onQtyChange ? (
         <>
-          <input type="number" value={qty || ''} onChange={e => onQtyChange(e.target.value)}
-            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none"
-            min="1" />
-          <span className="text-xs text-gray-400">g</span>
+          <input type="number" value={qty ?? ''} onChange={e => onQtyChange(e.target.value)}
+            placeholder="qtà"
+            className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+            min="0.01" />
+          <UnitSelect value={unit} onChange={v => onUnitChange?.(v)} />
         </>
       ) : (
-        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">{qty}g</span>
+        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">{qtyLabel}</span>
       )}
       <button onClick={onRemove} className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors shrink-0">
         <X size={12} />
@@ -230,15 +270,20 @@ function IngredientRow({ name, brand, qty, onQtyChange, onRemove }: {
   )
 }
 
-// ── Recipe creation form ──────────────────────────────────────────────────────
+// ── RecipeForm ────────────────────────────────────────────────────────────────
 function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () => void; onClose: () => void }) {
   const [name, setName] = useState('')
   const [servings, setServings] = useState('1')
-  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [ingredients, setIngredients] = useState<DraftIngredient[]>([])
   const [saving, setSaving] = useState(false)
 
-  function addFood(food: Food, qty: number) {
-    setIngredients(prev => [...prev, { localId: crypto.randomUUID(), food, quantityG: qty }])
+  function addFood(item: SelectedItem) {
+    setIngredients(prev => [...prev, {
+      localId: crypto.randomUUID(),
+      foodId: item.food?.id, food: item.food,
+      name: item.name, brand: item.brand,
+      qty: item.qty, unit: item.unit,
+    }])
   }
 
   const totals = calcTotals(ingredients)
@@ -253,7 +298,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
       body: JSON.stringify({
         userId, name: name.trim(),
         servings: Math.max(1, Number(servings) || 1),
-        ingredients: ingredients.map(i => ({ foodId: i.food.id, quantityG: i.quantityG })),
+        ingredients: ingredients.map(i => ({ foodId: i.foodId, name: i.name, qty: i.qty, unit: i.unit })),
       }),
     })
     setSaving(false)
@@ -282,7 +327,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         {ingredients.length > 0 && (
           <div className="space-y-1.5">
             {ingredients.map(ing => (
-              <IngredientRow key={ing.localId} name={ing.food.name} brand={ing.food.brand} qty={ing.quantityG}
+              <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
                 onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
             ))}
           </div>
@@ -301,7 +346,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
   )
 }
 
-// ── Recipe card ───────────────────────────────────────────────────────────────
+// ── RecipeCard ────────────────────────────────────────────────────────────────
 function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; userId: string; onDelete: () => void; onUpdate: () => void }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -312,20 +357,31 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
 
   function startEdit() {
     setEditIngredients(recipe.ingredients.map(i => ({
-      localId: crypto.randomUUID(), foodId: i.foodId, foodName: i.foodName, brand: i.brand, quantityG: i.quantityG,
+      localId: crypto.randomUUID(),
+      foodId: i.foodId, foodName: i.foodName, brand: i.brand,
+      qty: i.qty, unit: (i.unit ?? 'g') as Unit,
     })))
     setEditServings(String(recipe.servings ?? 1))
     setEditing(true)
   }
-
   function cancelEdit() { setEditing(false); setEditIngredients([]) }
 
-  function addEditFood(food: Food, qty: number) {
-    setEditIngredients(prev => [...prev, { localId: crypto.randomUUID(), foodId: food.id, foodName: food.name, brand: food.brand, quantityG: qty }])
+  function addEditFood(item: SelectedItem) {
+    setEditIngredients(prev => [...prev, {
+      localId: crypto.randomUUID(),
+      foodId: item.food?.id, foodName: item.name, brand: item.brand,
+      qty: item.qty, unit: item.unit,
+    }])
   }
-
   function updateEditQty(localId: string, val: string) {
-    setEditIngredients(prev => prev.map(i => i.localId === localId ? { ...i, quantityG: Math.max(1, Number(val) || 1) } : i))
+    setEditIngredients(prev => prev.map(i =>
+      i.localId === localId ? { ...i, qty: val ? Math.max(0.01, Number(val)) : undefined } : i
+    ))
+  }
+  function updateEditUnit(localId: string, val: Unit) {
+    setEditIngredients(prev => prev.map(i =>
+      i.localId === localId ? { ...i, unit: val } : i
+    ))
   }
 
   async function saveEdit() {
@@ -336,7 +392,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         servings: Math.max(1, Number(editServings) || 1),
-        ingredients: editIngredients.map(i => ({ foodId: i.foodId, quantityG: i.quantityG })),
+        ingredients: editIngredients.map(i => ({ foodId: i.foodId, name: i.foodName, qty: i.qty, unit: i.unit })),
       }),
     })
     setSaving(false)
@@ -367,9 +423,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-          {!editing && (
-            <ChevronDown size={14} className={cn('text-gray-400 transition-transform', open && 'rotate-180')} />
-          )}
+          {!editing && <ChevronDown size={14} className={cn('text-gray-400 transition-transform', open && 'rotate-180')} />}
           <button onClick={editing ? cancelEdit : startEdit}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
             style={editing ? { color: OC } : { color: '#9ca3af' }}>
@@ -393,8 +447,9 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
             </div>
           </div>
           {editIngredients.map(ing => (
-            <IngredientRow key={ing.localId} name={ing.foodName} brand={ing.brand} qty={ing.quantityG}
+            <IngredientRow key={ing.localId} name={ing.foodName} brand={ing.brand} qty={ing.qty} unit={ing.unit}
               onQtyChange={v => updateEditQty(ing.localId, v)}
+              onUnitChange={v => updateEditUnit(ing.localId, v)}
               onRemove={() => setEditIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
           ))}
           <FoodSearch userId={userId} onSelect={addEditFood} />
@@ -421,7 +476,9 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
                   <p className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
                     {ing.foodName}{ing.brand && ing.brand !== 'Generico' ? <span className="font-normal text-gray-400"> — {ing.brand}</span> : null}
                   </p>
-                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">{ing.quantityG}g</span>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                    {ing.qty != null ? `${ing.qty} ${ing.unit ?? 'g'}` : `— ${ing.unit ?? 'g'}`}
+                  </span>
                 </div>
               ))
             )}
@@ -437,7 +494,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── RecipesPage ───────────────────────────────────────────────────────────────
 export default function RecipesPage() {
   const userId = useAppStore(s => s.userId)
   const [recipes, setRecipes] = useState<Recipe[]>([])
