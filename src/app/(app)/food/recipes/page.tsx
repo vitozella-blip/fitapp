@@ -327,7 +327,13 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         )}
 
         {ingredients.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="space-y-1.5">
+            {totals.totalWeight > 0 && (
+              <p className="text-xs text-gray-400">
+                Peso totale: <span className="font-bold text-gray-700 dark:text-gray-200">{totals.totalWeight}g</span>
+              </p>
+            )}
+            <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400">Porzioni:</span>
             <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
               className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
@@ -338,6 +344,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
                 </span> a porzione
               </span>
             )}
+            </div>
           </div>
         )}
 
