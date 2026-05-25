@@ -171,9 +171,8 @@ export default function FoodHubPage() {
                   const kcal = meal.avgCalories
                   return (
                     <div key={meal.name} className="flex flex-col min-h-0 min-w-0">
-                      <div className="flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl bg-gray-100 dark:bg-gray-800 shrink-0">
-                        <span style={{ fontSize: 16, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{meta?.emoji}</span>
-                        <span className="text-[9px] font-bold text-gray-600 dark:text-gray-300 leading-tight truncate">{meta?.label}</span>
+                      <div className="flex items-center justify-center py-2 px-1 rounded-xl bg-gray-100 dark:bg-gray-800 shrink-0">
+                        <span style={{ fontSize: 18, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{meta?.emoji}</span>
                       </div>
                       <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                         {kcal > 0 ? (
