@@ -181,7 +181,6 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
         <div className="flex items-center gap-2">
           <input ref={qtyRef} type="number" value={qty} onChange={e => setQty(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && confirm()}
-            placeholder="quantità"
             className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
             min="0.01" />
           <UnitSelect value={unit} onChange={setUnit} />
@@ -316,11 +315,6 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
       <div className="p-4 space-y-4">
         <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">Porzioni:</span>
-          <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-            className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-        </div>
 
         <FoodSearch userId={userId} onSelect={addFood} />
 
@@ -334,6 +328,14 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         )}
 
         {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} />}
+
+        {ingredients.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">Porzioni:</span>
+            <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
+              className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+          </div>
+        )}
 
         <button onClick={save} disabled={!canSave || saving}
           className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
