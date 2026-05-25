@@ -34,13 +34,13 @@ export default function MacrosPage() {
 
   useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 2) { setResults([]); return }
+    if (q.length < 1) { setResults([]); return }
     timer.current = setTimeout(async () => {
       setLoading(true)
       const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
       setResults(await r.json())
       setLoading(false)
-    }, 300)
+    }, 0)
   }, [q, userId])
 
   useEffect(() => {

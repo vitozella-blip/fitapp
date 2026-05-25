@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
-import { Check, LayoutDashboard } from 'lucide-react'
+import { Check, Minus, X, LayoutDashboard } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { DateNav } from '@/components/shared/DateNav'
@@ -46,19 +46,28 @@ export default function DashboardPage() {
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
   const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number; color?: string; weekOrder?: number | null } | null>(null)
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+  type ExStatus = 'done' | 'partial' | 'skipped'
+  const [exStatusMap, setExStatusMap] = useState<Record<string, ExStatus>>({})
   const [tennisMeta, setTennisMeta] = useState<{ type: string; hours: string } | null>(null)
 
   const refreshCompleted = useCallback(() => {
     fetch(`/api/exercise-completion?userId=${userId}`)
       .then(r => r.json())
-      .then((arr: string[]) => setCompletedIds(new Set(arr)))
-      .catch(() => {
+      .then((arr: string[]) => {
+        // API gives 'done' keys; merge with localStorage for partial/skipped
+        const map: Record<string, ExStatus> = {}
+        arr.forEach(k => { map[k] = 'done' })
         try {
-          const raw = localStorage.getItem('workout_completed_v1')
-          const arr: string[] = raw ? JSON.parse(raw) : []
-          setCompletedIds(new Set(arr))
-        } catch { setCompletedIds(new Set()) }
+          const local = JSON.parse(localStorage.getItem('workout_ex_status_v2') ?? '{}')
+          for (const [k, v] of Object.entries(local)) {
+            if (v === 'partial' || v === 'skipped') map[k] = v as ExStatus
+          }
+        } catch {}
+        setExStatusMap(map)
+      })
+      .catch(() => {
+        try { setExStatusMap(JSON.parse(localStorage.getItem('workout_ex_status_v2') ?? '{}')) }
+        catch { setExStatusMap({}) }
       })
   }, [userId])
 
@@ -117,9 +126,9 @@ export default function DashboardPage() {
     ? (schedaInfo.weekOrder != null ? `WO ${schedaInfo.order} - W ${schedaInfo.weekOrder}` : `WO ${schedaInfo.order}`)
     : 'Allenamento'
 
-  const completedExercises = (data?.workout.exercises ?? []).filter(ex =>
-    completedIds.has(`${selectedDate}_${ex.id}`)
-  )
+  const exercisesWithStatus = (data?.workout.exercises ?? [])
+    .map(ex => ({ ...ex, status: exStatusMap[`${selectedDate}_${ex.id}`] ?? null }))
+    .filter(ex => ex.status !== null)
 
   const swipe = useDateSwipe(selectedDate, setSelectedDate)
 
@@ -277,9 +286,11 @@ export default function DashboardPage() {
                     </p>
                   )}
                   <div className="flex flex-col gap-0.5 px-1 md:grid md:grid-cols-3 md:gap-x-1">
-                    {completedExercises.slice(0, 12).map(ex => (
+                    {exercisesWithStatus.slice(0, 12).map(ex => (
                       <div key={ex.id} className="flex items-center gap-1 min-w-0">
-                        <Check size={9} className="shrink-0" style={{ color: C.training }} />
+                        {ex.status === 'done'    && <Check  size={9} className="shrink-0" style={{ color: '#7dbf7d' }} />}
+                        {ex.status === 'partial' && <Minus  size={9} className="shrink-0" style={{ color: '#f0aa78' }} />}
+                        {ex.status === 'skipped' && <X      size={9} className="shrink-0" style={{ color: '#94a3b8' }} />}
                         <p className="text-xs text-gray-400 dark:text-gray-500 leading-tight">{ex.name}</p>
                       </div>
                     ))}

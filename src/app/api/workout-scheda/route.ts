@@ -24,16 +24,45 @@ export async function GET(req: NextRequest) {
       [userId, date]
     )
     const r = rows[0]
-    if (!r?.templateId) return NextResponse.json(null)
-    return NextResponse.json({
-      templateId: r.templateId,
-      name: r.templateName,
-      order: r.schedaOrder,
-      color: r.schedaColor,
-      weekId: r.weekId,
-      weekName: r.weekName,
-      weekOrder: r.weekOrder,
-    })
+    if (!r) return NextResponse.json(null)
+
+    if (r.templateId) {
+      return NextResponse.json({
+        templateId: r.templateId,
+        name: r.templateName,
+        order: r.schedaOrder,
+        color: r.schedaColor,
+        weekId: r.weekId,
+        weekName: r.weekName,
+        weekOrder: r.weekOrder,
+      })
+    }
+
+    // Fallback: no explicit scheda saved, but the diary row has a weekId
+    // (set when logging sets with an active scheda) → derive template from week
+    if (r.weekId) {
+      const { rows: wRows } = await pool.query(
+        `SELECT ww.id, ww.name, ww."order", wt.id AS "templateId", wt.name AS "templateName"
+         FROM "WorkoutWeek" ww
+         JOIN "WorkoutTemplate" wt ON wt.id = ww."templateId"
+         WHERE ww.id = $1`,
+        [r.weekId]
+      )
+      if (wRows.length > 0) {
+        const w = wRows[0]
+        return NextResponse.json({
+          templateId: w.templateId,
+          name: w.templateName,
+          weekId: r.weekId,
+          weekName: w.name,
+          weekOrder: w.order + 1,
+          color: null,
+          order: null,
+        })
+      }
+    }
+
+    return NextResponse.json(null)
   } catch (e) {
     console.error(e)
     return NextResponse.json(null)

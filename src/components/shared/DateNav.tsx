@@ -5,8 +5,12 @@ import { cn } from '@/lib/utils'
 
 const DOW = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 
-function buildWorkoutColors(): Record<string, string> {
-  const map: Record<string, string> = {}
+// Single color used for ALL workout shape indicators in the calendar
+const CAL_WORKOUT_COLOR = '#5b9ec9'
+
+// shape: 0 = circle, 1 = triangle, 2 = square  (derived from order % 3)
+function buildWorkoutInfo(): Record<string, { color: string; shape: number }> {
+  const map: Record<string, { color: string; shape: number }> = {}
   if (typeof window === 'undefined') return map
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
@@ -14,7 +18,10 @@ function buildWorkoutColors(): Record<string, string> {
     const date = key.slice('workout_scheda_'.length)
     try {
       const info = JSON.parse(localStorage.getItem(key) ?? '')
-      if (info?.color) map[date] = info.color
+      if (info?.color) {
+        const order = typeof info.order === 'number' ? info.order : 1
+        map[date] = { color: info.color, shape: (order - 1) % 3 }
+      }
     } catch {}
   }
   return map
@@ -31,7 +38,7 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   const initial = new Date(selectedDate + 'T12:00:00')
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
 
-  const workoutColors = useMemo(() => disableWorkoutColors ? {} : buildWorkoutColors(), [view, disableWorkoutColors])
+  const workoutInfo = useMemo(() => disableWorkoutColors ? {} : buildWorkoutInfo(), [view, disableWorkoutColors])
 
   const { year, month } = view
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // Mon-first
@@ -65,7 +72,7 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-xs p-4 shadow-xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
 
@@ -96,14 +103,42 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const isSelected = dateStr === selectedDate
             const isToday = dateStr === today
-            const color = workoutColors[dateStr]
+            const info = workoutInfo[dateStr]
+            const color = info ? CAL_WORKOUT_COLOR : undefined
+            const shape = info?.shape ?? 0
 
+            const todayDot = isToday && !isSelected && (
+              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                style={{ backgroundColor: accent }} />
+            )
+
+            // Triangle shape — SVG with day number inside
+            if (color && shape === 1) {
+              return (
+                <button key={i} onClick={() => pick(day)}
+                  className="flex flex-col items-center justify-center py-1 rounded-xl transition-colors relative">
+                  <div className="relative flex items-end justify-center" style={{ width: 28, height: 28 }}>
+                    <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                      <polygon points="14,2 27,26 1,26" fill={isSelected ? color : color + '45'} />
+                    </svg>
+                    <span className={cn('relative z-10 text-sm font-medium', isSelected && 'font-bold')}
+                      style={{ color: isSelected ? '#fff' : color, lineHeight: 1, paddingBottom: 2 }}>
+                      {day}
+                    </span>
+                  </div>
+                  {todayDot}
+                </button>
+              )
+            }
+
+            // Circle (shape=0) or Square (shape=2)
+            const borderRadius = color ? (shape === 2 ? '4px' : '50%') : undefined
             return (
               <button key={i} onClick={() => pick(day)}
                 className="flex flex-col items-center justify-center py-1 rounded-xl transition-colors relative">
                 <span
                   className={cn(
-                    'w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium transition-colors',
+                    'w-7 h-7 flex items-center justify-center text-sm font-medium transition-colors',
                     isSelected
                       ? 'text-white font-bold'
                       : isToday
@@ -111,17 +146,14 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
                       : 'text-gray-700 dark:text-gray-300'
                   )}
                   style={isSelected
-                    ? { backgroundColor: color ?? accent }
+                    ? { backgroundColor: color ?? accent, borderRadius: borderRadius ?? '50%' }
                     : color
-                    ? { backgroundColor: color + '28', color }
+                    ? { backgroundColor: color + '45', color, borderRadius }
                     : undefined}
                 >
                   {day}
                 </span>
-                {isToday && !isSelected && (
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                    style={{ backgroundColor: accent }} />
-                )}
+                {todayDot}
               </button>
             )
           })}

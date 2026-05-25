@@ -36,7 +36,7 @@ export default function ShoppingListPage() {
 
   useEffect(() => {
     clearTimeout(timer.current)
-    if (selected || q.length < 2) { setResults([]); setSearched(false); return }
+    if (selected || q.length < 1) { setResults([]); setSearched(false); return }
     timer.current = setTimeout(async () => {
       setSearching(true)
       try {
@@ -46,7 +46,7 @@ export default function ShoppingListPage() {
       } catch { setResults([]) }
       setSearched(true)
       setSearching(false)
-    }, 300)
+    }, 0)
   }, [q, userId, selected])
 
   async function handleAdd() {

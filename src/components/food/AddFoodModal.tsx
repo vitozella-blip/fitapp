@@ -42,7 +42,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   useEffect(() => {
     clearTimeout(timer.current)
     const hasFilter = favFilter || !!catFilter
-    if (q.length < 2 && !hasFilter) { setResults([]); setSearched(false); return }
+    if (q.length < 1 && !hasFilter) { setResults([]); setSearched(false); return }
     timer.current = setTimeout(async () => {
       setLoading(true)
       try {
@@ -53,7 +53,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
       } catch { setResults([]) }
       setSearched(true)
       setLoading(false)
-    }, 300)
+    }, 0)
   }, [q, userId, favFilter, catFilter])
 
   function addToCart() {

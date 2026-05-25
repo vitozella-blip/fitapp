@@ -21,13 +21,13 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
 
   useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 2) { setResults([]); return }
+    if (q.length < 1) { setResults([]); return }
     timer.current = setTimeout(async () => {
       setLoading(true)
       const r = await fetch(`/api/exercises?q=${encodeURIComponent(q)}&userId=${userId}`)
       setResults(await r.json())
       setLoading(false)
-    }, 300)
+    }, 0)
   }, [q, userId])
 
   async function handleAdd() {
@@ -44,7 +44,7 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[85vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900 dark:text-gray-100">Aggiungi esercizio</h2>

@@ -1,18 +1,19 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, Dumbbell, Check, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2 } from 'lucide-react'
+import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2, Play, Pause, RotateCcw, Timer } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { cn } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
+import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
 const C_TENNIS      = '#6aaa6a'
 const TENNIS_NAME   = 'Tennis'
-const SCHEDA_COLORS = ['#5b9ec9', '#3a78a8', '#1f5580', '#7aafc8', '#9d8fcc', '#f0aa78']
+
 function schedaAbbrev(name: string) {
   return name
     .replace(/^(workout|wo)\s*\d+\s*[—–\-]\s*/i, '')
@@ -25,6 +26,8 @@ const WARMUP_KEY    = 'workout_warmup_v1'
 const COMPLETED_KEY = 'workout_completed_v1'
 const SET_TAGS_KEY  = 'workout_set_tags_v1'
 const PAIRS_KEY     = 'workout_pairs_v1'
+const EX_STATUS_KEY = 'workout_ex_status_v2'
+type ExStatus = 'done' | 'partial' | 'skipped'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
 type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null; isAbs: boolean }
@@ -116,6 +119,7 @@ function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: 
   return result
 }
 
+
 // ── Scheda + Week picker (bottom sheet) ───────────────────────────────────────
 function SchedaPickerPanel({ userId, onPick, onClose }: {
   userId: string
@@ -161,7 +165,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl w-full max-h-[75vh] flex flex-col shadow-xl"
         onClick={e => e.stopPropagation()}>
 
@@ -199,10 +203,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
               return (
                 <button key={t.id} onClick={() => selectTemplate(t, i)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ backgroundColor: color }}>
-                    {schedaAbbrev(t.name)}
-                  </div>
+                  <WorkoutBadge color={color} shapeIdx={i} size={36} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-gray-400 truncate">{label1}</p>
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{label2 ?? label1}</p>
@@ -285,15 +286,25 @@ export default function TrainingDiaryPage() {
   const [tennisCollapsed, setTennisCollapsed] = useState(true)
   const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'partita', hours: '' })
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
-  const [completed,  setCompleted]  = useState<Set<string>>(new Set())
+  const [exStatus,   setExStatus]   = useState<Record<string, ExStatus>>({})
   const [tennisLoading, setTennisLoading] = useState(false)
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
-  const [recTimer,  setRecTimer]  = useState<{ mode: 'countdown' | 'stopwatch'; rem: number; init: number; on: boolean } | null>(null)
-  const [timerPicker, setTimerPicker] = useState<string | null>(null)
+  const [recTimer,  setRecTimer]  = useState<{
+    mode: 'countdown' | 'stopwatch'
+    rem: number; init: number; on: boolean
+    endTs?: number    // absolute ms when countdown ends (background sync)
+    startTs?: number  // absolute ms offset for stopwatch (Date.now() - elapsed)
+  } | null>(null)
+  const [timerSheet, setTimerSheet] = useState<{ teId: string; defaultSec: number | null } | null>(null)
+  const [timerSheetMin, setTimerSheetMin] = useState(0)
+  const [timerSheetSec, setTimerSheetSec] = useState(30)
   const recRef          = useRef<NodeJS.Timeout | undefined>(undefined)
   const pendingNextUpRef = useRef<string | null>(null)
+  const recTimerRef     = useRef<typeof recTimer>(null)
+  const vibratedRef     = useRef(false)
+  const checkLpMap      = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const [addExId,       setAddExId]       = useState<string | null>(null)
   const [formReps,      setFormReps]      = useState('')
@@ -427,6 +438,8 @@ export default function TrainingDiaryPage() {
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
   const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyDates,  setHistoryDates]  = useState<string[]>([])
+  const [historySelDate, setHistorySelDate] = useState<string | null>(null)
   const [pairPickerExId, setPairPickerExId] = useState<string | null>(null)
   const [nextUpExId,     setNextUpExId]     = useState<string | null>(null)
   const [pairs, setPairsRaw] = useState<Record<string, ExPair>>(() => {
@@ -435,11 +448,20 @@ export default function TrainingDiaryPage() {
 
   useEffect(() => {
     setWarmups(loadSet(WARMUP_KEY))
-    // Load completed from API (authoritative), fallback to localStorage
     fetch(`/api/exercise-completion?userId=${userId}`)
       .then(r => r.json())
-      .then((arr: string[]) => { if (arr.length > 0) setCompleted(new Set(arr)) })
-      .catch(() => setCompleted(loadSet(COMPLETED_KEY)))
+      .then((arr: string[]) => {
+        const merged: Record<string, ExStatus> = {}
+        arr.forEach((k: string) => { merged[k] = 'done' })
+        try {
+          const local = JSON.parse(localStorage.getItem(EX_STATUS_KEY) ?? '{}')
+          for (const k of Object.keys(local)) { if (!merged[k]) merged[k] = local[k] }
+        } catch {}
+        setExStatus(merged)
+      })
+      .catch(() => {
+        try { setExStatus(JSON.parse(localStorage.getItem(EX_STATUS_KEY) ?? '{}')) } catch {}
+      })
   }, [userId])
 
   // Load pairs from API (authoritative), fallback to localStorage
@@ -468,6 +490,10 @@ export default function TrainingDiaryPage() {
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
   useRefreshOnFocus(fetchWorkout)
 
+  // Keep ref in sync for visibilitychange handler
+  useEffect(() => { recTimerRef.current = recTimer }, [recTimer])
+
+  // Trigger superset next-up when countdown ends
   useEffect(() => {
     if (recTimer?.mode === 'countdown' && recTimer.rem === 0 && !recTimer.on && pendingNextUpRef.current) {
       setNextUpExId(pendingNextUpRef.current)
@@ -475,20 +501,74 @@ export default function TrainingDiaryPage() {
     }
   }, [recTimer?.rem, recTimer?.on, recTimer?.mode])
 
+  // Vibrate on countdown end (once per completion)
+  useEffect(() => {
+    const done = recTimer?.mode === 'countdown' && recTimer.rem === 0 && !recTimer.on
+    if (done && !vibratedRef.current) {
+      vibratedRef.current = true
+      try { navigator.vibrate?.([300, 100, 300, 100, 600]) } catch {}
+    }
+    if (!done) vibratedRef.current = false
+  }, [recTimer?.rem, recTimer?.on, recTimer?.mode])
+
+  // Tick — use timestamps for background accuracy
   useEffect(() => {
     clearInterval(recRef.current)
     if (!recTimer?.on) return
     recRef.current = setInterval(() => {
       setRecTimer(t => {
         if (!t) { clearInterval(recRef.current); return null }
-        if (t.mode === 'stopwatch') return { ...t, rem: t.rem + 1 }
-        if (t.rem <= 1) { clearInterval(recRef.current); return { ...t, rem: 0, on: false } }
-        return { ...t, rem: t.rem - 1 }
+        if (t.mode === 'stopwatch') {
+          const rem = t.startTs != null ? Math.round((Date.now() - t.startTs) / 1000) : t.rem + 1
+          return { ...t, rem }
+        }
+        const rem = t.endTs != null ? Math.max(0, Math.ceil((t.endTs - Date.now()) / 1000)) : Math.max(0, t.rem - 1)
+        if (rem <= 0) { clearInterval(recRef.current); return { ...t, rem: 0, on: false } }
+        return { ...t, rem }
       })
-    }, 1000)
+    }, 500)
     return () => clearInterval(recRef.current)
   }, [recTimer?.on])
 
+  // Resync when app returns from background
+  useEffect(() => {
+    function onVisible() {
+      if (document.hidden) return
+      const t = recTimerRef.current
+      if (!t?.on) return
+      setRecTimer(prev => {
+        if (!prev?.on) return prev
+        if (prev.mode === 'countdown' && prev.endTs) {
+          const rem = Math.max(0, Math.ceil((prev.endTs - Date.now()) / 1000))
+          return { ...prev, rem, on: rem > 0 }
+        }
+        if (prev.mode === 'stopwatch' && prev.startTs != null) {
+          return { ...prev, rem: Math.round((Date.now() - prev.startTs) / 1000) }
+        }
+        return prev
+      })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
+
+  function openTimerSheet(teId: string, defaultSec: number | null) {
+    const sec = defaultSec ?? 90
+    setTimerSheetMin(Math.floor(sec / 60))
+    setTimerSheetSec(sec % 60)
+    setTimerSheet({ teId, defaultSec })
+  }
+  function startCountdown(totalSec: number) {
+    clearInterval(recRef.current)
+    setRecTimer({ mode: 'countdown', rem: totalSec, init: totalSec, on: true, endTs: Date.now() + totalSec * 1000 })
+    setTimerSheet(null)
+  }
+  function startStopwatch() {
+    clearInterval(recRef.current)
+    setRecTimer({ mode: 'stopwatch', rem: 0, init: 0, on: true, startTs: Date.now() })
+    setTimerSheet(null)
+  }
 
   function setTennisMeta(update: Partial<{ type: 'allenamento' | 'partita'; hours: string }>) {
     setTennisMetaRaw(prev => {
@@ -701,14 +781,20 @@ export default function TrainingDiaryPage() {
     setSelectedDate(d); setExpandedExId(null); setAddExId(null); setEditSetId(null)
   }
 
-  function toggleCompleted(exerciseId: string) {
-    const key = `${selectedDate}_${exerciseId}`
-    const nc  = new Set(completed)
-    nc.has(key) ? nc.delete(key) : nc.add(key)
-    setCompleted(nc); saveSet(COMPLETED_KEY, nc)
+  function cycleStatus(exerciseId: string) {
+    const key     = `${selectedDate}_${exerciseId}`
+    const current = exStatus[key]
+    const next: ExStatus | null =
+      !current ? 'done' : current === 'done' ? 'partial' : current === 'partial' ? 'skipped' : null
+    setExStatus(prev => {
+      const updated = { ...prev }
+      if (next) updated[key] = next; else delete updated[key]
+      try { localStorage.setItem(EX_STATUS_KEY, JSON.stringify(updated)) } catch {}
+      return updated
+    })
     fetch('/api/exercise-completion', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, date: selectedDate, exerciseId, completed: nc.has(key) }),
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId, completed: next === 'done' }),
     }).catch(() => {})
     bumpWorkoutVersion()
   }
@@ -730,19 +816,50 @@ export default function TrainingDiaryPage() {
     sets.forEach(s => newWarmups.delete(s.id))
     if (newWarmups.size !== warmups.size) { setWarmups(newWarmups); saveSet(WARMUP_KEY, newWarmups) }
     const compKey = `${selectedDate}_${exerciseId}`
-    if (completed.has(compKey)) {
-      const nc = new Set(completed); nc.delete(compKey); setCompleted(nc); saveSet(COMPLETED_KEY, nc)
+    if (exStatus[compKey]) {
+      setExStatus(prev => {
+        const updated = { ...prev }
+        delete updated[compKey]
+        try { localStorage.setItem(EX_STATUS_KEY, JSON.stringify(updated)) } catch {}
+        return updated
+      })
     }
     bumpWorkoutVersion()
   }
 
   async function toggleHistory(exId: string, exerciseId: string) {
-    if (historyExId === exId) { setHistoryExId(null); setHistoryData(null); return }
+    if (historyExId === exId) {
+      setHistoryExId(null); setHistoryData(null)
+      setHistoryDates([]); setHistorySelDate(null)
+      return
+    }
     setHistoryExId(exId)
+    setHistoryData(null)
+    setHistoryDates([])
+    setHistorySelDate(null)
+    setHistoryLoading(true)
+    try {
+      const dates: string[] = await fetch(
+        `/api/workout/exercise-history?userId=${userId}&exerciseId=${exerciseId}&dates=1`
+      ).then(r => r.json())
+      const past = dates.filter(d => d < selectedDate)
+      setHistoryDates(past)
+      const target = past[0] ?? null
+      setHistorySelDate(target)
+      if (target) {
+        const r = await fetch(`/api/workout/exercise-history?userId=${userId}&exerciseId=${exerciseId}&date=${target}`)
+        setHistoryData(await r.json())
+      }
+    } catch {}
+    setHistoryLoading(false)
+  }
+
+  async function selectHistoryDate(exerciseId: string, date: string) {
+    setHistorySelDate(date)
     setHistoryData(null)
     setHistoryLoading(true)
     try {
-      const r = await fetch(`/api/workout/exercise-history?userId=${userId}&exerciseId=${exerciseId}&beforeDate=${selectedDate}`)
+      const r = await fetch(`/api/workout/exercise-history?userId=${userId}&exerciseId=${exerciseId}&date=${date}`)
       setHistoryData(await r.json())
     } catch {}
     setHistoryLoading(false)
@@ -909,7 +1026,8 @@ export default function TrainingDiaryPage() {
             return a.setNumber - b.setNumber
           })
         const compKey = `${selectedDate}_${exId}`
-        const isDone  = completed.has(compKey)
+        const exSt    = exStatus[compKey]
+        const isDone  = exSt === 'done'
         const isOpen  = expandedExId === exId
         const addOpen = addExId === exId
         let workIdx = 0, warmIdx = 0
@@ -941,6 +1059,24 @@ export default function TrainingDiaryPage() {
           const currLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
           return (
             <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
+              {historyDates.length > 1 && (
+                <div className="flex gap-1 flex-wrap pb-2">
+                  {historyDates.map(d => {
+                    const label = new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
+                    const active = d === historySelDate
+                    return (
+                      <button key={d}
+                        onClick={() => selectHistoryDate(exId, d)}
+                        className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                        style={active
+                          ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                          : { borderColor: CT + '60', color: CT }}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 mb-1 items-center">
                 <div />
                 <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{prevLabel}</p>
@@ -988,7 +1124,9 @@ export default function TrainingDiaryPage() {
             className={cn('transition-colors',
               nextUpExId === exId ? 'bg-blue-50/40 dark:bg-blue-950/20' :
               (isOpen || addOpen) ? 'bg-[#7aafc8]/[0.07] dark:bg-[#7aafc8]/[0.08]' :
-              isDone ? 'bg-green-50/30 dark:bg-green-950/10' : '')}>
+              exSt === 'done'    ? 'bg-green-50/30 dark:bg-green-950/10' :
+              exSt === 'partial' ? 'bg-amber-50/30 dark:bg-amber-950/10' :
+              exSt === 'skipped' ? 'bg-gray-100/60 dark:bg-gray-800/60' : '')}>
 
             {/* Next-up banner (superset/jumpset) */}
             {nextUpExId === exId && (
@@ -1011,11 +1149,18 @@ export default function TrainingDiaryPage() {
 
             {/* Header row */}
             <div className="flex items-center gap-2 px-4 py-3">
-              <button onClick={() => toggleCompleted(exId)}
-                className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors border',
-                  isDone ? 'border-transparent text-white' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400')}
-                style={isDone ? { backgroundColor: '#7dbf7d' } : {}}>
-                {isDone && <Check size={13} />}
+              <button
+                onClick={() => cycleStatus(exId)}
+                className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all border"
+                style={
+                  exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
+                  exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
+                  exSt === 'skipped' ? { backgroundColor: '#94a3b8', borderColor: 'transparent', color: '#fff' } :
+                  { borderColor: '#d1d5db' }
+                }>
+                {exSt === 'done'    && <Check  size={12} />}
+                {exSt === 'partial' && <Minus  size={12} />}
+                {exSt === 'skipped' && <X      size={12} />}
               </button>
 
               <button className="flex-1 min-w-0 text-left"
@@ -1056,12 +1201,22 @@ export default function TrainingDiaryPage() {
                       {allExercisesForPicker.filter(e => e.id !== exId).map(e => (
                         <div key={e.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
                           <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{e.name}</span>
-                          <button onClick={() => addPair(exId, te.exercise.name, e.id, e.name, 'SS')}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
-                            style={{ borderColor: CT, color: CT }}>SS</button>
-                          <button onClick={() => addPair(exId, te.exercise.name, e.id, e.name, 'JS')}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
-                            style={{ borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
+                          <button onClick={() => {
+                              if (pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'SS') { removePair(exId); setPairPickerExId(null) }
+                              else addPair(exId, te.exercise.name, e.id, e.name, 'SS')
+                            }}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                            style={pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'SS'
+                              ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                              : { borderColor: CT, color: CT }}>SS</button>
+                          <button onClick={() => {
+                              if (pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'JS') { removePair(exId); setPairPickerExId(null) }
+                              else addPair(exId, te.exercise.name, e.id, e.name, 'JS')
+                            }}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                            style={pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'JS'
+                              ? { backgroundColor: '#9d8fcc', borderColor: '#9d8fcc', color: '#fff' }
+                              : { borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
                         </div>
                       ))}
                     </div>
@@ -1073,40 +1228,53 @@ export default function TrainingDiaryPage() {
             {isOpen && (
               <div className="border-t border-gray-50 dark:border-gray-800">
                 {/* Target table */}
-                <div className="px-4 py-2.5">
-                  <div className="grid gap-x-2 items-center" style={{ gridTemplateColumns: '2rem 7rem 3rem auto' }}>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Set</p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Rep</p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 text-center mb-0.5">Rec</p>
-                    <div />
-                    <p className="text-xs font-bold text-center" style={{ color: CT }}>{te.sets}</p>
-                    <p className="text-xs font-bold text-center" style={{ color: CT }}>{te.reps || '—'}</p>
-                    <button
-                      className="text-xs font-bold text-center w-full"
-                      style={{ color: CT }}
-                      disabled={!te.restSeconds}
-                      onClick={() => te.restSeconds && setRecTimer({ mode: 'countdown', rem: te.restSeconds, init: te.restSeconds, on: true })}
-                    >{rest || '—'}</button>
-                    <div className="flex gap-2.5 justify-center items-center">
-                      <button onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'scheda' ? null : { exId: te.id, teId: te.id, type: 'scheda', text: te.noteScheda ?? '' })}
-                        title="Note scheda">
-                        <StickyNote size={16} style={{ color: te.noteScheda ? (noteEdit?.exId === te.id && noteEdit.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
-                      </button>
-                      <button onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, teId: te.id, type: 'personali', text: te.notePersonali ?? '' })}
-                        title="Note personali">
-                        <StickyNote size={16} style={{ color: te.notePersonali ? (noteEdit?.exId === te.id && noteEdit.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
-                      </button>
-                      <button onClick={() => setTimerPicker(p => p === te.id ? null : te.id)}
-                        title="Cronometro / Timer">
-                        <Clock size={16} style={{ color: timerPicker === te.id || recTimer ? CT : '#d1d5db' }} />
-                      </button>
-                      <button onClick={() => toggleHistory(te.id, exId)}
-                        className="transition-colors"
-                        title="Carichi sessione precedente">
-                        <Dumbbell size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
-                      </button>
+                <div className="px-4 pt-2.5 pb-0">
+                  {/* Stats row: SET · REP · REC */}
+                  <div className="grid grid-cols-3 mb-2">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
+                      <p className="text-xs font-bold" style={{ color: CT }}>{te.sets}</p>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 border-x border-gray-100 dark:border-gray-800">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
+                      <p className="text-xs font-bold" style={{ color: CT }}>{te.reps || '—'}</p>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
+                      <button
+                        className="text-xs font-bold leading-none"
+                        style={{ color: CT }}
+                        onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
+                      >{rest || '—'}</button>
                     </div>
                   </div>
+                </div>
+                {/* Actions row: full-width icon bar */}
+                <div className="grid grid-cols-4 border-t border-gray-100 dark:border-gray-800">
+                  <button
+                    className="flex items-center justify-center py-3"
+                    onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'scheda' ? null : { exId: te.id, teId: te.id, type: 'scheda', text: te.noteScheda ?? '' })}
+                    title="Note scheda">
+                    <StickyNote size={16} style={{ color: te.noteScheda ? (noteEdit?.exId === te.id && noteEdit.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
+                  </button>
+                  <button
+                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800"
+                    onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, teId: te.id, type: 'personali', text: te.notePersonali ?? '' })}
+                    title="Note personali">
+                    <StickyNote size={16} style={{ color: te.notePersonali ? (noteEdit?.exId === te.id && noteEdit.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
+                  </button>
+                  <button
+                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800"
+                    onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
+                    title="Cronometro / Timer">
+                    <Clock size={16} style={{ color: timerSheet?.teId === te.id || recTimer ? CT : '#d1d5db' }} />
+                  </button>
+                  <button
+                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800 transition-colors"
+                    onClick={() => toggleHistory(te.id, exId)}
+                    title="Carichi sessione precedente">
+                    <Dumbbell size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
+                  </button>
                 </div>
                 {noteEdit?.exId === te.id && (
                   <div className="px-4 pb-2 space-y-1.5">
@@ -1132,25 +1300,6 @@ export default function TrainingDiaryPage() {
                   </div>
                 )}
 
-                {/* Timer picker */}
-                {timerPicker === te.id && (
-                  <div className="mx-4 mb-2 flex gap-2">
-                    {te.restSeconds && (
-                      <button
-                        onClick={() => { setRecTimer({ mode: 'countdown', rem: te.restSeconds!, init: te.restSeconds!, on: true }); setTimerPicker(null) }}
-                        className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
-                        style={{ backgroundColor: CT }}>
-                        <Clock size={12} /> Timer {fmtRest(te.restSeconds)}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setRecTimer({ mode: 'stopwatch', rem: 0, init: 0, on: true }); setTimerPicker(null) }}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold border"
-                      style={{ borderColor: CT, color: CT }}>
-                      Cronometro
-                    </button>
-                  </div>
-                )}
 
                 {/* Add set form */}
                 {addOpen && (
@@ -1380,7 +1529,7 @@ export default function TrainingDiaryPage() {
             seen1.add(exId); seen1.add(pair!.partnerId)
             const color = pair!.type === 'JS' ? '#9d8fcc' : CT
             return [(
-              <div key={te.id + '_pg'} className="border-l-2 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
+              <div key={te.id + '_pg'} className="border-l-4 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
                 {renderCard(te)}
                 {renderCard(partnerTe)}
               </div>
@@ -1409,7 +1558,7 @@ export default function TrainingDiaryPage() {
             seen2.add(exId); seen2.add(pair!.partnerId)
             const color = pair!.type === 'JS' ? '#9d8fcc' : CT
             return [(
-              <div key={te.id + '_pg'} className="border-l-2 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
+              <div key={te.id + '_pg'} className="border-l-4 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
                 {renderCard(te)}
                 {renderCard(partnerTe)}
               </div>
@@ -1505,7 +1654,7 @@ export default function TrainingDiaryPage() {
                   return Number(a.id) - Number(b.id)
                 })
               const compKey = `${selectedDate}_${exId}`
-              const isDone = completed.has(compKey)
+              const isDone = !!exStatus[compKey]
               const isOpen = expandedExId === exId
               const addOpen = addExId === exId
               let workIdx = 0, warmIdx = 0
@@ -1529,7 +1678,7 @@ export default function TrainingDiaryPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2 px-4 py-3">
-                    <button onClick={() => toggleCompleted(exId)}
+                    <button onClick={() => cycleStatus(exId)}
                       className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors border',
                         isDone ? 'border-transparent text-white' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400')}
                       style={isDone ? { backgroundColor: '#7dbf7d' } : {}}>
@@ -1715,14 +1864,18 @@ export default function TrainingDiaryPage() {
       {/* Extra exercises (not in scheda) */}
       {Object.entries(extraGrouped).map(([exId, { name, group, sets }]) => {
         const compKey = `${selectedDate}_${exId}`
-        const isDone  = completed.has(compKey)
+        const exSt    = exStatus[compKey]
+        const isDone  = exSt === 'done'
         const isOpen  = expandedExId === exId
         let workIdx = 0, warmIdx = 0
         return (
           <div key={exId}
             className={cn('bg-white dark:bg-gray-800 border rounded-2xl overflow-hidden transition-colors shadow-sm',
               nextUpExId === exId ? 'border-blue-300 dark:border-blue-500' :
-              isDone ? 'border-green-200/60 dark:border-green-800/60' : 'border-gray-200 dark:border-gray-700')}>
+              exSt === 'done'    ? 'border-green-200/60 dark:border-green-800/60' :
+              exSt === 'partial' ? 'border-amber-200/60 dark:border-amber-800/60' :
+              exSt === 'skipped' ? 'border-gray-300/60 dark:border-gray-600/60' :
+              'border-gray-200 dark:border-gray-700')}>
             {nextUpExId === exId && (
               <div className="px-4 py-1.5 flex items-center justify-between" style={{ backgroundColor: CT + '28' }}>
                 <span className="text-[11px] font-bold animate-pulse" style={{ color: CT }}>↑ VAI ORA</span>
@@ -1738,11 +1891,17 @@ export default function TrainingDiaryPage() {
               </div>
             )}
             <div className="flex items-center gap-2 px-4 py-3">
-              <button onClick={() => toggleCompleted(exId)}
-                className={cn('w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors border',
-                  isDone ? 'border-transparent text-white' : 'border-gray-200 dark:border-gray-700')}
-                style={isDone ? { backgroundColor: '#7dbf7d' } : {}}>
-                {isDone && <Check size={13} />}
+              <button onClick={() => cycleStatus(exId)}
+                className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all border"
+                style={
+                  exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
+                  exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
+                  exSt === 'skipped' ? { backgroundColor: '#94a3b8', borderColor: 'transparent', color: '#fff' } :
+                  { borderColor: '#d1d5db' }
+                }>
+                {exSt === 'done'    && <Check  size={12} />}
+                {exSt === 'partial' && <Minus  size={12} />}
+                {exSt === 'skipped' && <X      size={12} />}
               </button>
               <button className="flex-1 min-w-0 text-left"
                 onClick={() => setExpandedExId(id => id === exId ? null : exId)}>
@@ -1771,12 +1930,22 @@ export default function TrainingDiaryPage() {
                       {allExercisesForPicker.filter(e => e.id !== exId).map(e => (
                         <div key={e.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800">
                           <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{e.name}</span>
-                          <button onClick={() => addPair(exId, name, e.id, e.name, 'SS')}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
-                            style={{ borderColor: CT, color: CT }}>SS</button>
-                          <button onClick={() => addPair(exId, name, e.id, e.name, 'JS')}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold border"
-                            style={{ borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
+                          <button onClick={() => {
+                              if (pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'SS') { removePair(exId); setPairPickerExId(null) }
+                              else addPair(exId, name, e.id, e.name, 'SS')
+                            }}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                            style={pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'SS'
+                              ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                              : { borderColor: CT, color: CT }}>SS</button>
+                          <button onClick={() => {
+                              if (pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'JS') { removePair(exId); setPairPickerExId(null) }
+                              else addPair(exId, name, e.id, e.name, 'JS')
+                            }}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                            style={pairs[exId]?.partnerId === e.id && pairs[exId]?.type === 'JS'
+                              ? { backgroundColor: '#9d8fcc', borderColor: '#9d8fcc', color: '#fff' }
+                              : { borderColor: '#9d8fcc', color: '#9d8fcc' }}>JS</button>
                         </div>
                       ))}
                     </div>
@@ -1914,41 +2083,199 @@ export default function TrainingDiaryPage() {
         <SchedaPickerPanel userId={userId} onPick={pickScheda} onClose={() => setShowPicker(false)} />
       )}
 
+      {/* Timer sheet — bottom sheet */}
+      {timerSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setTimerSheet(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-t-3xl w-full shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Handle + header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3">
+              <div className="flex items-center gap-2">
+                <Timer size={17} style={{ color: CT }} />
+                <p className="font-bold text-gray-900 dark:text-gray-100">Timer</p>
+              </div>
+              <button onClick={() => setTimerSheet(null)}
+                className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="px-5 pb-7 space-y-4">
+              {/* Duration picker */}
+              <div className="flex items-center justify-center gap-5 py-2">
+                {/* Minutes */}
+                <div className="flex flex-col items-center gap-2">
+                  <button onClick={() => setTimerSheetMin(m => m + 1)}
+                    className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-xl font-light">+</button>
+                  <div className="w-16 text-center">
+                    <p className="text-5xl font-bold tabular-nums text-gray-900 dark:text-gray-100 leading-tight">{String(timerSheetMin).padStart(2, '0')}</p>
+                    <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mt-0.5">min</p>
+                  </div>
+                  <button onClick={() => setTimerSheetMin(m => Math.max(0, m - 1))}
+                    className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-xl font-light">−</button>
+                </div>
+
+                <p className="text-4xl font-bold text-gray-200 dark:text-gray-700 mb-4">:</p>
+
+                {/* Seconds (steps of 5) */}
+                <div className="flex flex-col items-center gap-2">
+                  <button onClick={() => setTimerSheetSec(s => s >= 55 ? 0 : s + 5)}
+                    className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-xl font-light">+</button>
+                  <div className="w-16 text-center">
+                    <p className="text-5xl font-bold tabular-nums text-gray-900 dark:text-gray-100 leading-tight">{String(timerSheetSec).padStart(2, '0')}</p>
+                    <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mt-0.5">sec</p>
+                  </div>
+                  <button onClick={() => setTimerSheetSec(s => s < 5 ? 55 : s - 5)}
+                    className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-xl font-light">−</button>
+                </div>
+              </div>
+
+              {/* Quick presets */}
+              <div className="grid grid-cols-3 gap-2">
+                {([[0,30],[1,0],[1,30],[2,0],[2,30],[3,0]] as [number,number][]).map(([m, s]) => {
+                  const label = m > 0 ? (s > 0 ? `${m}:${String(s).padStart(2,'0')}` : `${m}:00`) : `0:${String(s).padStart(2,'0')}`
+                  const active = timerSheetMin === m && timerSheetSec === s
+                  return (
+                    <button key={label} onClick={() => { setTimerSheetMin(m); setTimerSheetSec(s) }}
+                      className="py-2 rounded-xl text-xs font-bold border transition-colors"
+                      style={active
+                        ? { backgroundColor: CT, borderColor: CT, color: '#fff' }
+                        : { borderColor: CT + '40', color: CT }}>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Action buttons */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => { const t = timerSheetMin * 60 + timerSheetSec; if (t > 0) startCountdown(t) }}
+                  disabled={timerSheetMin === 0 && timerSheetSec === 0}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-white disabled:opacity-40"
+                  style={{ backgroundColor: CT }}>
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <Timer size={16} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Countdown</p>
+                    <p className="text-base font-bold tabular-nums">
+                      {`${timerSheetMin}:${String(timerSheetSec).padStart(2,'0')}`}
+                    </p>
+                  </div>
+                  <Play size={16} className="opacity-60 shrink-0" />
+                </button>
+
+                <button onClick={() => startStopwatch()}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border"
+                  style={{ borderColor: CT + '50', backgroundColor: CT + '0a' }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: CT + '20', color: CT }}>
+                    <Clock size={16} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CT + '99' }}>Cronometro</p>
+                    <p className="text-base font-bold tabular-nums" style={{ color: CT }}>0:00</p>
+                  </div>
+                  <Play size={16} style={{ color: CT + '60' }} className="shrink-0" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Timer bar */}
       {recTimer && (() => {
-        const isCountdown = recTimer.mode === 'countdown'
-        const done = isCountdown && recTimer.rem === 0
-        const m = Math.floor(recTimer.rem / 60), sec = recTimer.rem % 60
-        const label = `${m > 0 ? m + '\'' : ''}${String(sec).padStart(m > 0 ? 2 : 1, '0')}''`
-        const pct = isCountdown && recTimer.init > 0 ? recTimer.rem / recTimer.init : 0
+        const rt = recTimer
+        const isCountdown = rt.mode === 'countdown'
+        const done = isCountdown && rt.rem === 0
+        const m   = Math.floor(rt.rem / 60)
+        const sec = rt.rem % 60
+        const timeLabel = `${m}:${String(sec).padStart(2, '0')}`
+        const pct = isCountdown && rt.init > 0 ? rt.rem / rt.init : 0
+        const barColor = done ? '#6abf6a' : CT
+
+        function handleMainBtn() {
+          if (done) {
+            // restart countdown from beginning
+            const s = rt.init
+            setRecTimer(t => t ? { ...t, rem: s, on: true, endTs: Date.now() + s * 1000 } : null)
+          } else if (rt.on) {
+            // pause — clear timestamps, keep rem
+            setRecTimer(t => t ? { ...t, on: false, endTs: undefined, startTs: undefined } : null)
+          } else {
+            // resume with fresh timestamps
+            if (rt.mode === 'countdown') {
+              setRecTimer(t => t ? { ...t, on: true, endTs: Date.now() + t.rem * 1000 } : null)
+            } else {
+              setRecTimer(t => t ? { ...t, on: true, startTs: Date.now() - t.rem * 1000 } : null)
+            }
+          }
+        }
+
         return (
           <div className="fixed bottom-20 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-            <div className="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-2xl px-4 py-3 pointer-events-auto max-w-sm w-full">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CT }}>
-                  {isCountdown ? 'Timer' : 'Cronometro'}
-                </span>
-                <button onClick={() => { clearInterval(recRef.current); setRecTimer(null) }}
-                  className="text-gray-500 hover:text-gray-300"><X size={11} /></button>
-              </div>
-              <div className="text-2xl font-bold text-white tabular-nums">{done ? 'FINE!' : label}</div>
+            <div className="bg-gray-950 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto max-w-sm w-full border border-white/10">
+
+              {/* Progress bar */}
               {isCountdown && (
-                <div className="mt-1.5 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${Math.round(pct * 100)}%`, backgroundColor: done ? '#6abf6a' : CT }} />
+                <div className="h-1 bg-white/10">
+                  <div className="h-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${Math.round(pct * 100)}%`, backgroundColor: barColor }} />
                 </div>
               )}
-              <div className="flex items-center gap-3 mt-2">
-                <button onClick={() => setRecTimer(t => t ? { ...t, on: !t.on } : null)}
-                  className="text-[10px] font-bold text-white/60 hover:text-white transition-colors">
-                  {done ? '↺ Riavvia' : recTimer.on ? '⏸ Pausa' : '▶ Riprendi'}
-                </button>
-                {!isCountdown && (
-                  <button onClick={() => setRecTimer(t => t ? { ...t, rem: 0, on: false } : null)}
-                    className="text-[10px] font-bold text-white/40 hover:text-white transition-colors">
-                    Reset
+
+              <div className="px-4 py-3 flex items-center gap-4">
+                {/* Time + label */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-bold uppercase tracking-widest mb-0.5"
+                    style={{ color: done ? '#6abf6a' : CT }}>
+                    {isCountdown ? 'Recupero' : 'Cronometro'}
+                  </p>
+                  <p className="text-3xl font-bold tabular-nums leading-none"
+                    style={{ color: done ? '#6abf6a' : 'white' }}>
+                    {done ? 'VAI!' : timeLabel}
+                  </p>
+                  {/* Quick adjust row */}
+                  <div className="flex items-center gap-2 mt-2">
+                    {isCountdown && !done && (<>
+                      <button onClick={() => setRecTimer(t => t ? { ...t, rem: Math.max(0, t.rem - 30) } : null)}
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors text-white/40 hover:text-white hover:bg-white/10">
+                        −30s
+                      </button>
+                      <button onClick={() => setRecTimer(t => t ? { ...t, rem: t.rem + 30 } : null)}
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg transition-colors text-white/40 hover:text-white hover:bg-white/10">
+                        +30s
+                      </button>
+                    </>)}
+                    {!isCountdown && (
+                      <button onClick={() => setRecTimer(t => t ? { ...t, rem: 0, on: false } : null)}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors text-white/40 hover:text-white hover:bg-white/10">
+                        <RotateCcw size={10} /> Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={handleMainBtn}
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
+                    style={{ backgroundColor: done ? '#6abf6a' : rt.on ? CT + '30' : CT }}>
+                    {done
+                      ? <RotateCcw size={18} color="white" />
+                      : rt.on
+                        ? <Pause size={18} color="white" />
+                        : <Play  size={18} color="white" />}
                   </button>
-                )}
+                  <button onClick={() => { clearInterval(recRef.current); setRecTimer(null) }}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">
+                    <X size={15} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

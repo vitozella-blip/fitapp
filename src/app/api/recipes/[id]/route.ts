@@ -6,16 +6,20 @@ async function upsertRecipeFood(recipeId: string) {
   if (!meta[0]) return
   const { name, userId } = meta[0]
   const { rows } = await pool.query(`
-    SELECT ri.quantity, f.calories, f.protein, f.carbs, f.fat
-    FROM "RecipeIngredient" ri JOIN "Food" f ON f.id = ri."foodId"
+    SELECT ri.quantity, ri.unit, f.calories, f.protein, f.carbs, f.fat
+    FROM "RecipeIngredient" ri
+    LEFT JOIN "Food" f ON f.id = ri."foodId"
     WHERE ri."recipeId" = $1
   `, [recipeId])
-  const totalW = rows.reduce((s: number, r: any) => s + Number(r.quantity), 0)
+  const totalW = rows
+    .filter((r: any) => r.unit !== 'pz' && r.quantity != null)
+    .reduce((s: number, r: any) => s + Number(r.quantity), 0)
   if (totalW <= 0) return
-  const cal  = rows.reduce((s: number, r: any) => s + r.calories * r.quantity / 100, 0)
-  const pro  = rows.reduce((s: number, r: any) => s + r.protein  * r.quantity / 100, 0)
-  const carb = rows.reduce((s: number, r: any) => s + r.carbs    * r.quantity / 100, 0)
-  const fat  = rows.reduce((s: number, r: any) => s + r.fat      * r.quantity / 100, 0)
+  const macro = rows.filter((r: any) => r.calories != null && r.unit !== 'pz' && r.quantity != null)
+  const cal  = macro.reduce((s: number, r: any) => s + r.calories * r.quantity / 100, 0)
+  const pro  = macro.reduce((s: number, r: any) => s + r.protein  * r.quantity / 100, 0)
+  const carb = macro.reduce((s: number, r: any) => s + r.carbs    * r.quantity / 100, 0)
+  const fat  = macro.reduce((s: number, r: any) => s + r.fat      * r.quantity / 100, 0)
   await pool.query(`
     INSERT INTO "Food" (id, name, brand, "userId", calories, protein, carbs, fat, "saturatedFat", sugars, salt, "per100g")
     VALUES ($1,$2,'Ricetta',$3,$4,$5,$6,$7,0,0,0,true)
@@ -25,9 +29,9 @@ async function upsertRecipeFood(recipeId: string) {
   `, [
     `food-recipe-${recipeId}`, name, userId,
     Math.round(cal / totalW * 100),
-    Math.round(pro / totalW * 1000) / 10,
+    Math.round(pro  / totalW * 1000) / 10,
     Math.round(carb / totalW * 1000) / 10,
-    Math.round(fat / totalW * 1000) / 10,
+    Math.round(fat  / totalW * 1000) / 10,
   ])
 }
 
@@ -43,8 +47,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const ing of (ingredients ?? [])) {
       const iid = `ri-${Date.now()}-${Math.random().toString(36).slice(2)}`
       await pool.query(
-        `INSERT INTO "RecipeIngredient" (id, "recipeId", "foodId", quantity) VALUES ($1,$2,$3,$4)`,
-        [iid, id, ing.foodId, ing.quantityG]
+        `INSERT INTO "RecipeIngredient" (id, "recipeId", "foodId", quantity, name, unit) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [iid, id, ing.foodId ?? null, ing.qty ?? null, ing.name ?? null, ing.unit ?? 'g']
       )
     }
     await upsertRecipeFood(id)
