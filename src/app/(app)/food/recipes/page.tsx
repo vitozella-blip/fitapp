@@ -110,7 +110,7 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState<Food | null>(null)
-  const [qty, setQty] = useState('100')
+  const [qty, setQty] = useState('')
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
   const ref = useRef<HTMLDivElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
@@ -135,17 +135,17 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (food: Foo
   }, [q, userId])
 
   function pickFood(food: Food) {
-    setPending(food); setQty('100'); setQ(''); setResults([]); setOpen(false)
-    setTimeout(() => qtyRef.current?.select(), 50)
+    setPending(food); setQty(''); setQ(''); setResults([]); setOpen(false)
+    setTimeout(() => qtyRef.current?.focus(), 50)
   }
 
   function confirm() {
-    if (!pending) return
-    onSelect(pending, Math.max(1, Number(qty) || 100))
-    setPending(null); setQty('100')
+    if (!pending || !qty) return
+    onSelect(pending, Math.max(1, Number(qty)))
+    setPending(null); setQty('')
   }
 
-  function cancel() { setPending(null); setQty('100') }
+  function cancel() { setPending(null); setQty('') }
 
   if (pending) {
     return (
