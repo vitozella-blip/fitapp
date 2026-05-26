@@ -28,7 +28,9 @@ function abbrevTemplate(name: string) {
 
 type Template = { id: string; name: string; order: number; dates: string[] }
 
-function toIso(d: Date) { return d.toISOString().slice(0, 10) }
+function toIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export default function TrainingHubPage() {
   const { userId } = useAppStore()

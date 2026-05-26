@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, localToday, shiftDate } from '@/lib/utils'
 
 const DOW = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 
@@ -34,7 +34,7 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   accent: string
   disableWorkoutColors?: boolean
 }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = localToday()
   const initial = new Date(selectedDate + 'T12:00:00')
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
 
@@ -185,9 +185,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
   })
 
   function changeDate(days: number) {
-    const d = new Date(selectedDate)
-    d.setDate(d.getDate() + days)
-    onChange(d.toISOString().split('T')[0])
+    onChange(shiftDate(selectedDate, days))
   }
 
   return (

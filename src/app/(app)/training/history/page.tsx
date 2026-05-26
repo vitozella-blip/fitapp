@@ -8,7 +8,9 @@ import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
 
-function toIso(d: Date) { return d.toISOString().slice(0, 10) }
+function toIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 type WorkoutSummary = {
   id: string; date: string; setCount: number; exerciseCount: number

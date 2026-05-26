@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+import { shiftDate } from '@/lib/utils'
 
 const THRESHOLD = 60
 
@@ -8,9 +9,7 @@ export function useDateSwipe(selectedDate: string, onChange: (d: string) => void
   const committed = useRef<'none' | 'h' | 'v'>('none')
 
   function shiftDay(delta: number) {
-    const d = new Date(selectedDate + 'T12:00:00')
-    d.setDate(d.getDate() + delta)
-    onChange(d.toISOString().split('T')[0])
+    onChange(shiftDate(selectedDate, delta))
   }
 
   function onTouchStart(e: React.TouchEvent) {
