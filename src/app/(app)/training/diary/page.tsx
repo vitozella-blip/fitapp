@@ -4,7 +4,7 @@ import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, C
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
-import { cn } from '@/lib/utils'
+import { cn, localToday } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
@@ -277,7 +277,8 @@ async function mergeWeekParams(exercises: TemplateEx[], weekId: string | null): 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function TrainingDiaryPage() {
-  const { userId, selectedDate, setSelectedDate, userProfile, bumpWorkoutVersion } = useAppStore()
+  const { userId, userProfile, bumpWorkoutVersion } = useAppStore()
+  const [selectedDate, setSelectedDate] = useState(localToday)
   const [workout,    setWorkout]    = useState<Workout | null>(null)
   const [schedaInfo, setSchedaInfo] = useState<SchedaInfo | null>(null)
   const [showPicker, setShowPicker] = useState(false)

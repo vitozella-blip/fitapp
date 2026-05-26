@@ -5,7 +5,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
-import { cn } from '@/lib/utils'
+import { cn, localToday } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 
@@ -26,7 +26,8 @@ type Entry = {
 const calc = (v: number, q: number) => Math.round((v * q) / 100)
 
 export default function FoodDiaryPage() {
-  const { userId, selectedDate, setSelectedDate, userProfile } = useAppStore()
+  const { userId, userProfile } = useAppStore()
+  const [selectedDate, setSelectedDate] = useState(localToday)
   const [entries, setEntries] = useState<Entry[]>([])
   const [modal, setModal] = useState<string | null>(null)
   const [freeMeals, setFreeMeals] = useState<Set<string>>(new Set())

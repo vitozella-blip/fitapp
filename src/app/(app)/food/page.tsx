@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAppStore } from '@/store/useAppStore'
+import { localToday } from '@/lib/utils'
 import { BookOpen, Apple, ShoppingCart, ChefHat, Target, CalendarDays } from 'lucide-react'
 
 const COLOR = '#e8924a'
@@ -40,10 +41,10 @@ function toIso(d: Date) {
 }
 
 export default function FoodHubPage() {
-  const { userId, selectedDate, userProfile } = useAppStore()
+  const { userId, userProfile } = useAppStore()
   const [data, setData] = useState<MacroData | null>(null)
 
-  const today = selectedDate
+  const today = localToday()
   const firstOfMonth = today.slice(0, 8) + '01'
   const [from, setFrom] = useState(firstOfMonth)
   const [to, setTo]     = useState(today)
@@ -51,11 +52,11 @@ export default function FoodHubPage() {
   const [statsLoading, setStatsLoading] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/dashboard?userId=${userId}&date=${selectedDate}`)
+    fetch(`/api/dashboard?userId=${userId}&date=${today}`)
       .then(r => r.json())
       .then(d => setData(d))
       .catch(() => {})
-  }, [userId, selectedDate])
+  }, [userId, today])
 
   useEffect(() => {
     if (!from || !to || from > to) return

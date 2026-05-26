@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
 import { Check, Minus, X, LayoutDashboard } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
+import { localToday } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { DateNav } from '@/components/shared/DateNav'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -41,7 +42,8 @@ type DashData = {
 }
 
 export default function DashboardPage() {
-  const { userId, selectedDate, setSelectedDate, userProfile, workoutDataVersion } = useAppStore()
+  const { userId, userProfile, workoutDataVersion } = useAppStore()
+  const [selectedDate, setSelectedDate] = useState(localToday)
   const router = useRouter()
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
