@@ -285,10 +285,11 @@ export default function TrainingDiaryPage() {
   const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
   const [schedaCollapsed, setSchedaCollapsed] = useState(false)
   const [tennisCollapsed, setTennisCollapsed] = useState(true)
-  const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'partita', hours: '' })
+  const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'allenamento', hours: '' })
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
   const [exStatus,   setExStatus]   = useState<Record<string, ExStatus>>({})
   const [tennisLoading, setTennisLoading] = useState(false)
+  const [tennisHoursDraft, setTennisHoursDraft] = useState('')
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -437,7 +438,7 @@ export default function TrainingDiaryPage() {
   }, [absExIds, absOptions])
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
-  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null; isWarmup: boolean; setNumber: number }[] } | null>(null)
+  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null; isWarmup: boolean; setNumber: number; tag?: string | null }[] } | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyDates,  setHistoryDates]  = useState<string[]>([])
   const [historySelDate, setHistorySelDate] = useState<string | null>(null)
@@ -595,17 +596,20 @@ export default function TrainingDiaryPage() {
         } else {
           try {
             const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-            setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
-          } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
+            setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' })
+          } catch { setTennisMetaRaw({ type: 'allenamento', hours: '' }) }
         }
       })
       .catch(() => {
         try {
           const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-          setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'partita', hours: '' })
-        } catch { setTennisMetaRaw({ type: 'partita', hours: '' }) }
+          setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' })
+        } catch { setTennisMetaRaw({ type: 'allenamento', hours: '' }) }
       })
   }, [selectedDate, userId])
+
+  // Sync hours draft whenever saved value changes (API load / date change)
+  useEffect(() => { setTennisHoursDraft(tennisMeta.hours) }, [tennisMeta.hours])
 
   // Load scheda + week params — DB authoritative, localStorage fallback
   useEffect(() => {
@@ -990,7 +994,7 @@ export default function TrainingDiaryPage() {
           {!tennisCollapsed && (
             <div className="px-4 pb-3 space-y-2 border-t border-gray-100 dark:border-gray-700">
               <div className="flex gap-2 pt-2">
-                {(['partita', 'allenamento'] as const).map(t => (
+                {(['allenamento', 'partita'] as const).map(t => (
                   <button key={t} onClick={() => setTennisMeta({ type: t })}
                     className="flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors capitalize"
                     style={tennisMeta.type === t
@@ -1003,11 +1007,19 @@ export default function TrainingDiaryPage() {
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 shrink-0">Ore</span>
                 <input type="number" min="0" max="24" step="0.5"
-                  value={tennisMeta.hours}
-                  onChange={e => setTennisMeta({ hours: e.target.value })}
+                  value={tennisHoursDraft}
+                  onChange={e => setTennisHoursDraft(e.target.value)}
                   placeholder="—"
                   className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-center outline-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
               </div>
+              {tennisHoursDraft && Number(tennisHoursDraft) > 0 && (
+                <button
+                  onClick={() => { setTennisMeta({ hours: tennisHoursDraft }); setTennisCollapsed(true) }}
+                  className="w-full py-2 rounded-xl text-sm font-semibold transition-colors"
+                  style={{ backgroundColor: C_TENNIS, color: '#fff' }}>
+                  Conferma
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1053,7 +1065,8 @@ export default function TrainingDiaryPage() {
               <p className="text-[11px] text-gray-400 text-center py-1">Nessuna sessione precedente</p>
             </div>
           )
-          const fmt = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? '—'}`
+          const fmt     = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? '—'}`
+          const fmtWarm = (s: { reps: number; weight: number | null }) => `${s.reps}×${s.weight ?? 0}`
           const prevLabel = historyData
             ? new Date(historyData.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
             : '—'
@@ -1062,7 +1075,7 @@ export default function TrainingDiaryPage() {
             <div className="border-t border-gray-50 dark:border-gray-800 px-4 pt-2 pb-1">
               {historyDates.length > 1 && (
                 <div className="flex gap-1 flex-wrap pb-2">
-                  {historyDates.map(d => {
+                  {[...historyDates].reverse().map(d => {
                     const label = new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).toUpperCase()
                     const active = d === historySelDate
                     return (
@@ -1086,23 +1099,23 @@ export default function TrainingDiaryPage() {
               </div>
               {Array.from({ length: maxW }, (_, i) => {
                 const hS = hWarm[i]; const cS = currWarm[i]
-                const hTag = hS ? setTags[hS.id] : undefined
+                const hTag = hS?.tag ?? undefined
                 const cTag = cS ? setTags[cS.id] : undefined
                 return (
                   <div key={`R${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">
                     <span className="text-[10px] font-bold text-center" style={{ color: C_WARM }}>R{i+1}</span>
-                    <span className="text-[11px] text-center text-gray-400">{hS ? fmt(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
+                    <span className="text-[11px] text-center text-gray-400">{hS ? fmtWarm(hS) : '—'}{hTag && <span className="ml-1 text-[9px] font-bold" style={{ color: '#9ca3af' }}>{hTag}</span>}</span>
                     <div className="self-stretch bg-gray-100 dark:bg-gray-800" />
                     <div className="relative flex items-center justify-center" style={{ color: cS ? CT : '#9ca3af' }}>
                       {cTag && <span className="absolute left-0 text-[9px] font-bold">{cTag}</span>}
-                      <span className="text-[12px] font-bold">{cS ? fmt({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
+                      <span className="text-[12px] font-bold">{cS ? fmtWarm({ reps: cS.reps, weight: cS.weight }) : '—'}</span>
                     </div>
                   </div>
                 )
               })}
               {Array.from({ length: maxS }, (_, i) => {
                 const hS = hWork[i]; const cS = currWork[i]
-                const hTag = hS ? setTags[hS.id] : undefined
+                const hTag = hS?.tag ?? undefined
                 const cTag = cS ? setTags[cS.id] : undefined
                 return (
                   <div key={`S${i+1}`} className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 py-0.5 items-center">

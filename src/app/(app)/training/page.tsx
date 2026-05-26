@@ -113,9 +113,9 @@ export default function TrainingHubPage() {
                   ) : (
                     [...tennisDates].sort().map(date => (
                       <Link key={date} href={`/training/diary?date=${date}`}
-                        className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                        className="flex items-center gap-0.5 px-1 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                         <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
-                        <span className="text-[10px] text-gray-600 dark:text-gray-300 capitalize leading-tight">{fmtDate(date)}</span>
+                        <span className="text-[9px] text-gray-600 dark:text-gray-300 capitalize leading-tight whitespace-nowrap">{fmtDate(date)}</span>
                       </Link>
                     ))
                   )}
@@ -137,9 +137,9 @@ export default function TrainingHubPage() {
                       ) : (
                         [...t.dates].sort().map(date => (
                           <Link key={date} href={`/training/diary?date=${date}`}
-                            className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                            <WorkoutBadge color={tColor} shapeIdx={t.order} size={8} />
-                            <span className="text-[10px] text-gray-600 dark:text-gray-300 capitalize leading-tight">{fmtDate(date)}</span>
+                            className="flex items-center gap-0.5 px-1 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                            <WorkoutBadge color={tColor} shapeIdx={t.order} size={7} />
+                            <span className="text-[9px] text-gray-600 dark:text-gray-300 capitalize leading-tight whitespace-nowrap">{fmtDate(date)}</span>
                           </Link>
                         ))
                       )}
