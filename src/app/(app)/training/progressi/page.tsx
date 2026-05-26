@@ -75,12 +75,18 @@ export default function ProgressiPage() {
   const [sessions, setSessions]           = useState<SessionData[]>([])
   const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null)
   const [loadingExerciseId, setLoadingExerciseId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userId) return
+    setError(null)
     fetch(`/api/training/progress?userId=${userId}&templates=1`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(data => setTemplates(Array.isArray(data) ? data : []))
+      .catch(() => setError('Errore nel caricamento dei progressi. Riprova.'))
   }, [userId])
 
   async function toggleTemplate(t: WorkoutTemplate) {
@@ -94,13 +100,21 @@ export default function ProgressiPage() {
     setSelWeekIds(new Set())
     if (exercises[t.id]) return
     setLoadingTemplateId(t.id)
-    const [exData, wkData] = await Promise.all([
-      fetch(`/api/training/progress?userId=${userId}&templateId=${t.id}`).then(r => r.json()),
-      fetch(`/api/workout-weeks?templateId=${t.id}`).then(r => r.json()),
-    ])
-    setExercises(prev => ({ ...prev, [t.id]: Array.isArray(exData) ? exData : [] }))
-    setRoutineWeeks(prev => ({ ...prev, [t.id]: Array.isArray(wkData) ? wkData : [] }))
-    setLoadingTemplateId(null)
+    try {
+      const [exRes, wkRes] = await Promise.all([
+        fetch(`/api/training/progress?userId=${userId}&templateId=${t.id}`),
+        fetch(`/api/workout-weeks?templateId=${t.id}`),
+      ])
+      const exData = exRes.ok ? await exRes.json() : []
+      const wkData = wkRes.ok ? await wkRes.json() : []
+      setExercises(prev => ({ ...prev, [t.id]: Array.isArray(exData) ? exData : [] }))
+      setRoutineWeeks(prev => ({ ...prev, [t.id]: Array.isArray(wkData) ? wkData : [] }))
+    } catch {
+      setExercises(prev => ({ ...prev, [t.id]: [] }))
+      setRoutineWeeks(prev => ({ ...prev, [t.id]: [] }))
+    } finally {
+      setLoadingTemplateId(null)
+    }
   }
 
   const loadSessions = useCallback(async (ex: ExerciseSummary, weekIds: Set<string>) => {
@@ -144,7 +158,22 @@ export default function ProgressiPage() {
 
       <PageHeader title="Progressi" icon={TrendingUp} accent="training" />
 
-      {templates.length === 0 ? (
+      {error ? (
+        <div className="text-center py-10 space-y-3">
+          <p className="text-sm text-red-400">{error}</p>
+          <button
+            onClick={() => {
+              setError(null)
+              fetch(`/api/training/progress?userId=${userId}&templates=1`)
+                .then(r => r.ok ? r.json() : [])
+                .then(data => setTemplates(Array.isArray(data) ? data : []))
+                .catch(() => setError('Errore nel caricamento dei progressi. Riprova.'))
+            }}
+            className="text-xs px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            Riprova
+          </button>
+        </div>
+      ) : templates.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-10">Nessun piano di allenamento trovato</p>
       ) : (
         <div className="space-y-2">

@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { rows: sets } = await pool.query(
-      `SELECT s.id::text, s.reps, s.weight, COALESCE(s."isWarmup", false) AS "isWarmup", s."setNumber"
+      `SELECT s.id::text, s.reps, s.weight, COALESCE(s."isWarmup", false) AS "isWarmup", s."setNumber", s.tag
        FROM "WorkoutSet" s
        JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId"
        WHERE w."userId" = $1 AND s."exerciseId" = $2 AND w.date = $3

@@ -188,8 +188,8 @@ export default function DashboardPage() {
                 <div key={m.label} className="flex flex-col justify-center gap-1.5 px-3">
                   <span className="text-xs font-bold uppercase tracking-wide" style={{ color: m.color }}>{m.label}</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
-                    <span className="text-xs text-gray-400 font-medium">/ {m.tgt} g</span>
+                    <span className="text-base md:text-2xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
+                    <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap">/ {m.tgt} g</span>
                   </div>
                   <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: m.color + '30' }}>
                     <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />

@@ -219,7 +219,7 @@ export default function TrainingHistoryPage() {
                               )}
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {[...g.sets].sort((a, b) => a.setNumber - b.setNumber).map((s, j) => (
+                              {g.sets.map((s, j) => (
                                 <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                                   style={s.isWarmup
                                     ? { backgroundColor: C_WARM + '20', color: C_WARM }
