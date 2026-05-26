@@ -436,7 +436,7 @@ export default function TrainingDiaryPage() {
   }, [absExIds, absOptions])
 
   const [historyExId,   setHistoryExId]   = useState<string | null>(null)
-  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null }[] } | null>(null)
+  const [historyData,   setHistoryData]   = useState<{ date: string; sets: { id: string; reps: number; weight: number | null; isWarmup: boolean; setNumber: number }[] } | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyDates,  setHistoryDates]  = useState<string[]>([])
   const [historySelDate, setHistorySelDate] = useState<string | null>(null)
@@ -1043,8 +1043,8 @@ export default function TrainingDiaryPage() {
           const currWarm = exSets.filter(s => warmups.has(s.id))
           const currWork = exSets.filter(s => !warmups.has(s.id))
           const hist = historyData?.sets ?? []
-          const hWarm = hist.slice(0, currWarm.length)
-          const hWork = hist.slice(currWarm.length)
+          const hWarm = hist.filter(s => s.isWarmup)
+          const hWork = hist.filter(s => !s.isWarmup)
           const maxW = Math.max(currWarm.length, hWarm.length)
           const maxS = Math.max(currWork.length, hWork.length)
           if (maxW === 0 && maxS === 0 && !historyData) return (
@@ -1077,11 +1077,11 @@ export default function TrainingDiaryPage() {
                   })}
                 </div>
               )}
-              <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 mb-1 items-center">
+              <div className="grid grid-cols-[1.5rem_1fr_1px_1fr] gap-x-2 mb-1.5 items-center">
                 <div />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-center text-gray-400">{prevLabel}</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-center px-1 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">{prevLabel}</p>
                 <div className="self-stretch bg-gray-200 dark:bg-gray-700" />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-center" style={{ color: CT }}>{currLabel}</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-center px-1 py-0.5 rounded-md" style={{ color: CT, backgroundColor: CT + '18' }}>{currLabel}</p>
               </div>
               {Array.from({ length: maxW }, (_, i) => {
                 const hS = hWarm[i]; const cS = currWarm[i]

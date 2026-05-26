@@ -5,6 +5,7 @@ async function ensureSetColumns() {
   await Promise.all([
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "isWarmup" BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "tag" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "globalIndex" INT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisType" TEXT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisHours" TEXT`).catch(() => {}),
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
     const { rows } = await pool.query(
-      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'exercise',e) ORDER BY s."setNumber" ASC) as sets
+      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'globalIndex',s."globalIndex",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'exercise',e) ORDER BY s."globalIndex" ASC NULLS LAST, s."setNumber" ASC) as sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
        LEFT JOIN "Exercise" e ON e.id = s."exerciseId"
@@ -84,15 +85,22 @@ export async function POST(req: NextRequest) {
         [workoutId, userId, date, weekId ?? null]
       )
     }
-    const { rows: maxRows } = await pool.query(
-      `SELECT COALESCE(MAX("setNumber"), 0) AS max FROM "WorkoutSet" WHERE "workoutDiaryId" = $1 AND "exerciseId" = $2`,
-      [workoutId, exerciseId]
-    )
-    const baseSetNumber = Number(maxRows[0].max)
+    const [maxRowsRes, globalRowsRes] = await Promise.all([
+      pool.query(
+        `SELECT COALESCE(MAX("setNumber"), 0) AS max FROM "WorkoutSet" WHERE "workoutDiaryId" = $1 AND "exerciseId" = $2`,
+        [workoutId, exerciseId]
+      ),
+      pool.query(
+        `SELECT COALESCE(MAX("globalIndex"), 0) AS gmax FROM "WorkoutSet" WHERE "workoutDiaryId" = $1`,
+        [workoutId]
+      ),
+    ])
+    const baseSetNumber = Number(maxRowsRes.rows[0].max)
+    const baseGlobalIndex = Number(globalRowsRes.rows[0].gmax)
     for (let i = 0; i < sets; i++) {
       await pool.query(
-        `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight, "isWarmup") VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null, isWarmup ?? false]
+        `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight, "isWarmup", "globalIndex") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null, isWarmup ?? false, baseGlobalIndex + i + 1]
       )
     }
     return NextResponse.json({ ok: true, workoutId })

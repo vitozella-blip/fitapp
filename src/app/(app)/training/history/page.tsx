@@ -15,7 +15,7 @@ type WorkoutSummary = {
 }
 
 type WorkoutSet = {
-  id: string; setNumber: number; reps?: number; weight?: number; isWarmup: boolean
+  id: string; setNumber: number; reps?: number; weight?: number; isWarmup: boolean; tag?: string
   exercise: { id: string; name: string; muscleGroup?: string; isDuration?: boolean } | null
 }
 
@@ -32,9 +32,13 @@ function groupByExercise(sets: WorkoutSet[]) {
   return [...map.values()]
 }
 
+const C_WARM = '#f0aa78'
+
 function fmtSet(s: WorkoutSet, isDuration: boolean) {
   if (isDuration) return s.reps ? `${s.reps}s` : '—'
-  return `${s.reps ?? '?'} × ${s.weight ?? '?'} kg`
+  // Warmup sets with no weight → 0 (done bodyweight / no load)
+  const w = s.weight ?? (s.isWarmup ? 0 : '?')
+  return `${s.reps ?? '?'} × ${w} kg`
 }
 
 function abbrevTemplate(name: string) {
@@ -119,7 +123,7 @@ export default function TrainingHistoryPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {workouts.map(w => {
+          {[...workouts].reverse().map(w => {
             const isOpen  = expanded === w.id
             const date    = new Date(w.date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
             const detail  = details[w.id]
@@ -204,16 +208,12 @@ export default function TrainingHistoryPage() {
                               )}
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {g.sets.filter(s => !s.isWarmup).map((s, j) => (
+                              {[...g.sets].sort((a, b) => a.setNumber - b.setNumber).map((s, j) => (
                                 <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: C.training + '18', color: C.training }}>
-                                  {fmtSet(s, g.isDuration)}
-                                </span>
-                              ))}
-                              {g.sets.filter(s => s.isWarmup).map((s, j) => (
-                                <span key={'w' + j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: '#94a3b820', color: '#94a3b8' }}>
-                                  {fmtSet(s, g.isDuration)}
+                                  style={s.isWarmup
+                                    ? { backgroundColor: C_WARM + '20', color: C_WARM }
+                                    : { backgroundColor: C.training + '18', color: C.training }}>
+                                  {fmtSet(s, g.isDuration)}{s.tag ? <> <span className="font-bold opacity-80">{s.tag}</span></> : null}
                                 </span>
                               ))}
                             </div>
