@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
            COUNT(s.id)::int                        AS "setCount",
            COUNT(DISTINCT s."exerciseId")::int      AS "exerciseCount",
            wt.name                                  AS "templateName",
+           wt."order"                               AS "templateOrder",
            BOOL_OR(LOWER(e.name) = 'tennis')        AS "isTennis",
            w."tennisType"                            AS "tennisTag",
            w."tennisHours"                           AS "tennisHours"
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
          WHERE w."userId" = $1
            AND ($2::text IS NULL OR w.date >= $2)
            AND ($3::text IS NULL OR w.date <= $3)
-         GROUP BY w.id, w.date, wt.name, w."tennisType", w."tennisHours"
+         GROUP BY w.id, w.date, wt.name, wt."order", w."tennisType", w."tennisHours"
          ORDER BY w.date DESC
          LIMIT 120`,
         [userId, from || null, to || null]

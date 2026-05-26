@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { History, Dumbbell, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
 
@@ -11,7 +12,8 @@ function toIso(d: Date) { return d.toISOString().slice(0, 10) }
 
 type WorkoutSummary = {
   id: string; date: string; setCount: number; exerciseCount: number
-  templateName?: string; isTennis?: boolean; tennisHours?: number; tennisTag?: string
+  templateName?: string; templateOrder?: number
+  isTennis?: boolean; tennisHours?: number; tennisTag?: string
 }
 
 type WorkoutSet = {
@@ -129,6 +131,8 @@ export default function TrainingHistoryPage() {
             const detail  = details[w.id]
             const groups  = detail ? groupByExercise(detail.sets ?? []) : []
             const tplName = w.templateName ? abbrevTemplate(w.templateName) : null
+            const tplOrder = w.templateOrder ?? 0
+            const tplColor = SCHEDA_COLORS[tplOrder % SCHEDA_COLORS.length]
             const tennis  = w.isTennis || !!w.tennisTag
 
             const tennisLabel = w.tennisTag
@@ -166,9 +170,9 @@ export default function TrainingHistoryPage() {
                       <div className="flex items-center gap-2 flex-wrap mt-0.5">
                         <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
                         {tplName && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                            style={{ backgroundColor: C.training + '18', color: C.training }}>
-                            {tplName}
+                          <span className="flex items-center gap-1">
+                            <WorkoutBadge color={tplColor} shapeIdx={tplOrder} size={12} />
+                            <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
                           </span>
                         )}
                       </div>
@@ -199,7 +203,12 @@ export default function TrainingHistoryPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{g.name}</p>
-                                {g.muscleGroup && <p className="text-[10px] text-gray-400">{g.muscleGroup}</p>}
+                                {g.muscleGroup && (
+                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded"
+                                    style={{ backgroundColor: C.training + '18', color: C.training }}>
+                                    {g.muscleGroup}
+                                  </span>
+                                )}
                               </div>
                               {!g.isDuration && g.sets.some(s => s.weight) && (
                                 <p className="text-xs font-semibold shrink-0" style={{ color: C.training }}>

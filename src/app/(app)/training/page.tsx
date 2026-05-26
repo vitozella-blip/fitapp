@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAppStore } from '@/store/useAppStore'
 import { Dumbbell, TrendingUp, History, ClipboardList } from 'lucide-react'
+import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const COLOR = '#7aafc8'
 
@@ -108,7 +109,7 @@ export default function TrainingHubPage() {
                   {tennisDates.length === 0 ? (
                     <p className="px-2 py-3 text-xs text-gray-400">—</p>
                   ) : (
-                    tennisDates.map(date => (
+                    [...tennisDates].sort().map(date => (
                       <Link key={date} href={`/training/diary?date=${date}`}
                         className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                         <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
@@ -120,26 +121,30 @@ export default function TrainingHubPage() {
               </div>
 
               {/* Workout template columns */}
-              {templates.map(t => (
-                <div key={t.id} className="flex flex-col min-h-0">
-                  <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
-                    <p className="text-[10px] font-bold truncate" style={{ color: COLOR }}>{abbrevTemplate(t.name)}</p>
+              {templates.map(t => {
+                const tColor = SCHEDA_COLORS[t.order % SCHEDA_COLORS.length]
+                return (
+                  <div key={t.id} className="flex flex-col min-h-0">
+                    <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center gap-1.5">
+                      <WorkoutBadge color={tColor} shapeIdx={t.order} size={14} />
+                      <p className="text-[10px] font-bold truncate" style={{ color: tColor }}>{abbrevTemplate(t.name)}</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {t.dates.length === 0 ? (
+                        <p className="px-2 py-3 text-xs text-gray-400">—</p>
+                      ) : (
+                        [...t.dates].sort().map(date => (
+                          <Link key={date} href={`/training/diary?date=${date}`}
+                            className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                            <WorkoutBadge color={tColor} shapeIdx={t.order} size={8} />
+                            <span className="text-[10px] text-gray-600 dark:text-gray-300 capitalize leading-tight">{fmtDate(date)}</span>
+                          </Link>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    {t.dates.length === 0 ? (
-                      <p className="px-2 py-3 text-xs text-gray-400">—</p>
-                    ) : (
-                      [...t.dates].sort().reverse().map(date => (
-                        <Link key={date} href={`/training/diary?date=${date}`}
-                          className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                          <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
-                          <span className="text-[10px] text-gray-600 dark:text-gray-300 capitalize leading-tight">{fmtDate(date)}</span>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
