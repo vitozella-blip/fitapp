@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { History, Dumbbell, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
 
@@ -11,11 +12,12 @@ function toIso(d: Date) { return d.toISOString().slice(0, 10) }
 
 type WorkoutSummary = {
   id: string; date: string; setCount: number; exerciseCount: number
-  templateName?: string; isTennis?: boolean; tennisHours?: number; tennisTag?: string
+  templateName?: string; templateOrder?: number
+  isTennis?: boolean; tennisHours?: number; tennisTag?: string
 }
 
 type WorkoutSet = {
-  id: string; setNumber: number; reps?: number; weight?: number; isWarmup: boolean
+  id: string; setNumber: number; reps?: number; weight?: number; isWarmup: boolean; tag?: string
   exercise: { id: string; name: string; muscleGroup?: string; isDuration?: boolean } | null
 }
 
@@ -32,9 +34,13 @@ function groupByExercise(sets: WorkoutSet[]) {
   return [...map.values()]
 }
 
+const C_WARM = '#f0aa78'
+
 function fmtSet(s: WorkoutSet, isDuration: boolean) {
   if (isDuration) return s.reps ? `${s.reps}s` : '—'
-  return `${s.reps ?? '?'} × ${s.weight ?? '?'} kg`
+  // Warmup sets with no weight → 0 (done bodyweight / no load)
+  const w = s.weight ?? (s.isWarmup ? 0 : '?')
+  return `${s.reps ?? '?'} × ${w} kg`
 }
 
 function abbrevTemplate(name: string) {
@@ -119,12 +125,14 @@ export default function TrainingHistoryPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {workouts.map(w => {
+          {[...workouts].reverse().map(w => {
             const isOpen  = expanded === w.id
             const date    = new Date(w.date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
             const detail  = details[w.id]
             const groups  = detail ? groupByExercise(detail.sets ?? []) : []
             const tplName = w.templateName ? abbrevTemplate(w.templateName) : null
+            const tplOrder = w.templateOrder ?? 0
+            const tplColor = SCHEDA_COLORS[tplOrder % SCHEDA_COLORS.length]
             const tennis  = w.isTennis || !!w.tennisTag
 
             const tennisLabel = w.tennisTag
@@ -162,9 +170,9 @@ export default function TrainingHistoryPage() {
                       <div className="flex items-center gap-2 flex-wrap mt-0.5">
                         <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
                         {tplName && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                            style={{ backgroundColor: C.training + '18', color: C.training }}>
-                            {tplName}
+                          <span className="flex items-center gap-1">
+                            <WorkoutBadge color={tplColor} shapeIdx={tplOrder} size={12} />
+                            <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
                           </span>
                         )}
                       </div>
@@ -195,7 +203,12 @@ export default function TrainingHistoryPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{g.name}</p>
-                                {g.muscleGroup && <p className="text-[10px] text-gray-400">{g.muscleGroup}</p>}
+                                {g.muscleGroup && (
+                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded"
+                                    style={{ backgroundColor: C.training + '18', color: C.training }}>
+                                    {g.muscleGroup}
+                                  </span>
+                                )}
                               </div>
                               {!g.isDuration && g.sets.some(s => s.weight) && (
                                 <p className="text-xs font-semibold shrink-0" style={{ color: C.training }}>
@@ -204,16 +217,12 @@ export default function TrainingHistoryPage() {
                               )}
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {g.sets.filter(s => !s.isWarmup).map((s, j) => (
+                              {[...g.sets].sort((a, b) => a.setNumber - b.setNumber).map((s, j) => (
                                 <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: C.training + '18', color: C.training }}>
-                                  {fmtSet(s, g.isDuration)}
-                                </span>
-                              ))}
-                              {g.sets.filter(s => s.isWarmup).map((s, j) => (
-                                <span key={'w' + j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: '#94a3b820', color: '#94a3b8' }}>
-                                  {fmtSet(s, g.isDuration)}
+                                  style={s.isWarmup
+                                    ? { backgroundColor: C_WARM + '20', color: C_WARM }
+                                    : { backgroundColor: C.training + '18', color: C.training }}>
+                                  {fmtSet(s, g.isDuration)}{s.tag ? <> <span className="font-bold opacity-80">{s.tag}</span></> : null}
                                 </span>
                               ))}
                             </div>
