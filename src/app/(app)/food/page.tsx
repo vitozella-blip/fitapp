@@ -81,7 +81,7 @@ export default function FoodHubPage() {
   const avgCalPct  = stats && tg.calories > 0 ? Math.min(100, Math.round((stats.avgCalories / tg.calories) * 100)) : 0
 
   return (
-    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full">
+    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full min-h-0">
 
       {/* Header */}
       <div className="flex items-center gap-3 shrink-0">

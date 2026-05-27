@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId')
   if (!userId) return NextResponse.json([])
   try {
-    await ensureSchema()
+    await ensureSchema().catch(() => {})
     const { rows } = await pool.query(
       `SELECT * FROM "WorkoutPlan" WHERE "userId"=$1 ORDER BY "createdAt" DESC`,
       [userId]

@@ -27,7 +27,9 @@ export async function GET(req: NextRequest) {
            COUNT(s.id)::int                                     AS "setCount",
            COUNT(DISTINCT s."exerciseId")::int                   AS "exerciseCount",
            COALESCE(w."templateName", wt.name)                   AS "templateName",
-           COALESCE(w."schedaOrder", wt."order")                 AS "templateOrder",
+           (SELECT COUNT(*)::int FROM "WorkoutTemplate" t2
+            WHERE t2."planId" = wt."planId" AND t2."order" < wt."order")
+                                                                 AS "templateOrder",
            BOOL_OR(LOWER(e.name) = 'tennis')                    AS "isTennis",
            w."tennisType"                                        AS "tennisTag",
            w."tennisHours"                                       AS "tennisHours"
@@ -39,8 +41,9 @@ export async function GET(req: NextRequest) {
          WHERE w."userId" = $1
            AND ($2::text IS NULL OR w.date >= $2)
            AND ($3::text IS NULL OR w.date <= $3)
-         GROUP BY w.id, w.date, wt.name, wt."order", w."tennisType", w."tennisHours",
-                  w."templateName", w."schedaOrder"
+         GROUP BY w.id, w.date, wt.id, wt.name, wt."order", wt."planId",
+                  w."tennisType", w."tennisHours", w."templateName", w."schedaOrder"
+         HAVING COUNT(s.id) > 0
          ORDER BY w.date DESC
          LIMIT 120`,
         [userId, from || null, to || null]

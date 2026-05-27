@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAppStore } from '@/store/useAppStore'
-import { Dumbbell, TrendingUp, History, ClipboardList } from 'lucide-react'
+import { Dumbbell, TrendingUp, History, ClipboardList, Scale } from 'lucide-react'
 import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const COLOR = '#7aafc8'
@@ -11,6 +11,7 @@ const SECTIONS = [
   { label: 'Diario Allenamenti', href: '/training/diary',     icon: Dumbbell },
   { label: 'Progressi',          href: '/training/progressi', icon: TrendingUp },
   { label: 'Storico',            href: '/training/history',   icon: History },
+  { label: 'Peso',               href: '/training/peso',      icon: Scale },
   { label: 'Piano Allenamento',  href: '/training/plan',      icon: ClipboardList },
 ]
 
@@ -54,7 +55,7 @@ export default function TrainingHubPage() {
   const totalTennis = tennisDates.length
 
   return (
-    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full">
+    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full min-h-0">
 
       {/* Header */}
       <div className="flex items-center gap-3 shrink-0">
@@ -100,7 +101,7 @@ export default function TrainingHubPage() {
           ) : (
             <div
               className="flex-1 min-h-0 grid divide-x divide-gray-100 dark:divide-gray-800"
-              style={{ gridTemplateColumns: `repeat(${templates.length + 1}, 1fr)` }}
+              style={{ gridTemplateColumns: `repeat(${templates.length + 1}, minmax(0, 1fr))` }}
             >
               {/* Tennis column */}
               <div className="flex flex-col min-h-0">
@@ -123,13 +124,13 @@ export default function TrainingHubPage() {
               </div>
 
               {/* Workout template columns */}
-              {templates.map(t => {
-                const tColor = SCHEDA_COLORS[t.order % SCHEDA_COLORS.length]
+              {templates.map((t, tArrIdx) => {
+                const tIdx  = tArrIdx   // position in sorted array → always 0-based
+                const tColor = SCHEDA_COLORS[tIdx % SCHEDA_COLORS.length]
                 return (
                   <div key={t.id} className="flex flex-col min-h-0">
-                    <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center gap-1.5">
-                      <WorkoutBadge color={tColor} shapeIdx={t.order} size={14} />
-                      <p className="text-[10px] font-bold truncate" style={{ color: tColor }}>{abbrevTemplate(t.name)}</p>
+                    <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
+                      <WorkoutBadge color={tColor} shapeIdx={tIdx} size={12} />
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {t.dates.length === 0 ? (
@@ -138,7 +139,7 @@ export default function TrainingHubPage() {
                         [...t.dates].sort().map(date => (
                           <Link key={date} href={`/training/diary?date=${date}`}
                             className="flex items-center gap-0.5 px-1 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                            <WorkoutBadge color={tColor} shapeIdx={t.order} size={7} />
+                            <WorkoutBadge color={tColor} shapeIdx={tIdx} size={7} />
                             <span className="text-[9px] text-gray-600 dark:text-gray-300 capitalize leading-tight whitespace-nowrap">{fmtDate(date)}</span>
                           </Link>
                         ))

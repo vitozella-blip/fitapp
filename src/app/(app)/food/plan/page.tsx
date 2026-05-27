@@ -394,8 +394,12 @@ export default function FoodPlanPage() {
 
   const fetchPlans = useCallback(async () => {
     setLoading(true)
-    const r = await fetch(`/api/mealplan?userId=${userId}`)
-    setPlans(await r.json())
+    try {
+      const r = await fetch(`/api/mealplan?userId=${userId}`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const data = await r.json()
+      setPlans(Array.isArray(data) ? data : [])
+    } catch (e) { console.error(e); setPlans([]) }
     setLoading(false)
   }, [userId])
 

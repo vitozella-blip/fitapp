@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
 import { Check, Minus, X, LayoutDashboard } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'

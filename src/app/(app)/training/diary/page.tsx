@@ -267,7 +267,7 @@ async function mergeWeekParams(exercises: TemplateEx[], weekId: string | null): 
       if (!wp) return ex
       return {
         ...ex,
-        sets:        wp.sets        ?? ex.sets,
+        sets:        (wp.sets != null && wp.sets > 0) ? wp.sets : ex.sets,
         reps:        wp.reps        ?? ex.reps,
         restSeconds: wp.restSeconds ?? ex.restSeconds,
       }

@@ -9,9 +9,9 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
+import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const CT = '#7aafc8'
-const SCHEDA_COLORS = ['#7aafc8', '#9d8fcc', '#f0aa78', '#7dbf7d', '#c4a0d6', '#e8a5a5']
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 type WeekExercise = { id: string; name: string; sets: number; reps: string; restSeconds: number }
@@ -914,10 +914,12 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 
   const loadWeeks = useCallback(async () => {
     setLoadingWeeks(true)
-    const r = await fetch(`/api/workout-weeks?templateId=${tmpl.id}`)
-    const ws: Week[] = await r.json()
-    setWeeks(ws)
-    if (ws.length > 0) setActiveWeekId(id => id ?? ws[0].id)
+    try {
+      const r = await fetch(`/api/workout-weeks?templateId=${tmpl.id}`)
+      const ws: Week[] = await r.json()
+      setWeeks(ws)
+      if (ws.length > 0) setActiveWeekId(id => id ?? ws[0].id)
+    } catch (e) { console.error(e); setWeeks([]) }
     setLoadingWeeks(false)
   }, [tmpl.id])
 
@@ -984,13 +986,14 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   }
 
   const exCount = tmpl.exercises?.length ?? 0
-  const color = SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
+  const tIdx  = idx   // 0-based position in sorted array
+  const color = SCHEDA_COLORS[tIdx % SCHEDA_COLORS.length]
   const exercises = tmpl.exercises ?? []
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
       <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
-        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+        <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
         {editing ? (
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
@@ -1166,8 +1169,11 @@ function PlanCard({ plan, userId, onChanged }: {
 
   const loadTemplates = useCallback(async (showLoader = true) => {
     if (showLoader) setLoadingT(true)
-    const r = await fetch(`/api/workout-templates?planId=${plan.id}`)
-    setTemplates(await r.json())
+    try {
+      const r = await fetch(`/api/workout-templates?planId=${plan.id}`)
+      const data = await r.json()
+      setTemplates(Array.isArray(data) ? data : [])
+    } catch (e) { console.error(e); setTemplates([]) }
     if (showLoader) setLoadingT(false)
   }, [plan.id])
 
@@ -1270,16 +1276,19 @@ export default function TrainingPlanPage() {
   const { userId, userProfile } = useAppStore()
   const [plans, setPlans]   = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError]   = useState(false)
   const [showWizard, setShowWizard] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
-      await fetch('/api/user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: userProfile.name }) })
+      await fetch('/api/user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: userProfile.name }) }).catch(() => {})
       const r = await fetch(`/api/workout-plans?userId=${userId}`)
-      const all: Plan[] = await r.json()
-      setPlans(all.filter(p => p.name !== '__default__'))
-    } catch (e) { console.error(e) }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const all = await r.json()
+      setPlans(Array.isArray(all) ? all.filter((p: Plan) => p.name !== '__default__') : [])
+    } catch (e) { console.error(e); setError(true) }
     setLoading(false)
   }, [userId, userProfile.name])
 
@@ -1310,6 +1319,15 @@ export default function TrainingPlanPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: CT, borderTopColor: 'transparent' }} />
+        </div>
+      ) : error ? (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center space-y-3">
+          <p className="text-sm font-semibold text-gray-500">Errore nel caricamento</p>
+          <button onClick={load}
+            className="px-4 py-2 rounded-xl text-white text-sm font-semibold"
+            style={{ backgroundColor: CT }}>
+            Riprova
+          </button>
         </div>
       ) : plans.length === 0 && !showWizard ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-10 text-center">

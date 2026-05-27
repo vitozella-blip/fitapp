@@ -127,15 +127,15 @@ export default function TrainingHistoryPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {[...workouts].reverse().map(w => {
+          {workouts.map(w => {
             const isOpen  = expanded === w.id
             const date    = new Date(w.date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
             const detail  = details[w.id]
             const groups  = detail ? groupByExercise(detail.sets ?? []) : []
-            const tplName = w.templateName ? abbrevTemplate(w.templateName) : null
-            const tplOrder = w.templateOrder ?? 0
-            const tplColor = SCHEDA_COLORS[tplOrder % SCHEDA_COLORS.length]
-            const tennis  = w.isTennis || !!w.tennisTag
+            const tplName  = w.templateName ? abbrevTemplate(w.templateName) : null
+            const tplIdx   = w.templateOrder ?? 0   // already 0-based from SQL rank
+            const tplColor = SCHEDA_COLORS[tplIdx % SCHEDA_COLORS.length]
+            const tennis  = !!w.isTennis
 
             const tennisLabel = w.tennisTag
               ? w.tennisTag.charAt(0).toUpperCase() + w.tennisTag.slice(1)
@@ -173,7 +173,7 @@ export default function TrainingHistoryPage() {
                         <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
                         {tplName && (
                           <span className="flex items-center gap-1">
-                            <WorkoutBadge color={tplColor} shapeIdx={tplOrder} size={12} />
+                            <WorkoutBadge color={tplColor} shapeIdx={tplIdx} size={12} />
                             <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
                           </span>
                         )}

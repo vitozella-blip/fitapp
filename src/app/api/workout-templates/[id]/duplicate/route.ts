@@ -21,8 +21,8 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     for (const ex of exs) {
       const newExId = `wte-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
       await pool.query(
-        `INSERT INTO "WorkoutTemplateExercise" (id,"templateId","exerciseId","order",notes,"restSeconds","timerSeconds","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
-        [newExId, newId, ex.exerciseId, ex.order, ex.notes, ex.restSeconds, ex.timerSeconds]
+        `INSERT INTO "WorkoutTemplateExercise" (id,"templateId","exerciseId","order",sets,reps,"restSeconds","noteScheda","notePersonali","timerSeconds","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())`,
+        [newExId, newId, ex.exerciseId, ex.order, ex.sets||3, ex.reps||'10', ex.restSeconds, ex.noteScheda, ex.notePersonali, ex.timerSeconds]
       )
       const { rows: sets } = await pool.query(
         `SELECT * FROM "WorkoutTemplateSet" WHERE "templateExerciseId"=$1 ORDER BY "setNumber"`, [ex.id]
