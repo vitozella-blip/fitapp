@@ -43,14 +43,18 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
   try {
     await ensureTable()
+    type PairMap = Record<string, { partnerId: string; partnerName: string; type: string }>
+    const safePairs: PairMap = pairs ?? {}
     // Deduplicate: store only A→B where A < B lexicographically
     const seen = new Set<string>()
     const toInsert: { a: string; aName: string; b: string; bName: string; type: string }[] = []
-    for (const [exId, pair] of Object.entries(pairs as Record<string, { partnerId: string; partnerName: string; type: string }>)) {
+    for (const [exId, pair] of Object.entries(safePairs)) {
       const isAFirst = exId < pair.partnerId
+      // The name of exId lives in the reciprocal entry's partnerName
+      const exName = safePairs[pair.partnerId]?.partnerName ?? ''
       const [a, aName, b, bName] = isAFirst
-        ? [exId, '', pair.partnerId, pair.partnerName]
-        : [pair.partnerId, pair.partnerName, exId, '']
+        ? [exId, exName, pair.partnerId, pair.partnerName]
+        : [pair.partnerId, pair.partnerName, exId, exName]
       const key = `${a}_${b}`
       if (!seen.has(key)) {
         seen.add(key)

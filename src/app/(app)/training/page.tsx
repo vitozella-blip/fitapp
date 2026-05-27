@@ -58,11 +58,11 @@ export default function TrainingHubPage() {
     <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full min-h-0">
 
       {/* Header */}
-      <div className="flex items-center gap-3 shrink-0">
-        <img src="/icon-training.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
+      <div className="flex items-center gap-2 shrink-0">
+        <img src="/icon-training.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Allenamento</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Gestisci i tuoi workout</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Allenamento</h1>
+          <p className="text-xs text-gray-400">Gestisci i tuoi workout</p>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function TrainingHubPage() {
 
         {/* TOP — una colonna per scheda */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
-          <div className="px-4 pt-3 pb-2 shrink-0 border-b border-gray-100 dark:border-gray-800"
+          <div className="px-2 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800"
             style={{ backgroundColor: COLOR + '12' }}>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-[10px] font-bold uppercase tracking-widest mr-1" style={{ color: COLOR }}>
@@ -105,7 +105,7 @@ export default function TrainingHubPage() {
             >
               {/* Tennis column */}
               <div className="flex flex-col min-h-0">
-                <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
+                <div className="px-2 h-[32px] border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
                   <span style={{ fontSize: 13, lineHeight: 1 }}>🎾</span>
                 </div>
                 <div className="flex-1 overflow-y-auto">
@@ -129,7 +129,7 @@ export default function TrainingHubPage() {
                 const tColor = SCHEDA_COLORS[tIdx % SCHEDA_COLORS.length]
                 return (
                   <div key={t.id} className="flex flex-col min-h-0">
-                    <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
+                    <div className="px-2 h-[32px] border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
                       <WorkoutBadge color={tColor} shapeIdx={tIdx} size={12} />
                     </div>
                     <div className="flex-1 overflow-y-auto">

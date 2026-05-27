@@ -108,8 +108,11 @@ export default function MacrosPage() {
 
       {/* ── Step 1: Macro ───────────────────────────────────────────────────── */}
       {activeStep === 1 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Macro</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Macro</p>
+          </div>
+          <div className="p-4 space-y-3">
           <div className="grid grid-cols-3 gap-2">
             {MACROS.map(m => (
               <button key={m.key} onClick={() => chooseMacro(m.key)}
@@ -118,6 +121,7 @@ export default function MacrosPage() {
                 {m.label}
               </button>
             ))}
+          </div>
           </div>
         </div>
       ) : macro && collapsedRow(
@@ -129,8 +133,11 @@ export default function MacrosPage() {
       {/* ── Step 2: Quantità ────────────────────────────────────────────────── */}
       {macro && (
         activeStep === 2 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantità</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantità</p>
+            </div>
+            <div className="p-4 space-y-3">
             <div className="relative">
               <input
                 type="number"
@@ -150,6 +157,7 @@ export default function MacrosPage() {
               </p>
             )}
           </div>
+          </div>
         ) : amount && collapsedRow(
           'Quantità',
           <span className="text-base font-bold text-gray-900 dark:text-gray-100">
@@ -162,8 +170,11 @@ export default function MacrosPage() {
       {/* ── Step 3: Fonte ───────────────────────────────────────────────────── */}
       {macro && amount && Number(amount) > 0 && (
         activeStep === 3 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fonte</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fonte</p>
+            </div>
+            <div className="p-4 space-y-3">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -208,6 +219,7 @@ export default function MacrosPage() {
                 </p>
               </div>
             )}
+          </div>
           </div>
         ) : selected && collapsedRow(
           'Fonte',

@@ -109,10 +109,12 @@ export default function FoodDiaryPage() {
       </div>
 
       {/* Macro summary — full width */}
-      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 pt-2 pb-3">
-        <p className="text-center text-[10px] font-bold uppercase tracking-widest mb-1.5"
-          style={{ color: C.kcal }}>Macro</p>
-
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+        <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-800">
+          <p className="text-center text-[10px] font-bold uppercase tracking-widest"
+            style={{ color: C.kcal }}>Macro</p>
+        </div>
+        <div className="px-4 pt-2 pb-3">
         <div className="flex items-baseline justify-between mb-1.5">
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
@@ -154,6 +156,7 @@ export default function FoodDiaryPage() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
 
