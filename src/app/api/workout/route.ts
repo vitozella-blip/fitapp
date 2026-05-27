@@ -24,13 +24,15 @@ export async function GET(req: NextRequest) {
       const to   = req.nextUrl.searchParams.get('to')
       const { rows } = await pool.query(
         `SELECT w.id, w.date,
-           COUNT(s.id)::int                        AS "setCount",
-           COUNT(DISTINCT s."exerciseId")::int      AS "exerciseCount",
-           wt.name                                  AS "templateName",
-           wt."order"                               AS "templateOrder",
-           BOOL_OR(LOWER(e.name) = 'tennis')        AS "isTennis",
-           w."tennisType"                            AS "tennisTag",
-           w."tennisHours"                           AS "tennisHours"
+           COUNT(s.id)::int                                     AS "setCount",
+           COUNT(DISTINCT s."exerciseId")::int                   AS "exerciseCount",
+           COALESCE(w."templateName", wt.name)                   AS "templateName",
+           (SELECT COUNT(*)::int FROM "WorkoutTemplate" t2
+            WHERE t2."planId" = wt."planId" AND t2."order" < wt."order")
+                                                                 AS "templateOrder",
+           BOOL_OR(LOWER(e.name) = 'tennis')                    AS "isTennis",
+           w."tennisType"                                        AS "tennisTag",
+           w."tennisHours"                                       AS "tennisHours"
          FROM "WorkoutDiary" w
          LEFT JOIN "WorkoutSet"      s  ON s."workoutDiaryId" = w.id
          LEFT JOIN "Exercise"        e  ON e.id = s."exerciseId"
@@ -39,7 +41,9 @@ export async function GET(req: NextRequest) {
          WHERE w."userId" = $1
            AND ($2::text IS NULL OR w.date >= $2)
            AND ($3::text IS NULL OR w.date <= $3)
-         GROUP BY w.id, w.date, wt.name, wt."order", w."tennisType", w."tennisHours"
+         GROUP BY w.id, w.date, wt.id, wt.name, wt."order", wt."planId",
+                  w."tennisType", w."tennisHours", w."templateName", w."schedaOrder"
+         HAVING COUNT(s.id) > 0
          ORDER BY w.date DESC
          LIMIT 120`,
         [userId, from || null, to || null]
@@ -47,10 +51,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
     const { rows } = await pool.query(
-      `SELECT w.*, json_agg(json_build_object('id',s.id,'setNumber',s."setNumber",'globalIndex',s."globalIndex",'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'exercise',e) ORDER BY s."globalIndex" ASC NULLS LAST, s."setNumber" ASC) as sets
+      `SELECT w.*,
+         json_agg(
+           json_build_object(
+             'id',s.id,'setNumber',s."setNumber",'globalIndex',s."globalIndex",
+             'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",
+             'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'exercise',e
+           )
+           ORDER BY
+             COALESCE(wte."order", ex_ord.min_idx, 99999) ASC,
+             CASE WHEN COALESCE(s."isWarmup",false) THEN 0 ELSE 1 END ASC,
+             s."setNumber" ASC
+         ) AS sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
        LEFT JOIN "Exercise" e ON e.id = s."exerciseId"
+       LEFT JOIN "WorkoutWeek" ww ON ww.id = w."weekId"
+       LEFT JOIN "WorkoutTemplateExercise" wte
+         ON wte."templateId" = ww."templateId" AND wte."exerciseId" = s."exerciseId"
+       LEFT JOIN (
+         SELECT "workoutDiaryId", "exerciseId",
+                MIN(COALESCE("globalIndex", 99999)) AS min_idx
+         FROM "WorkoutSet"
+         GROUP BY "workoutDiaryId", "exerciseId"
+       ) ex_ord ON ex_ord."workoutDiaryId" = w.id AND ex_ord."exerciseId" = s."exerciseId"
        WHERE w."userId" = $1 AND w.date = $2
        GROUP BY w.id`,
       [userId, date]

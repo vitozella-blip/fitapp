@@ -8,7 +8,9 @@ import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
 
-function toIso(d: Date) { return d.toISOString().slice(0, 10) }
+function toIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 type WorkoutSummary = {
   id: string; date: string; setCount: number; exerciseCount: number
@@ -130,10 +132,10 @@ export default function TrainingHistoryPage() {
             const date    = new Date(w.date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
             const detail  = details[w.id]
             const groups  = detail ? groupByExercise(detail.sets ?? []) : []
-            const tplName = w.templateName ? abbrevTemplate(w.templateName) : null
-            const tplOrder = w.templateOrder ?? 0
-            const tplColor = SCHEDA_COLORS[tplOrder % SCHEDA_COLORS.length]
-            const tennis  = w.isTennis || !!w.tennisTag
+            const tplName  = w.templateName ? abbrevTemplate(w.templateName) : null
+            const tplIdx   = w.templateOrder ?? 0   // already 0-based from SQL rank
+            const tplColor = SCHEDA_COLORS[tplIdx % SCHEDA_COLORS.length]
+            const tennis  = !!w.isTennis
 
             const tennisLabel = w.tennisTag
               ? w.tennisTag.charAt(0).toUpperCase() + w.tennisTag.slice(1)
@@ -171,7 +173,7 @@ export default function TrainingHistoryPage() {
                         <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
                         {tplName && (
                           <span className="flex items-center gap-1">
-                            <WorkoutBadge color={tplColor} shapeIdx={tplOrder} size={12} />
+                            <WorkoutBadge color={tplColor} shapeIdx={tplIdx} size={12} />
                             <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
                           </span>
                         )}
@@ -217,7 +219,7 @@ export default function TrainingHistoryPage() {
                               )}
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {[...g.sets].sort((a, b) => a.setNumber - b.setNumber).map((s, j) => (
+                              {g.sets.map((s, j) => (
                                 <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                                   style={s.isWarmup
                                     ? { backgroundColor: C_WARM + '20', color: C_WARM }

@@ -42,7 +42,8 @@ export async function GET(req: NextRequest) {
     // (set when logging sets with an active scheda) → derive template from week
     if (r.weekId) {
       const { rows: wRows } = await pool.query(
-        `SELECT ww.id, ww.name, ww."order", wt.id AS "templateId", wt.name AS "templateName"
+        `SELECT ww.id, ww.name, ww."order" AS "weekOrder",
+                wt.id AS "templateId", wt.name AS "templateName", wt."order" AS "templateOrder"
          FROM "WorkoutWeek" ww
          JOIN "WorkoutTemplate" wt ON wt.id = ww."templateId"
          WHERE ww.id = $1`,
@@ -55,9 +56,9 @@ export async function GET(req: NextRequest) {
           name: w.templateName,
           weekId: r.weekId,
           weekName: w.name,
-          weekOrder: w.order + 1,
+          weekOrder: w.weekOrder + 1,
           color: null,
-          order: null,
+          order: w.templateOrder,
         })
       }
     }

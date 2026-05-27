@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     if (!plans.length) return NextResponse.json({ templates: [] })
 
     const [{ rows }, { rows: tennisRows }] = await Promise.all([
+      // Workout template dates: match via templateId OR weekId→WorkoutWeek→template
       pool.query(
         `SELECT
            t.id, t.name, t."order",
@@ -44,19 +45,31 @@ export async function GET(req: NextRequest) {
              '[]'
            ) AS dates
          FROM "WorkoutTemplate" t
-         LEFT JOIN "WorkoutWeek" ww ON ww."templateId" = t.id
-         LEFT JOIN "WorkoutDiary" wd ON wd."weekId" = ww.id AND wd."userId" = $1
+         LEFT JOIN "WorkoutDiary" wd ON wd."userId" = $1
+           AND (
+             wd."templateId" = t.id
+             OR wd."weekId" IN (
+               SELECT id FROM "WorkoutWeek" WHERE "templateId" = t.id
+             )
+           )
          WHERE t."planId" = $4
          GROUP BY t.id, t.name, t."order"
          ORDER BY t."order"`,
         [userId, from, next, plans[0].id]
       ),
+      // Tennis dates: sessioni dedicate (tennisType) + esercizi 'Tennis' in WorkoutSet
       pool.query(
-        `SELECT DISTINCT w.date::text AS date
+        `SELECT DISTINCT date::text AS date
+         FROM "WorkoutDiary"
+         WHERE "userId" = $1
+           AND "tennisType" IS NOT NULL
+           AND date >= $2 AND date < $3
+         UNION
+         SELECT DISTINCT w.date::text AS date
          FROM "WorkoutDiary" w
          JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
          JOIN "Exercise" e ON e.id = s."exerciseId"
-         WHERE w."userId" = $1 AND e.name = 'Tennis'
+         WHERE w."userId" = $1 AND e.name ILIKE 'Tennis'
            AND w.date >= $2 AND w.date < $3
          ORDER BY date DESC`,
         [userId, from, next]

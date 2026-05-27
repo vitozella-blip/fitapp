@@ -31,10 +31,21 @@ export async function GET(req: NextRequest) {
       ),
       pool.query(
         `SELECT w.id, COUNT(DISTINCT s."exerciseId") as "exerciseCount", COUNT(s.id) as "setCount",
-                w."templateId", w."templateName", w."schedaOrder", w."schedaColor",
-                w."weekId", w."weekName", w."weekOrder", w."tennisType", w."tennisHours"
-         FROM "WorkoutDiary" w LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId"=w.id
-         WHERE w."userId"=$1 AND w.date=$2 GROUP BY w.id`,
+                COALESCE(w."templateId", wt2.id)                     AS "templateId",
+                COALESCE(w."templateName", wt.name, wt2.name)        AS "templateName",
+                COALESCE(w."schedaOrder", wt."order", wt2."order")   AS "schedaOrder",
+                w."schedaColor",
+                w."weekId",
+                COALESCE(w."weekName", ww.name)                      AS "weekName",
+                COALESCE(w."weekOrder", ww."order" + 1)              AS "weekOrder",
+                w."tennisType", w."tennisHours"
+         FROM "WorkoutDiary" w
+         LEFT JOIN "WorkoutSet"      s   ON s."workoutDiaryId" = w.id
+         LEFT JOIN "WorkoutTemplate" wt  ON wt.id = w."templateId"
+         LEFT JOIN "WorkoutWeek"     ww  ON ww.id = w."weekId"
+         LEFT JOIN "WorkoutTemplate" wt2 ON wt2.id = ww."templateId"
+         WHERE w."userId"=$1 AND w.date=$2
+         GROUP BY w.id, wt.name, wt."order", wt2.id, wt2.name, wt2."order", ww.name, ww."order"`,
         [userId, date]
       ),
       pool.query(

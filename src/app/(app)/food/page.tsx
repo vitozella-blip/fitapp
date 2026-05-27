@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAppStore } from '@/store/useAppStore'
+import { localToday } from '@/lib/utils'
 import { BookOpen, Apple, ShoppingCart, ChefHat, Target, CalendarDays } from 'lucide-react'
 
 const COLOR = '#e8924a'
@@ -36,14 +37,14 @@ type StatsData = {
 }
 
 function toIso(d: Date) {
-  return d.toISOString().slice(0, 10)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default function FoodHubPage() {
-  const { userId, selectedDate, userProfile } = useAppStore()
+  const { userId, userProfile } = useAppStore()
   const [data, setData] = useState<MacroData | null>(null)
 
-  const today = selectedDate
+  const today = localToday()
   const firstOfMonth = today.slice(0, 8) + '01'
   const [from, setFrom] = useState(firstOfMonth)
   const [to, setTo]     = useState(today)
@@ -51,11 +52,11 @@ export default function FoodHubPage() {
   const [statsLoading, setStatsLoading] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/dashboard?userId=${userId}&date=${selectedDate}`)
+    fetch(`/api/dashboard?userId=${userId}&date=${today}`)
       .then(r => r.json())
       .then(d => setData(d))
       .catch(() => {})
-  }, [userId, selectedDate])
+  }, [userId, today])
 
   useEffect(() => {
     if (!from || !to || from > to) return
@@ -80,7 +81,7 @@ export default function FoodHubPage() {
   const avgCalPct  = stats && tg.calories > 0 ? Math.min(100, Math.round((stats.avgCalories / tg.calories) * 100)) : 0
 
   return (
-    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full">
+    <div className="max-w-2xl mx-auto md:max-w-none flex flex-col gap-2 md:gap-4 h-full min-h-0">
 
       {/* Header */}
       <div className="flex items-center gap-3 shrink-0">

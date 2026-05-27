@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { localToday } from '@/lib/utils'
 
 export type UserProfile = {
   id: string
@@ -43,7 +44,7 @@ export const useAppStore = create<AppStore>()(
       return {
         userId: initialId,
         users: [{ id: initialId, name: 'Utente' }],
-        selectedDate: new Date().toISOString().split('T')[0],
+        selectedDate: localToday(),
         setSelectedDate: (d) => set({ selectedDate: d }),
         workoutDataVersion: 0,
         bumpWorkoutVersion: () => set(s => ({ workoutDataVersion: s.workoutDataVersion + 1 })),

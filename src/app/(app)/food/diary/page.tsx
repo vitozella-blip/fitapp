@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, BookOpen } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
-import { cn } from '@/lib/utils'
+import { cn, localToday } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 
@@ -26,18 +26,31 @@ type Entry = {
 const calc = (v: number, q: number) => Math.round((v * q) / 100)
 
 export default function FoodDiaryPage() {
-  const { userId, selectedDate, setSelectedDate, userProfile } = useAppStore()
+  const userId      = useAppStore(s => s.userId)
+  const userProfile = useAppStore(s => s.userProfile)
+  const [selectedDate, setSelectedDate] = useState(localToday)
   const [entries, setEntries] = useState<Entry[]>([])
   const [modal, setModal] = useState<string | null>(null)
   const [freeMeals, setFreeMeals] = useState<Set<string>>(new Set())
+  const abortRef = useRef<AbortController | null>(null)
 
   const fetchEntries = useCallback(async () => {
-    const [diary, freeList] = await Promise.all([
-      fetch(`/api/diary?userId=${userId}&date=${selectedDate}`).then(r => r.json()),
-      fetch(`/api/freemeals?userId=${userId}&date=${selectedDate}`).then(r => r.json()).catch(() => []),
-    ])
-    setEntries(diary)
-    setFreeMeals(new Set(Array.isArray(freeList) ? freeList : []))
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    try {
+      const [diary, freeList] = await Promise.all([
+        fetch(`/api/diary?userId=${userId}&date=${selectedDate}`, { signal: controller.signal }).then(r => r.json()),
+        fetch(`/api/freemeals?userId=${userId}&date=${selectedDate}`, { signal: controller.signal }).then(r => r.json()).catch((e: unknown) => {
+          if ((e as { name?: string })?.name === 'AbortError') throw e
+          return []
+        }),
+      ])
+      setEntries(diary)
+      setFreeMeals(new Set(Array.isArray(freeList) ? freeList : []))
+    } catch (e) {
+      if ((e as { name?: string })?.name !== 'AbortError') throw e
+    }
   }, [userId, selectedDate])
 
   useEffect(() => { fetchEntries() }, [fetchEntries])
