@@ -130,8 +130,11 @@ export default function PesoPage() {
       <PageHeader title="Peso" icon={Scale} accent="training" subtitle="Monitora il tuo peso nel tempo" />
 
       {/* Input */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex flex-col gap-3">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C }}>Aggiungi misurazione</p>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C }}>Aggiungi misurazione</p>
+        </div>
+        <div className="p-4 flex flex-col gap-3">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <input
@@ -157,6 +160,7 @@ export default function PesoPage() {
             <Plus size={18} />
           </button>
         </div>
+        </div>
       </div>
 
       {/* Stats */}
@@ -179,10 +183,13 @@ export default function PesoPage() {
 
       {/* Chart */}
       {chartData.length > 1 && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: C }}>
-            Andamento — {chartData.length} misurazioni
-          </p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: C }}>
+              Andamento — {chartData.length} misurazioni
+            </p>
+          </div>
+          <div className="p-4">
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} />
@@ -209,6 +216,7 @@ export default function PesoPage() {
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 

@@ -13,14 +13,14 @@ export function PageHeader({ title, subtitle, icon: Icon, accent = 'primary', ac
   const s = iconStyle[accent]
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {Icon && (
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: s.bg, color: s.color }}>
-            <Icon size={24} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: s.bg, color: s.color }}>
+            <Icon size={20} />
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{title}</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h1>
           {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
         </div>
       </div>
