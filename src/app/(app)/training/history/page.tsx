@@ -127,7 +127,7 @@ export default function TrainingHistoryPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {workouts.map(w => {
+          {[...workouts].reverse().map(w => {
             const isOpen  = expanded === w.id
             const date    = new Date(w.date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
             const detail  = details[w.id]
