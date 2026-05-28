@@ -11,6 +11,58 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json(null)
 
   try {
+    // ── All exercises: in any plan OR ever logged ─────────────────────────
+    if (templates === 'exercises') {
+      const { rows } = await pool.query(
+        `WITH user_exercises AS (
+           -- from plans
+           SELECT DISTINCT e.id, e.name
+           FROM "WorkoutTemplateExercise" te
+           JOIN "WorkoutTemplate" t  ON t.id  = te."templateId"
+           JOIN "WorkoutPlan"     pl ON pl.id = t."planId" AND pl."userId" = $1
+           JOIN "Exercise"        e  ON e.id  = te."exerciseId"
+           WHERE LOWER(e.name) != 'tennis'
+           UNION
+           -- ever logged
+           SELECT DISTINCT e.id, e.name
+           FROM "WorkoutSet"   s
+           JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
+           JOIN "Exercise"     e ON e.id = s."exerciseId"
+           WHERE LOWER(e.name) != 'tennis'
+         ),
+         stats AS (
+           SELECT s."exerciseId",
+                  COUNT(DISTINCT w.date)::int                          AS sessions,
+                  MAX(s.weight)                                        AS "maxWeight",
+                  MAX(s.duration)                                      AS "maxDuration",
+                  BOOL_OR(s.duration IS NOT NULL AND s.weight IS NULL) AS "isDuration"
+           FROM "WorkoutSet"   s
+           JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
+           GROUP BY s."exerciseId"
+         ),
+         plan_names AS (
+           SELECT te."exerciseId",
+                  ARRAY_REMOVE(ARRAY_AGG(DISTINCT pl.name ORDER BY pl.name), NULL) AS "planNames"
+           FROM "WorkoutTemplateExercise" te
+           JOIN "WorkoutTemplate" t  ON t.id  = te."templateId"
+           JOIN "WorkoutPlan"     pl ON pl.id = t."planId" AND pl."userId" = $1
+           GROUP BY te."exerciseId"
+         )
+         SELECT ue.id, ue.name,
+                COALESCE(st.sessions, 0)::int        AS sessions,
+                st."maxWeight",
+                st."maxDuration",
+                COALESCE(st."isDuration", false)      AS "isDuration",
+                COALESCE(pn."planNames", '{}')        AS "planNames"
+         FROM user_exercises ue
+         LEFT JOIN stats      st ON st."exerciseId" = ue.id
+         LEFT JOIN plan_names pn ON pn."exerciseId" = ue.id
+         ORDER BY ue.name ASC`,
+        [userId]
+      )
+      return NextResponse.json(rows)
+    }
+
     // ── List of workout templates (schede) ───────────────────────────────
     if (templates === '1') {
       const { rows } = await pool.query(

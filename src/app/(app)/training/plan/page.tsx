@@ -1061,7 +1061,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
           </div>
 
           <div className="border-t border-gray-50 dark:border-gray-800">
-            <button onClick={() => setWeeksCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 text-left" style={{ backgroundColor: color + '0c' }}>
+            <div onClick={() => setWeeksCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer" style={{ backgroundColor: color + '0c' }}>
               <Chevron size={12} className={cn('text-gray-400 transition-transform shrink-0', weeksCollapsed && '-rotate-90')} />
               <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">
                 Week <span className="font-normal opacity-60">({weeks.length})</span>
@@ -1072,7 +1072,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                   <Plus size={11} />
                 </button>
               )}
-            </button>
+            </div>
             {!weeksCollapsed && (
               loadingWeeks ? (
                 <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color }} /></div>
@@ -1090,15 +1090,15 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                           <button onClick={() => setRenamingWeekId(null)} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
                         </div>
                       ) : (
-                        <button key={w.id} onClick={() => setActiveWeekId(w.id)}
-                          className={cn('flex items-center justify-between gap-0.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors', activeWeekId === w.id ? 'text-white' : 'border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800')}
+                        <div key={w.id} onClick={() => setActiveWeekId(w.id)}
+                          className={cn('flex items-center justify-between gap-0.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer', activeWeekId === w.id ? 'text-white' : 'border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800')}
                           style={activeWeekId === w.id ? { backgroundColor: color, borderColor: color } : {}}>
                           <span className="truncate">{w.name}</span>
                           <WeekMenuBtn
                             onRename={() => { setRenamingWeekId(w.id); setRenameVal(w.name) }}
                             onDuplicate={() => duplicateWeek(w.id)}
                             onDelete={() => deleteWeek(w.id)} />
-                        </button>
+                        </div>
                       )
                     ))}
                     {addingWeek && (

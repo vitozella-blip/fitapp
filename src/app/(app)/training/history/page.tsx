@@ -52,13 +52,30 @@ function abbrevTemplate(name: string) {
   return `WO ${m[1]} — ${abbrev}`
 }
 
+type Period = 'settimana' | 'mese' | 'mese_scorso' | 'custom'
+
 export default function TrainingHistoryPage() {
   const userId = useAppStore((s) => s.userId)
 
   const today = toIso(new Date())
-  const firstOfMonth = today.slice(0, 8) + '01'
-  const [from, setFrom] = useState(firstOfMonth)
+  const [period, setPeriod] = useState<Period>('mese')
+  const [from, setFrom] = useState(today.slice(0, 8) + '01')
   const [to, setTo]     = useState(today)
+
+  function applyPeriod(p: Period) {
+    setPeriod(p)
+    const d = new Date(today + 'T00:00:00')
+    if (p === 'settimana') {
+      const f = new Date(d); f.setDate(d.getDate() - 6)
+      setFrom(toIso(f)); setTo(today)
+    } else if (p === 'mese') {
+      setFrom(today.slice(0, 8) + '01'); setTo(today)
+    } else if (p === 'mese_scorso') {
+      const first = new Date(d.getFullYear(), d.getMonth() - 1, 1)
+      const last  = new Date(d.getFullYear(), d.getMonth(), 0)
+      setFrom(toIso(first)); setTo(toIso(last))
+    }
+  }
 
   const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
   const [loading, setLoading]   = useState(false)
@@ -92,26 +109,42 @@ export default function TrainingHistoryPage() {
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
       <PageHeader title="Storico Allenamenti" icon={History} accent="training" />
 
-      {/* Date filter */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3"
+      {/* Period filter */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2"
         style={{ backgroundColor: C.training + '0e' }}>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-bold uppercase tracking-widest shrink-0" style={{ color: C.training }}>Periodo</p>
-          <div className="flex items-center gap-1.5 flex-1">
+          <div className="flex items-center gap-1 flex-1">
+            {(['settimana', 'mese', 'mese_scorso', 'custom'] as const).map(p => (
+              <button key={p} onClick={() => applyPeriod(p)}
+                className={cn(
+                  'shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold transition-colors',
+                  period === p
+                    ? 'text-white'
+                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700'
+                )}
+                style={period === p ? { backgroundColor: C.training } : undefined}>
+                {p === 'settimana' ? 'Sett.' : p === 'mese' ? 'Mese' : p === 'mese_scorso' ? 'Prec.' : 'Custom'}
+              </button>
+            ))}
+          </div>
+          {calDays && (
+            <span className="text-[10px] font-semibold shrink-0" style={{ color: C.training }}>
+              {calDays}g
+            </span>
+          )}
+        </div>
+        {period === 'custom' && (
+          <div className="flex items-center gap-1.5 mt-1.5">
             <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-              className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none"
+              className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-blue-300"
               style={{ width: 110 }} />
             <span className="text-[10px] text-gray-400 shrink-0">→</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)}
-              className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none"
+              className="min-w-0 px-1.5 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[10px] font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-blue-300"
               style={{ width: 110 }} />
-            {calDays && (
-              <span className="text-[10px] font-semibold shrink-0" style={{ color: C.training }}>
-                {calDays} giorni
-              </span>
-            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* List */}
