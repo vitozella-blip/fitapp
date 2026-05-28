@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Search, X, Plus, Star, ChevronDown, Trash2 } from 'lucide-react'
+import { Search, X, Plus, Star, ChevronDown, Trash2, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
