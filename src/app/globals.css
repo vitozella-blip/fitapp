@@ -12,3 +12,26 @@
   --macro-salt:     #f0e080;
   --macro-training: #7aafc8;
 }
+
+/* ── Light-mode contrast boost ─────────────────────────────────────────
+   Each gray step shifted ~1 shade darker so muted text and borders
+   meet WCAG AA on white backgrounds.
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  /* backgrounds: more separation between page (gray-50) and cards (white) */
+  --color-gray-50:  oklch(96.7% 0.003 264.542);   /* ← was 98.5% */
+  --color-gray-100: oklch(92.8% 0.006 264.531);   /* ← was 96.7% – crisper borders */
+  --color-gray-200: oklch(87.2% 0.01  258.338);   /* ← was 92.8% – card edges visible */
+  /* text / icons: secondary labels now readable */
+  --color-gray-300: oklch(70.7% 0.022 261.325);   /* ← was 87.2% – disabled/hint text */
+  --color-gray-400: oklch(55.1% 0.027 264.364);   /* ← was 70.7% – ~4.6:1 on white ✓ */
+}
+
+/* Dark mode: restore original Tailwind v4 values so dark UI is unchanged */
+.dark {
+  --color-gray-50:  oklch(98.5% 0.002 247.839);
+  --color-gray-100: oklch(96.7% 0.003 264.542);
+  --color-gray-200: oklch(92.8% 0.006 264.531);
+  --color-gray-300: oklch(87.2% 0.01  258.338);
+  --color-gray-400: oklch(70.7% 0.022 261.325);
+}
