@@ -237,10 +237,11 @@ export default function DashboardPage() {
         <button onClick={() => router.push('/food/diary')}
           className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200/70 dark:border-orange-900/50 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform">
 
-          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wide"
+          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center">
+            <div className="w-[14px] shrink-0" />
+            <p className="flex-1 text-center text-sm font-bold uppercase tracking-wide"
               style={{ color: '#e8924a' }}>Pasti</p>
-            <ChevronRight size={14} style={{ color: '#e8924a' }} className="opacity-60" />
+            <ChevronRight size={14} style={{ color: '#e8924a' }} className="opacity-60 shrink-0" />
           </div>
 
           <div className="flex-1 min-h-0 px-1 py-2 grid grid-cols-5 gap-1">
@@ -279,10 +280,11 @@ export default function DashboardPage() {
         <button onClick={() => router.push('/training/diary')}
           className="flex-1 md:flex-none bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform">
 
-          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <p className="text-sm font-bold uppercase tracking-wide"
+          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center">
+            <div className="w-[14px] shrink-0" />
+            <p className="flex-1 text-center text-sm font-bold uppercase tracking-wide"
               style={{ color: C.training }}>Allenamento</p>
-            <ChevronRight size={14} style={{ color: C.training }} className="opacity-60" />
+            <ChevronRight size={14} style={{ color: C.training }} className="opacity-60 shrink-0" />
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
