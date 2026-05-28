@@ -120,6 +120,65 @@ function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: 
 }
 
 
+// ── Swipeable delete row (header cards) ───────────────────────────────────────
+const SNAP_DEL  = 70
+const THRESH_DEL = 30
+function SwipeableDeleteRow({ children, onDelete, color }: { children: React.ReactNode; onDelete: () => void; color?: string }) {
+  const rowRef   = useRef<HTMLDivElement>(null)
+  const startX   = useRef(0)
+  const curX     = useRef(0)
+  const snapped  = useRef(false)
+
+  function move(x: number) {
+    curX.current = x
+    if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)`
+  }
+  function snapTo(open: boolean) {
+    snapped.current = open
+    const x = open ? -SNAP_DEL : 0
+    if (rowRef.current) {
+      rowRef.current.style.transition = 'transform 0.2s ease'
+      rowRef.current.style.transform  = `translateX(${x}px)`
+      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210)
+    }
+    curX.current = x
+  }
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX
+    if (rowRef.current) rowRef.current.style.transition = ''
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    const dx  = e.touches[0].clientX - startX.current
+    const raw = (snapped.current ? -SNAP_DEL : 0) + dx
+    move(Math.max(-SNAP_DEL, Math.min(0, raw)))
+  }
+  function onTouchEnd() {
+    curX.current < -THRESH_DEL ? snapTo(true) : snapTo(false)
+  }
+  function onClickCapture(e: React.MouseEvent) {
+    if (snapped.current) { e.stopPropagation(); snapTo(false) }
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-2"
+        style={{ width: SNAP_DEL, backgroundColor: '#fee2e2' }}>
+        <button onClick={() => { snapTo(false); onDelete() }}
+          className="w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-red-500">
+          <X size={14} className="text-white" />
+          <span className="text-[9px] font-bold text-white leading-none">del</span>
+        </button>
+      </div>
+      <div ref={rowRef} className="relative z-10"
+        style={{ backgroundColor: color ? color + '22' : undefined }}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClickCapture={onClickCapture}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // ── Scheda + Week picker (bottom sheet) ───────────────────────────────────────
 function SchedaPickerPanel({ userId, onPick, onClose }: {
   userId: string
@@ -988,17 +1047,15 @@ export default function TrainingDiaryPage() {
       {/* Tennis pill (collapsible) */}
       {tennisActive && (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: C_TENNIS + '22' }}>
+          <SwipeableDeleteRow onDelete={toggleTennis} color={C_TENNIS}>
+          <div className="px-4 py-2.5 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
             <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
               onClick={() => setTennisCollapsed(c => !c)}>
               Tennis{tennisMeta.type ? ` — ${tennisMeta.type}` : ''}{tennisMeta.hours ? <span className="normal-case font-semibold"> {tennisMeta.hours}h</span> : ''}
             </button>
-            <button onClick={toggleTennis} disabled={tennisLoading}
-              className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0 disabled:opacity-50">
-              <X size={13} />
-            </button>
           </div>
+          </SwipeableDeleteRow>
           {!tennisCollapsed && (
             <div className="px-4 pb-3 space-y-2 border-t border-gray-100 dark:border-gray-700">
               <div className="flex gap-2 pt-2">
@@ -1594,8 +1651,8 @@ export default function TrainingDiaryPage() {
           <>
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
             {/* Scheda header */}
+            <SwipeableDeleteRow onDelete={removeScheda} color={schedaColor}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
-              style={{ backgroundColor: schedaColor + '22' }}
               onClick={() => setSchedaCollapsed(c => !c)}>
               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
               <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
@@ -1606,11 +1663,8 @@ export default function TrainingDiaryPage() {
                   {schedaInfo.weekName}
                 </span>
               )}
-              <button onClick={e => { e.stopPropagation(); removeScheda() }}
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors shrink-0">
-                <X size={13} />
-              </button>
             </div>
+            </SwipeableDeleteRow>
 
             {/* Exercise rows (hidden when collapsed) */}
             {!schedaCollapsed && (

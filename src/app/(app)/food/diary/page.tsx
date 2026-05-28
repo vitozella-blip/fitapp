@@ -94,14 +94,12 @@ function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) {
   return (
     <div className="relative overflow-hidden">
       {/* Left action: Modifica (revealed by swipe right) */}
-      <div className="absolute inset-y-0 left-0 flex items-center pl-2"
-        style={{ width: SNAP, backgroundColor: C.carbs + '22' }}>
-        <button onClick={handleEditClick}
-          className="w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"
-          style={{ backgroundColor: C.carbs }}>
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center"
+        style={{ width: SNAP, backgroundColor: C.carbs }}>
+        <div className="flex flex-col items-center gap-0.5" onClick={handleEditClick}>
           <Check size={14} className="text-white" />
           <span className="text-[9px] font-bold text-white leading-none">mod</span>
-        </button>
+        </div>
       </div>
 
       {/* Right action: Elimina (revealed by swipe left) */}
