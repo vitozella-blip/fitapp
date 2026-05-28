@@ -101,7 +101,7 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
         )}
 
         {!selected && q.length < 2 && <p className="text-sm text-gray-400 text-center py-4">Scrivi almeno 2 caratteri</p>}
-        {!selected && q.length >= 2 && !loading && results.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Nessun esercizio trovato</p>}
+        {!selected && q.length >= 2 && displayResults.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Nessun esercizio trovato</p>}
       </div>
     </div>
   )
