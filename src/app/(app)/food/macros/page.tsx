@@ -191,7 +191,7 @@ export default function MacrosPage() {
                 autoFocus
                 className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-gray-400"
               />
-              {selected && !loading && (
+              {selected && (
                 <button onClick={clearFood} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   <X size={15} />
                 </button>
