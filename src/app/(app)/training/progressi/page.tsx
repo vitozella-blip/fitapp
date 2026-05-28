@@ -124,7 +124,7 @@ export default function ProgressiPage() {
             ref={inputRef}
             value={q}
             onChange={e => setQ(e.target.value)}
-            placeholder="Cerca esercizio o gruppo muscolare..."
+            placeholder="Cerca esercizio o programma..."
             className="w-full pl-7 pr-7 py-1.5 bg-transparent text-sm text-gray-900 dark:text-gray-100 outline-none placeholder:text-gray-400"
           />
           {q && (
