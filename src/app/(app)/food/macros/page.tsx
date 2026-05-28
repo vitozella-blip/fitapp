@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { Search, Target, Loader2, X, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { Search, Target, X, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
@@ -28,19 +28,26 @@ export default function MacrosPage() {
   const [q, setQ]                 = useState('')
   const [results, setResults]     = useState<Food[]>([])
   const [selected, setSelected]   = useState<Food | null>(null)
-  const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState<Result | null>(null)
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
+    fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
+  }, [userId])
+
+  const displayResults = useMemo(() => {
+    if (!q.trim()) return results
+    const lower = q.trim().toLowerCase()
+    return results.filter(f => f.name.toLowerCase().includes(lower) || (f.brand?.toLowerCase().includes(lower) ?? false))
+  }, [results, q])
+
+  useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 1) { setResults([]); return }
+    if (q.length < 1) return
     timer.current = setTimeout(async () => {
-      setLoading(true)
       const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
       setResults(await r.json())
-      setLoading(false)
-    }, 0)
+    }, 200)
   }, [q, userId])
 
   useEffect(() => {
@@ -184,7 +191,6 @@ export default function MacrosPage() {
                 autoFocus
                 className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-gray-400"
               />
-              {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
               {selected && !loading && (
                 <button onClick={clearFood} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   <X size={15} />
@@ -192,9 +198,9 @@ export default function MacrosPage() {
               )}
             </div>
 
-            {results.length > 0 && !selected && (
+            {displayResults.length > 0 && !selected && (
               <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-50 dark:divide-gray-800">
-                {results.map(f => (
+                {displayResults.map(f => (
                   <button key={f.id} onClick={() => selectFood(f)}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">

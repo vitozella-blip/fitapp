@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Search, Plus, X, Check, Trash2, ShoppingCart, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -19,7 +19,6 @@ export default function ShoppingListPage() {
   const [qty,      setQty]      = useState('')
   const [selected, setSelected] = useState<Food | null>(null)
   const [results,  setResults]  = useState<Food[]>([])
-  const [searching, setSearching] = useState(false)
   const [searched,  setSearched]  = useState(false)
   const [adding,   setAdding]   = useState(false)
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -35,18 +34,25 @@ export default function ShoppingListPage() {
   useEffect(() => { fetchItems() }, [fetchItems])
 
   useEffect(() => {
+    fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) { setResults(d); setSearched(true) } }).catch(() => {})
+  }, [userId])
+
+  const displayResults = useMemo(() => {
+    if (!q.trim() || selected) return []
+    const lower = q.trim().toLowerCase()
+    return results.filter(f => f.name.toLowerCase().includes(lower) || (f.brand?.toLowerCase().includes(lower) ?? false))
+  }, [results, q, selected])
+
+  useEffect(() => {
     clearTimeout(timer.current)
-    if (selected || q.length < 1) { setResults([]); setSearched(false); return }
+    if (selected || q.length < 1) return
     timer.current = setTimeout(async () => {
-      setSearching(true)
       try {
         const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}&limit=8`)
         const data = await r.json()
         setResults(Array.isArray(data) ? data : [])
-      } catch { setResults([]) }
-      setSearched(true)
-      setSearching(false)
-    }, 0)
+      } catch {}
+    }, 200)
   }, [q, userId, selected])
 
   async function handleAdd() {
@@ -100,8 +106,8 @@ export default function ShoppingListPage() {
 
   const unchecked = items.filter(i => !i.checked)
   const checked   = items.filter(i => i.checked)
-  const showDropdown = !selected && results.length > 0
-  const showNewHint  = !selected && searched && results.length === 0 && q.length >= 2
+  const showDropdown = !selected && displayResults.length > 0
+  const showNewHint  = !selected && searched && displayResults.length === 0 && q.length >= 2
 
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none">
@@ -119,10 +125,7 @@ export default function ShoppingListPage() {
             placeholder="Cerca o scrivi un alimento..."
             className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
           />
-          {searching && (
-            <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
-          )}
-          {selected && !searching && (
+          {selected && (
             <button onClick={() => { setSelected(null); setQ('') }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5">
               <X size={13} />
@@ -133,9 +136,9 @@ export default function ShoppingListPage() {
         {/* Autocomplete results */}
         {showDropdown && (
           <div className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-50 dark:divide-gray-800">
-            {results.map(f => (
+            {displayResults.map(f => (
               <button key={f.id}
-                onClick={() => { setSelected(f); setQ(f.name + (f.brand ? ` — ${f.brand}` : '')); setResults([]) }}
+                onClick={() => { setSelected(f); setQ(f.name + (f.brand ? ` — ${f.brand}` : '')) }}
                 className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{f.name}</span>
                 {f.brand && <span className="text-xs text-gray-400"> — {f.brand}</span>}

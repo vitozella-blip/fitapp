@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -121,7 +121,6 @@ function UnitSelect({ value, onChange }: { value: Unit; onChange: (v: Unit) => v
 function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: SelectedItem) => void }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Food[]>([])
-  const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState<{ name: string; brand?: string; food?: Food } | null>(null)
   const [qty, setQty] = useState('')
@@ -137,16 +136,24 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
   }, [])
 
   useEffect(() => {
+    fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
+  }, [userId])
+
+  const displayResults = useMemo(() => {
+    if (!q.trim()) return results
+    const lower = q.trim().toLowerCase()
+    return results.filter(f => f.name.toLowerCase().includes(lower) || (f.brand?.toLowerCase().includes(lower) ?? false))
+  }, [results, q])
+
+  useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 1) { setResults([]); setOpen(false); return }
-    setOpen(true) // immediately open to show free-text option
+    if (q.length < 1) { setOpen(false); return }
+    setOpen(true)
     timer.current = setTimeout(async () => {
-      setLoading(true)
       const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
       const data = await r.json()
       setResults(Array.isArray(data) ? data : [])
-      setLoading(false)
-    }, 0)
+    }, 200)
   }, [q, userId])
 
   function pick(food?: Food, freeName?: string) {
@@ -200,12 +207,11 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca alimento..."
           className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-        {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
       </div>
 
-      {open && (results.length > 0 || q.trim().length >= 2) && (
+      {open && (displayResults.length > 0 || q.trim().length >= 2) && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto">
-          {results.map(f => (
+          {displayResults.map(f => (
             <button key={f.id} onClick={() => pick(f)}
               className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0 flex items-center gap-2">
               <div className="flex-1 min-w-0">

@@ -38,9 +38,10 @@ export async function POST(req: NextRequest) {
     if (rows.length > 0) {
       await pool.query(
         `UPDATE "WorkoutDiary" SET "tennisType"=$1,"tennisHours"=$2 WHERE id=$3`,
-        [type, hours ?? null, rows[0].id]
+        [type ?? null, hours ?? null, rows[0].id]
       )
-    } else {
+    } else if (type) {
+      // Crea riga solo se c'è un tipo valido (non azzerare su righe inesistenti)
       await pool.query(
         `INSERT INTO "WorkoutDiary" (id,"userId",date,"tennisType","tennisHours","createdAt") VALUES ($1,$2,$3,$4,$5,NOW())`,
         [crypto.randomUUID(), userId, date, type, hours ?? null]

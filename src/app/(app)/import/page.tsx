@@ -58,9 +58,32 @@ type PlanExercise = { name: string; noteScheda: string; notePersonali: string; w
 type PlanSection  = { name: string; focus: string; weeks: string[]; exercises: PlanExercise[] }
 type PlanData     = { planName: string; startDate: string | null; endDate: string | null; sections: PlanSection[] }
 
+/** Convert any cell value that might be a Date object, serial number, or string to YYYY-MM-DD */
+function cellToDateStr(v: unknown): string | null {
+  if (!v && v !== 0) return null
+  // JS Date object (xlsx cellDates:true)
+  if (v instanceof Date) {
+    const y = v.getFullYear(), m = v.getMonth() + 1, d = v.getDate()
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  }
+  // Excel serial number
+  if (typeof v === 'number' && v > 1000) {
+    const date = XLSX.SSF.parse_date_code(v)
+    if (date) return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+  }
+  const s = String(v).trim()
+  if (!s) return null
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  return s
+}
+
 function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
   const ws   = wb.Sheets[wb.SheetNames[0]]
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' }) as string[][]
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '', cellDates: true }) as unknown[][]
 
   let planName  = ''
   let startDate: string | null = null
@@ -74,8 +97,8 @@ function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
     const c1 = String(row[1] ?? '').trim()
 
     if (/^piano:?$/i.test(c0))  { planName  = c1; continue }
-    if (/^inizio:?$/i.test(c0)) { startDate = c1 || null; continue }
-    if (/^fine:?$/i.test(c0))   { endDate   = c1 || null; continue }
+    if (/^inizio:?$/i.test(c0)) { startDate = cellToDateStr(row[1]); continue }
+    if (/^fine:?$/i.test(c0))   { endDate   = cellToDateStr(row[1]); continue }
 
     // Section header: SCHEDA N or WORKOUT N (backward compat)
     if (/^(SCHEDA|WORKOUT)\s+\d+/i.test(c0)) {

@@ -22,9 +22,19 @@ type PlanData     = { planName: string; startDate?: string | null; endDate?: str
 
 function normalizeDate(d: string | null | undefined): string | null {
   if (!d) return null
-  const m = d.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+  const s = d.trim()
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
   if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
-  return d
+  // Excel serial number as string (fallback, in case client-side conversion was skipped)
+  const n = Number(s)
+  if (!isNaN(n) && n > 1000) {
+    const dt = new Date(Date.UTC(1899, 11, 30) + n * 86400000)
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
+  }
+  return s
 }
 
 function parseRest(rec: string): number {
