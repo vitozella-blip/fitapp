@@ -317,7 +317,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Pills — 2 colonne */}
-            <div className="flex-1 min-h-0 grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-800 overflow-y-auto">
+            <div className="flex-1 min-h-0 grid grid-cols-2 overflow-y-auto">
 
               {/* Colonna sinistra — Tennis */}
               <div className="px-2 py-1.5">
