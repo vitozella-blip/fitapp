@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Search, X, Plus } from 'lucide-react'
+import { Search, X, Plus, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 
 type Exercise = { id: string; name: string; muscleGroup: string; equipment?: string }
