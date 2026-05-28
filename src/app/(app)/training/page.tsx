@@ -163,11 +163,7 @@ export default function TrainingHubPage() {
                 return (
                   <div key={t.id} className="flex flex-col min-h-0">
                     <div className="px-2 h-[32px] border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
-<<<<<<< HEAD
                       <WorkoutBadge color={tColor} shapeIdx={tArrIdx} size={12} />
-=======
-                      <WorkoutBadge color={tColor} shapeIdx={tIdx} size={12} />
->>>>>>> origin/main
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {t.dates.length === 0 ? (
