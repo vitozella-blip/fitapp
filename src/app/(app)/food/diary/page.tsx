@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, BookOpen, Copy, Check, X } from 'lucide-react'
+import { Plus, BookOpen, Copy, Pencil, Trash2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -95,21 +95,16 @@ function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) {
     <div className="relative overflow-hidden">
       {/* Left action: Modifica (revealed by swipe right) */}
       <div className="absolute inset-y-0 left-0 flex items-center justify-center"
-        style={{ width: SNAP, backgroundColor: C.carbs }}>
-        <div className="flex flex-col items-center gap-0.5" onClick={handleEditClick}>
-          <Check size={14} className="text-white" />
-          <span className="text-[9px] font-bold text-white leading-none">mod</span>
-        </div>
+        style={{ width: SNAP, backgroundColor: C.carbs }}
+        onClick={handleEditClick}>
+        <Pencil size={18} className="text-white" />
       </div>
 
       {/* Right action: Elimina (revealed by swipe left) */}
-      <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-2"
-        style={{ width: SNAP, backgroundColor: '#fee2e2' }}>
-        <button onClick={handleDeleteClick}
-          className="w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-red-500">
-          <X size={14} className="text-white" />
-          <span className="text-[9px] font-bold text-white leading-none">del</span>
-        </button>
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center"
+        style={{ width: SNAP, backgroundColor: '#ef4444' }}
+        onClick={handleDeleteClick}>
+        <Trash2 size={18} className="text-white" />
       </div>
 
       {/* Content */}

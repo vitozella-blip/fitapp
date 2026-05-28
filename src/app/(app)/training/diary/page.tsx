@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2, Play, Pause, RotateCcw, Timer } from 'lucide-react'
+import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2, Play, Pause, RotateCcw, Timer, Pencil } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -120,22 +120,24 @@ function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: 
 }
 
 
-// ── Swipeable delete row (header cards) ───────────────────────────────────────
+// ── Swipeable row (header cards) — edit right, delete left ───────────────────
 const SNAP_DEL  = 70
 const THRESH_DEL = 30
-function SwipeableDeleteRow({ children, onDelete, color }: { children: React.ReactNode; onDelete: () => void; color?: string }) {
+function SwipeableDeleteRow({ children, onDelete, onEdit }: {
+  children: React.ReactNode; onDelete: () => void; onEdit?: () => void
+}) {
   const rowRef   = useRef<HTMLDivElement>(null)
   const startX   = useRef(0)
   const curX     = useRef(0)
-  const snapped  = useRef(false)
+  const snapped  = useRef<'left' | 'right' | null>(null)
 
   function move(x: number) {
     curX.current = x
     if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)`
   }
-  function snapTo(open: boolean) {
-    snapped.current = open
-    const x = open ? -SNAP_DEL : 0
+  function snapTo(dir: 'left' | 'right' | null) {
+    snapped.current = dir
+    const x = dir === 'left' ? -SNAP_DEL : dir === 'right' ? SNAP_DEL : 0
     if (rowRef.current) {
       rowRef.current.style.transition = 'transform 0.2s ease'
       rowRef.current.style.transform  = `translateX(${x}px)`
@@ -148,26 +150,37 @@ function SwipeableDeleteRow({ children, onDelete, color }: { children: React.Rea
     if (rowRef.current) rowRef.current.style.transition = ''
   }
   function onTouchMove(e: React.TouchEvent) {
-    const dx  = e.touches[0].clientX - startX.current
-    const raw = (snapped.current ? -SNAP_DEL : 0) + dx
-    move(Math.max(-SNAP_DEL, Math.min(0, raw)))
+    const dx   = e.touches[0].clientX - startX.current
+    const base = snapped.current === 'left' ? -SNAP_DEL : snapped.current === 'right' ? SNAP_DEL : 0
+    const raw  = base + dx
+    const max  = onEdit ? SNAP_DEL : 0
+    move(Math.max(-SNAP_DEL, Math.min(max, raw)))
   }
   function onTouchEnd() {
-    curX.current < -THRESH_DEL ? snapTo(true) : snapTo(false)
+    const x = curX.current
+    if      (x < -THRESH_DEL)         snapTo('left')
+    else if (onEdit && x > THRESH_DEL) snapTo('right')
+    else                               snapTo(null)
   }
   function onClickCapture(e: React.MouseEvent) {
-    if (snapped.current) { e.stopPropagation(); snapTo(false) }
+    if (snapped.current) { e.stopPropagation(); snapTo(null) }
   }
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-2"
-        style={{ width: SNAP_DEL, backgroundColor: '#fee2e2' }}>
-        <button onClick={() => { snapTo(false); onDelete() }}
-          className="w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 bg-red-500">
-          <X size={14} className="text-white" />
-          <span className="text-[9px] font-bold text-white leading-none">del</span>
-        </button>
+      {/* Left action: Edit (swipe right) — blue */}
+      {onEdit && (
+        <div className="absolute inset-y-0 left-0 flex items-center justify-center"
+          style={{ width: SNAP_DEL, backgroundColor: CT }}
+          onClick={() => { snapTo(null); onEdit() }}>
+          <Pencil size={18} className="text-white" />
+        </div>
+      )}
+      {/* Right action: Delete (swipe left) — solid red */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center"
+        style={{ width: SNAP_DEL, backgroundColor: '#ef4444' }}
+        onClick={() => { snapTo(null); onDelete() }}>
+        <Trash2 size={18} className="text-white" />
       </div>
       <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-800"
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -1046,7 +1059,7 @@ export default function TrainingDiaryPage() {
       {/* Tennis pill (collapsible) */}
       {tennisActive && (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-          <SwipeableDeleteRow onDelete={toggleTennis} color={C_TENNIS}>
+          <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
           <div className="px-4 py-2.5 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
             <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
@@ -1650,7 +1663,7 @@ export default function TrainingDiaryPage() {
           <>
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
             {/* Scheda header */}
-            <SwipeableDeleteRow onDelete={removeScheda} color={schedaColor}>
+            <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
               onClick={() => setSchedaCollapsed(c => !c)}>
               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
