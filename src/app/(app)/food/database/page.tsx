@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
+import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter, ScanBarcode } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Apple } from 'lucide-react'
@@ -554,9 +554,23 @@ function FoodDatabasePage() {
 
   useEffect(() => { fetchAll('', [], false); fetchCats() }, [userId])
 
+  // Instant client-side filter on already-loaded items (zero latency)
+  const displayFoods = useMemo(() => {
+    if (!q.trim() && catFilter.length === 0 && !favOnly) return foods
+    const lower = q.trim().toLowerCase()
+    return foods.filter(f => {
+      if (lower && !f.name.toLowerCase().includes(lower) && !f.brand?.toLowerCase().includes(lower)) return false
+      if (favOnly && !favorites.has(f.id)) return false
+      if (catFilter.length > 0 && !catFilter.some(id => f.categoryIds?.includes(id))) return false
+      return true
+    })
+  }, [foods, q, catFilter, favOnly, favorites])
+
   function handleSearch(val: string) {
-    setQ(val); clearTimeout(timer.current)
-    timer.current = setTimeout(() => fetchAll(val, catFilter, favOnly), 0)
+    setQ(val)
+    clearTimeout(timer.current)
+    // Debounce API call to 200ms — client-side filter above is already instant
+    timer.current = setTimeout(() => fetchAll(val, catFilter, favOnly), 200)
   }
 
   function handleCatChange(ids: string[]) {
@@ -634,11 +648,21 @@ function FoodDatabasePage() {
         </button>}
       />
 
-      <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={q} onChange={e => handleSearch(e.target.value)} placeholder="Cerca per nome o marca..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-        {loading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={q} onChange={e => handleSearch(e.target.value)} placeholder="Cerca per nome o marca..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+          {/* no spinner here — client-side filter is instant */}
+        </div>
+        {/* TODO: barcode scanner */}
+        <button
+          onClick={() => {/* TODO: open barcode scanner */}}
+          className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
+          title="Scansiona barcode"
+        >
+          <ScanBarcode size={18} className="text-orange-400" />
+        </button>
       </div>
 
       <div className="flex gap-2">
@@ -656,7 +680,7 @@ function FoodDatabasePage() {
       </div>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-        {foods.map(f => (
+        {displayFoods.map(f => (
           <FoodCard key={f.id} food={f} isFav={favorites.has(f.id)} categories={categories}
             onToggleFav={() => toggleFav(f.id)}
             onEdit={() => openEdit(f)}
@@ -667,7 +691,7 @@ function FoodDatabasePage() {
             onLongPress={() => startSelecting(f.id)}
           />
         ))}
-        {foods.length === 0 && !loading && (
+        {displayFoods.length === 0 && !loading && (
           <p className="text-sm text-gray-400 text-center py-6">Nessun alimento trovato</p>
         )}
         {hasMore && (
