@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Plus, Trash2, Pencil, Copy, ChevronUp, ChevronDown, ChevronRight,
@@ -668,19 +668,26 @@ function ExerciseFormModal({
 }) {
   const [q, setQ]               = useState('')
   const [results, setResults]   = useState<Exercise[]>([])
-  const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState<Exercise | null>(null)
   const [creating, setCreating] = useState(false)
   const [saving, setSaving]     = useState(false)
 
   useEffect(() => {
-    if (q.length < 1) { setResults([]); return }
+    fetch(`/api/exercises?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
+  }, [userId])
+
+  const displayResults = useMemo(() => {
+    if (!q.trim()) return results
+    const lower = q.trim().toLowerCase()
+    return results.filter(ex => ex.name.toLowerCase().includes(lower))
+  }, [results, q])
+
+  useEffect(() => {
+    if (q.length < 1) return
     const t = setTimeout(async () => {
-      setSearching(true)
       const r = await fetch(`/api/exercises?q=${encodeURIComponent(q)}&userId=${userId}`)
       setResults(await r.json())
-      setSearching(false)
-    }, 0)
+    }, 200)
     return () => clearTimeout(t)
   }, [q, userId])
 
@@ -717,17 +724,16 @@ function ExerciseFormModal({
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca o scrivi nome esercizio..." className={inp + ' pl-9'} />
-                {searching && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
               </div>
-              {results.length > 0 && (
+              {displayResults.length > 0 && (
                 <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-                  {results.map(ex => (
+                  {displayResults.map(ex => (
                     <button key={ex.id} onClick={() => setSelected(ex)}
                       className="w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{ex.name}</p>
                     </button>
                   ))}
-                  {q.length >= 2 && !searching && (
+                  {q.length >= 2 && (
                     <button onClick={addToDb} disabled={creating}
                       className="w-full flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: CT + '20', color: CT }}>
@@ -738,7 +744,7 @@ function ExerciseFormModal({
                   )}
                 </div>
               )}
-              {q.length >= 2 && !searching && results.length === 0 && (
+              {q.length >= 2 && displayResults.length === 0 && (
                 <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
                   <p className="text-xs text-gray-400 text-center py-3">Nessun risultato</p>
                   <button onClick={addToDb} disabled={creating}
@@ -750,7 +756,7 @@ function ExerciseFormModal({
                   </button>
                 </div>
               )}
-              {q.length < 2 && <p className="text-sm text-gray-400 text-center py-2">Scrivi almeno 2 caratteri per cercare</p>}
+              {q.length < 1 && <p className="text-sm text-gray-400 text-center py-2">Scrivi il nome dell&apos;esercizio</p>}
             </>
           ) : (
             <div className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ backgroundColor: CT + '15' }}>

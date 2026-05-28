@@ -35,13 +35,16 @@ export async function GET(req: NextRequest) {
     if (!plans.length) return NextResponse.json({ templates: [] })
 
     const [{ rows }, { rows: tennisRows }] = await Promise.all([
-      // Workout template dates: match via templateId OR weekId→WorkoutWeek→template
+      // Workout template dates: only diary entries with at least one set logged
       pool.query(
         `SELECT
            t.id, t.name, t."order",
            COALESCE(
              json_agg(DISTINCT wd.date::text)
-               FILTER (WHERE wd.date IS NOT NULL AND wd.date >= $2 AND wd.date < $3),
+               FILTER (WHERE wd.date IS NOT NULL AND wd.date >= $2 AND wd.date < $3
+                         AND EXISTS (
+                           SELECT 1 FROM "WorkoutSet" s WHERE s."workoutDiaryId" = wd.id
+                         )),
              '[]'
            ) AS dates
          FROM "WorkoutTemplate" t
@@ -57,19 +60,14 @@ export async function GET(req: NextRequest) {
          ORDER BY t."order"`,
         [userId, from, next, plans[0].id]
       ),
-      // Tennis dates: sessioni dedicate (tennisType) + esercizi 'Tennis' in WorkoutSet
+      // Tennis dates: solo giorni con almeno un set di esercizio "Tennis"
       pool.query(
-        `SELECT DISTINCT date::text AS date
-         FROM "WorkoutDiary"
-         WHERE "userId" = $1
-           AND "tennisType" IS NOT NULL
-           AND date >= $2 AND date < $3
-         UNION
-         SELECT DISTINCT w.date::text AS date
+        `SELECT DISTINCT w.date::text AS date
          FROM "WorkoutDiary" w
          JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
          JOIN "Exercise" e ON e.id = s."exerciseId"
-         WHERE w."userId" = $1 AND e.name ILIKE 'Tennis'
+         WHERE w."userId" = $1
+           AND LOWER(e.name) = 'tennis'
            AND w.date >= $2 AND w.date < $3
          ORDER BY date DESC`,
         [userId, from, next]

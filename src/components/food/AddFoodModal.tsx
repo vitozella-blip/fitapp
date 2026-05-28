@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { Search, X, Plus, Loader2, Star, ChevronDown, Trash2 } from 'lucide-react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { Search, X, Plus, Star, ChevronDown, Trash2, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,6 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   const router = useRouter()
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Food[]>([])
-  const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [selected, setSelected] = useState<Food | null>(null)
   const [qty, setQty] = useState('')
@@ -39,22 +38,37 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
     })
   }, [userId])
 
+  // Pre-load all foods on mount so instant filtering works from first keystroke
+  useEffect(() => {
+    fetch(`/api/food?q=&userId=${userId}`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) { setResults(data); setSearched(true) } })
+      .catch(() => {})
+  }, [userId])
+
   useEffect(() => {
     clearTimeout(timer.current)
     const hasFilter = favFilter || !!catFilter
-    if (q.length < 1 && !hasFilter) { setResults([]); setSearched(false); return }
+    if (q.length < 1 && !hasFilter) return   // keep pre-loaded results, don't reset
     timer.current = setTimeout(async () => {
-      setLoading(true)
       try {
         const p = new URLSearchParams({ q: q || '', userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
         const r = await fetch(`/api/food?${p}`)
         const data = await r.json()
         setResults(Array.isArray(data) ? data : [])
-      } catch { setResults([]) }
+      } catch {}
       setSearched(true)
-      setLoading(false)
-    }, 0)
+    }, 200)
   }, [q, userId, favFilter, catFilter])
+
+  const displayResults = useMemo(() => {
+    if (!q.trim()) return results
+    const lower = q.trim().toLowerCase()
+    return results.filter(f =>
+      f.name.toLowerCase().includes(lower) ||
+      (f.brand?.toLowerCase().includes(lower) ?? false)
+    )
+  }, [results, q])
 
   function addToCart() {
     if (!selected || !qty.trim()) return
@@ -92,12 +106,12 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   }
 
   const hasFilter = favFilter || !!catFilter
-  const showResults = !selected && results.length > 0
-  const showEmpty = !selected && searched && results.length === 0 && (q.length >= 2 || hasFilter)
+  const showResults = !selected && displayResults.length > 0
+  const showEmpty = !selected && searched && displayResults.length === 0 && (q.length >= 2 || hasFilter)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 px-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md h-[88vh] flex flex-col p-5 shadow-xl" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -130,7 +144,6 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
                 <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
                   placeholder="Cerca alimento o marca..."
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-                {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
               </div>
               <button
                 onClick={() => { setFavFilter(f => !f); setSelected(null) }}
@@ -174,7 +187,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
         {/* Results */}
         {showResults && (
           <div className="flex-1 overflow-y-auto space-y-0.5 mb-3">
-            {results.map(f => (
+            {displayResults.map(f => (
               <button key={f.id} onClick={() => setSelected(f)}
                 className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <div className="flex items-center gap-2">
@@ -210,9 +223,6 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
           </div>
         )}
 
-        {!selected && !searched && q.length < 2 && !hasFilter && cart.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-4">Scrivi almeno 2 caratteri</p>
-        )}
 
         {/* Selected food */}
         {selected && (

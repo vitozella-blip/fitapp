@@ -930,7 +930,15 @@ export default function TrainingDiaryPage() {
     if (tennisLoading) return
     setTennisLoading(true)
     if (tennisActive) {
+      // Rimuovi tutti i set tennis
       for (const s of tennisSets) await fetch(`/api/workout/set/${s.id}`, { method: 'DELETE' })
+      // Azzera anche il tennisType salvato nel WorkoutDiary
+      fetch('/api/tennis-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date: selectedDate, type: null, hours: null }),
+      }).catch(() => {})
+      setTennisMetaRaw({ type: 'allenamento', hours: '' })
+      try { localStorage.removeItem(`tennis_meta_${selectedDate}`) } catch {}
     } else {
       const ex = await findOrCreateTennis()
       await fetch('/api/workout', {

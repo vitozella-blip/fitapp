@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, X, Plus, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -11,7 +11,6 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
   const userId = useAppStore((s) => s.userId)
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Exercise[]>([])
-  const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Exercise | null>(null)
   const [sets, setSets] = useState('3')
   const [reps, setReps] = useState('10')
@@ -20,14 +19,22 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
+    fetch(`/api/exercises?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
+  }, [userId])
+
+  const displayResults = useMemo(() => {
+    if (!q.trim()) return results
+    const lower = q.trim().toLowerCase()
+    return results.filter(ex => ex.name.toLowerCase().includes(lower))
+  }, [results, q])
+
+  useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 1) { setResults([]); return }
+    if (q.length < 1) return
     timer.current = setTimeout(async () => {
-      setLoading(true)
       const r = await fetch(`/api/exercises?q=${encodeURIComponent(q)}&userId=${userId}`)
       setResults(await r.json())
-      setLoading(false)
-    }, 0)
+    }, 200)
   }, [q, userId])
 
   async function handleAdd() {
@@ -56,12 +63,11 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
           <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
             placeholder="Cerca esercizio..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
-          {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />}
         </div>
 
-        {!selected && results.length > 0 && (
+        {!selected && displayResults.length > 0 && (
           <div className="flex-1 overflow-y-auto space-y-1 mb-3">
-            {results.map(ex => (
+            {displayResults.map(ex => (
               <button key={ex.id} onClick={() => setSelected(ex)}
                 className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{ex.name}</p>
@@ -95,7 +101,7 @@ export function AddExerciseModal({ date, onClose, onAdded }: Props) {
         )}
 
         {!selected && q.length < 2 && <p className="text-sm text-gray-400 text-center py-4">Scrivi almeno 2 caratteri</p>}
-        {!selected && q.length >= 2 && !loading && results.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Nessun esercizio trovato</p>}
+        {!selected && q.length >= 2 && displayResults.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Nessun esercizio trovato</p>}
       </div>
     </div>
   )
