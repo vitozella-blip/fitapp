@@ -26,6 +26,12 @@ type SessionData = {
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })
 }
+/** "Programma 19" → "19", "Piano A" → "A", fallback → nome intero */
+function planLabel(name: string) {
+  const m = name.match(/(\d+)\s*$/) ?? name.match(/(\S+)\s*$/)
+  return m ? m[1] : name
+}
+
 function fmtMin(sec?: number | null) {
   if (!sec) return '—'
   const m = Math.floor(sec / 60), s = sec % 60
@@ -167,7 +173,7 @@ export default function ProgressiPage() {
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.name}</p>
                     {ex.planNames && ex.planNames.length > 0 && (
                       <p className="text-[11px] truncate" style={{ color: C.training + 'bb' }}>
-                        {ex.planNames.map(p => `PR ${p}`).join(' · ')}
+                        {ex.planNames.map(p => `PR ${planLabel(p)}`).join(' · ')}
                       </p>
                     )}
                   </div>
