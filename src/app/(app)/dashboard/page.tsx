@@ -1,6 +1,6 @@
 ﻿'use client'
 import React, { useEffect, useState, useCallback, type ReactElement } from 'react'
-import { Check, Minus, X, LayoutDashboard } from 'lucide-react'
+import { Check, Minus, X, LayoutDashboard, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { localToday } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -21,14 +21,14 @@ const Em = ({ e, size }: { e: string; size: number }) => (
   <span style={{ fontSize: size, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{e}</span>
 )
 
-type MealDef = { name: string; label: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
+type MealDef = { name: string; label: string; short: string; renderIcon: (color: string, size: number) => ReactElement; color: string }
 
 const MEALS: MealDef[] = [
-  { name: 'Colazione',           label: 'Colazione',      color: C.carbs,   renderIcon: (_, s) => <Em e="☕" size={s} /> },
-  { name: 'Spuntino mattina',    label: 'Sp. Mattina',    color: C.protein, renderIcon: (_, s) => <Em e="🍫" size={s} /> },
-  { name: 'Pranzo',              label: 'Pranzo',         color: C.kcal,    renderIcon: (_, s) => <Em e="🍗" size={s} /> },
-  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', color: C.carbs,   renderIcon: (_, s) => <Em e="🍌" size={s} /> },
-  { name: 'Cena',                label: 'Cena',           color: C.fat,     renderIcon: (_, s) => <Em e="🐟" size={s} /> },
+  { name: 'Colazione',           label: 'Colazione',      short: 'Col.', color: C.carbs,   renderIcon: (_, s) => <Em e="☕" size={s} /> },
+  { name: 'Spuntino mattina',    label: 'Sp. Mattina',    short: 'Mat.', color: C.protein, renderIcon: (_, s) => <Em e="🍫" size={s} /> },
+  { name: 'Pranzo',              label: 'Pranzo',         short: 'Pra.', color: C.kcal,    renderIcon: (_, s) => <Em e="🍗" size={s} /> },
+  { name: 'Spuntino pomeriggio', label: 'Sp. Pomeriggio', short: 'Pom.', color: C.carbs,   renderIcon: (_, s) => <Em e="🍌" size={s} /> },
+  { name: 'Cena',                label: 'Cena',           short: 'Cen.', color: C.fat,     renderIcon: (_, s) => <Em e="🐟" size={s} /> },
 ]
 
 type Exercise = { id: string; name: string }
@@ -192,12 +192,13 @@ export default function DashboardPage() {
 
             {/* Kcal */}
             <div className="flex-1 flex flex-col justify-center px-3">
+              <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: C.kcal }}>kcal</p>
               <div className="flex items-baseline justify-between mb-0.5">
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl font-extrabold leading-none" style={{ color: calOver ? '#f87171' : C.kcal }}>
                     {t.calories}
                   </span>
-                  <span className="text-[10px] text-gray-400 font-medium">/ {tg.calories} kcal</span>
+                  <span className="text-[10px] text-gray-400 font-medium">/ {tg.calories}</span>
                 </div>
                 <span className="text-sm font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
                   {calOver ? `+${t.calories - tg.calories}` : `${calPct}%`}
@@ -217,12 +218,12 @@ export default function DashboardPage() {
                 { label: 'Proteine',    val: t.protein, tgt: tg.protein, color: C.protein },
               ].map(m => (
                 <div key={m.label}>
-                  <p className="text-[8px] font-bold uppercase tracking-wide mb-0.5" style={{ color: m.color }}>{m.label}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: m.color }}>{m.label}</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-base md:text-2xl font-extrabold leading-none" style={{ color: m.color }}>{m.val}</span>
-                    <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap">/ {m.tgt} g</span>
+                    <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap">/ {m.tgt}</span>
                   </div>
-                  <div className="shrink-0 rounded-full overflow-hidden mt-0.5" style={{ height: 4, backgroundColor: m.color + '30' }}>
+                  <div className="shrink-0 rounded-full overflow-hidden mt-0.5" style={{ height: 5, backgroundColor: m.color + '30' }}>
                     <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
                   </div>
                 </div>
@@ -236,21 +237,23 @@ export default function DashboardPage() {
         <button onClick={() => router.push('/food/diary')}
           className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200/70 dark:border-orange-900/50 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform">
 
-          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800">
-            <p className="text-center text-sm font-bold uppercase tracking-wide"
+          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <p className="text-sm font-bold uppercase tracking-wide"
               style={{ color: '#e8924a' }}>Pasti</p>
+            <ChevronRight size={14} style={{ color: '#e8924a' }} className="opacity-60" />
           </div>
 
           <div className="flex-1 min-h-0 px-1 py-2 grid grid-cols-5 gap-1">
-            {MEALS.map(({ name, label, renderIcon }) => {
+            {MEALS.map(({ name, short, renderIcon, color }) => {
               const m    = data?.meals.find(x => x.name === name)
               const kcal = m?.calories ?? 0
               const free = m?.isFree ?? false
               return (
                 <div key={name} className="flex flex-col min-h-0 min-w-0">
-                  <div className="flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0">
-                    {renderIcon('', 16)}
-                    <span className="hidden md:inline text-[10px] font-bold text-gray-700 dark:text-gray-200 leading-tight truncate">{label}</span>
+                  <div className="flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-xl shrink-0"
+                    style={{ backgroundColor: color + '22' }}>
+                    {renderIcon('', 15)}
+                    <span className="text-[9px] font-bold leading-none" style={{ color }}>{short}</span>
                   </div>
                   <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                     {free ? (
@@ -276,9 +279,10 @@ export default function DashboardPage() {
         <button onClick={() => router.push('/training/diary')}
           className="flex-1 md:flex-none bg-blue-50 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform">
 
-          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800">
-            <p className="text-center text-sm font-bold uppercase tracking-wide"
+          <div className="px-2 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <p className="text-sm font-bold uppercase tracking-wide"
               style={{ color: C.training }}>Allenamento</p>
+            <ChevronRight size={14} style={{ color: C.training }} className="opacity-60" />
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
@@ -354,7 +358,7 @@ export default function DashboardPage() {
                           {ex.status === 'done'    && <Check size={9} className="shrink-0" style={{ color: '#7dbf7d' }} />}
                           {ex.status === 'partial' && <Minus size={9} className="shrink-0" style={{ color: '#f0aa78' }} />}
                           {ex.status === 'skipped' && <X     size={9} className="shrink-0" style={{ color: '#94a3b8' }} />}
-                          <p className="text-xs text-gray-400 dark:text-gray-500 leading-tight">{ex.name}</p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{ex.name}</p>
                         </div>
                       ))}
                     </div>
