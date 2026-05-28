@@ -11,6 +11,25 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json(null)
 
   try {
+    // ── All exercises ever logged by user ────────────────────────────────
+    if (templates === 'exercises') {
+      const { rows } = await pool.query(
+        `SELECT e.id, e.name, e."muscleGroup",
+                COUNT(DISTINCT w.date)::int          AS sessions,
+                MAX(s.weight)                        AS "maxWeight",
+                MAX(s.duration)                      AS "maxDuration",
+                BOOL_OR(s.duration IS NOT NULL AND s.weight IS NULL) AS "isDuration",
+                MAX(w.date)                          AS "lastDate"
+         FROM "WorkoutSet" s
+         JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
+         JOIN "Exercise" e ON e.id = s."exerciseId"
+         GROUP BY e.id, e.name, e."muscleGroup"
+         ORDER BY MAX(w.date) DESC, e.name ASC`,
+        [userId]
+      )
+      return NextResponse.json(rows)
+    }
+
     // ── List of workout templates (schede) ───────────────────────────────
     if (templates === '1') {
       const { rows } = await pool.query(
