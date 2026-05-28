@@ -169,8 +169,7 @@ function SwipeableDeleteRow({ children, onDelete, color }: { children: React.Rea
           <span className="text-[9px] font-bold text-white leading-none">del</span>
         </button>
       </div>
-      <div ref={rowRef} className="relative z-10"
-        style={{ backgroundColor: color ? color + '22' : undefined }}
+      <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-800"
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         onClickCapture={onClickCapture}>
         {children}
