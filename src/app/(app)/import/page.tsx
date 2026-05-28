@@ -83,7 +83,7 @@ function cellToDateStr(v: unknown): string | null {
 
 function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
   const ws   = wb.Sheets[wb.SheetNames[0]]
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '', cellDates: true }) as unknown[][]
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' }) as unknown[][]
 
   let planName  = ''
   let startDate: string | null = null
@@ -241,7 +241,7 @@ export default function ImportPage() {
     setFileName(file.name)
     const reader = new FileReader()
     reader.onload = (e) => {
-      const wb = XLSX.read(new Uint8Array(e.target!.result as ArrayBuffer), { type: 'array' })
+      const wb = XLSX.read(new Uint8Array(e.target!.result as ArrayBuffer), { type: 'array', cellDates: true })
 
       // Esercizi → parser piano (WORKOUT N sections)
       if (importType === 'exercise') {
