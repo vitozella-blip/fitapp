@@ -278,7 +278,7 @@ export default function FoodDiaryPage() {
   const swipe = useDateSwipe(selectedDate, setSelectedDate)
 
   return (
-    <div className="flex flex-col gap-3 max-w-2xl mx-auto md:max-w-none md:h-full" {...swipe}>
+    <div className="flex flex-col gap-3 max-w-2xl mx-auto md:max-w-none md:h-full">
       <div className="shrink-0">
         <PageHeader title="Diario Alimentare" icon={BookOpen} accent="food" />
       </div>
@@ -287,8 +287,8 @@ export default function FoodDiaryPage() {
         <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} showWorkoutColors={false} />
       </div>
 
-      {/* Macro summary */}
-      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+      {/* Macro summary — swipe orizzontale cambia data */}
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden" {...swipe}>
         <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-800">
           <p className="text-center text-[10px] font-bold uppercase tracking-widest"
             style={{ color: C.kcal }}>Macro</p>
