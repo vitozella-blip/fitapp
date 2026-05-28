@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Search, TrendingUp, Dumbbell, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Search, TrendingUp, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import {
   LineChart, Line, BarChart, Bar,
@@ -12,9 +12,9 @@ import { cn } from '@/lib/utils'
 const C = { training: '#7aafc8', accent: '#9d8fcc', bar: '#f0aa78' }
 
 type ExerciseSummary = {
-  id: string; name: string; muscleGroup?: string
+  id: string; name: string
   sessions: number; maxWeight?: number; maxDuration?: number
-  isDuration: boolean; lastDate?: string
+  isDuration: boolean; planNames?: string[]
 }
 
 type SessionData = {
@@ -82,7 +82,7 @@ export default function ProgressiPage() {
     const lower = q.toLowerCase()
     return allExercises.filter(e =>
       e.name.toLowerCase().includes(lower) ||
-      (e.muscleGroup?.toLowerCase().includes(lower) ?? false)
+      (e.planNames?.some(p => p.toLowerCase().includes(lower)) ?? false)
     )
   }, [allExercises, q])
 
@@ -163,14 +163,12 @@ export default function ProgressiPage() {
                 <button
                   onClick={() => toggleExercise(ex)}
                   className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: C.training + '20' }}>
-                    <Dumbbell size={14} style={{ color: C.training }} />
-                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.name}</p>
-                    {ex.muscleGroup && (
-                      <p className="text-[11px] text-gray-400 truncate">{ex.muscleGroup}</p>
+                    {ex.planNames && ex.planNames.length > 0 && (
+                      <p className="text-[11px] truncate" style={{ color: C.training + 'bb' }}>
+                        {ex.planNames.map(p => `PR ${p}`).join(' · ')}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

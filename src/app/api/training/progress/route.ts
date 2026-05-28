@@ -14,17 +14,21 @@ export async function GET(req: NextRequest) {
     // ── All exercises ever logged by user ────────────────────────────────
     if (templates === 'exercises') {
       const { rows } = await pool.query(
-        `SELECT e.id, e.name, e."muscleGroup",
+        `SELECT e.id, e.name,
                 COUNT(DISTINCT w.date)::int          AS sessions,
                 MAX(s.weight)                        AS "maxWeight",
                 MAX(s.duration)                      AS "maxDuration",
                 BOOL_OR(s.duration IS NOT NULL AND s.weight IS NULL) AS "isDuration",
-                MAX(w.date)                          AS "lastDate"
+                ARRAY_REMOVE(ARRAY_AGG(DISTINCT p.name ORDER BY p.name), NULL) AS "planNames"
          FROM "WorkoutSet" s
          JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
          JOIN "Exercise" e ON e.id = s."exerciseId"
-         GROUP BY e.id, e.name, e."muscleGroup"
-         ORDER BY MAX(w.date) DESC, e.name ASC`,
+         LEFT JOIN "WorkoutTemplateExercise" te ON te."exerciseId" = e.id
+         LEFT JOIN "WorkoutTemplate" t ON t.id = te."templateId"
+         LEFT JOIN "WorkoutPlan" p ON p.id = t."planId" AND p."userId" = $1
+         WHERE LOWER(e.name) != 'tennis'
+         GROUP BY e.id, e.name
+         ORDER BY e.name ASC`,
         [userId]
       )
       return NextResponse.json(rows)
