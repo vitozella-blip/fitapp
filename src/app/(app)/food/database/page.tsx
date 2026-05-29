@@ -129,7 +129,7 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
             </button>
           )}
           <button
-            onPointerDown={() => { lpTimer.current = setTimeout(() => onLongPress(), 500) }}
+            onPointerDown={() => { lpTimer.current = setTimeout(() => { snapTo(null); onLongPress() }, 500) }}
             onPointerUp={() => clearTimeout(lpTimer.current)}
             onPointerLeave={() => clearTimeout(lpTimer.current)}
             onContextMenu={e => e.preventDefault()}
