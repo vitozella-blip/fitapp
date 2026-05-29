@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 const C = { training: '#7aafc8', accent: '#9d8fcc', bar: '#f0aa78' }
 
 type ExerciseSummary = {
-  id: string; name: string
+  id: string; ids: string[]; name: string
   sessions: number; maxWeight?: number; maxDuration?: number
   isDuration: boolean; planNames?: string[]
 }
@@ -92,10 +92,10 @@ export default function ProgressiPage() {
     )
   }, [allExercises, q])
 
-  const loadSessions = useCallback(async (exId: string) => {
+  const loadSessions = useCallback(async (ids: string[]) => {
     setLoadingSessions(true)
     setSessions([])
-    const data = await fetch(`/api/training/progress?userId=${userId}&exerciseId=${exId}`)
+    const data = await fetch(`/api/training/progress?userId=${userId}&exerciseId=${ids.join(',')}`)
       .then(r => r.json()).catch(() => [])
     setSessions(Array.isArray(data) ? data : [])
     setLoadingSessions(false)
@@ -104,7 +104,7 @@ export default function ProgressiPage() {
   async function toggleExercise(ex: ExerciseSummary) {
     if (expandedId === ex.id) { setExpandedId(null); return }
     setExpandedId(ex.id)
-    await loadSessions(ex.id)
+    await loadSessions(ex.ids ?? [ex.id])
   }
 
   const selEx = expandedId ? allExercises.find(e => e.id === expandedId) ?? null : null
