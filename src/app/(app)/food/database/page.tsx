@@ -39,10 +39,6 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
 }) {
   const [open, setOpen] = useState(false)
   const lpTimer = useRef<NodeJS.Timeout | undefined>(undefined)
-
-  useEffect(() => {
-    if (selecting) snapTo(null)
-  }, [selecting])
   const rowRef    = useRef<HTMLDivElement>(null)
   const startX    = useRef(0)
   const startY    = useRef(0)
@@ -129,7 +125,7 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
             </button>
           )}
           <button
-            onPointerDown={() => { lpTimer.current = setTimeout(() => onLongPress(), 500) }}
+            onPointerDown={() => { lpTimer.current = setTimeout(() => { snapTo(null); onLongPress() }, 500) }}
             onPointerUp={() => clearTimeout(lpTimer.current)}
             onPointerLeave={() => clearTimeout(lpTimer.current)}
             onContextMenu={e => e.preventDefault()}
