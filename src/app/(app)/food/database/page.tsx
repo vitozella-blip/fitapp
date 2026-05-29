@@ -18,6 +18,224 @@ type FoodForm = { name: string; brand: string; calories: string; protein: string
 
 const emptyForm = (): FoodForm => ({ name: '', brand: '', calories: '', protein: '', carbs: '', fat: '', saturatedFat: '', sugars: '', salt: '', categoryIds: [] })
 
+// ── Barcode scanner ──────────────────────────────────────────────────────────
+type ScanStatus = 'init' | 'scanning' | 'loading' | 'found' | 'notfound' | 'error' | 'unsupported'
+
+function rnd(v?: number) { return v != null ? Math.round(v * 10) / 10 : 0 }
+
+function BarcodeScannerModal({ onClose, onFound }: {
+  onClose: () => void
+  onFound: (form: FoodForm) => void
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [status, setStatus] = useState<ScanStatus>('init')
+  const [product, setProduct] = useState<FoodForm | null>(null)
+  const [manualCode, setManualCode] = useState('')
+  const streamRef = useRef<MediaStream | null>(null)
+  const animRef   = useRef<number | null>(null)
+  const scanning  = useRef(true)
+
+  useEffect(() => {
+    initScanner()
+    return cleanup
+  }, [])
+
+  function cleanup() {
+    scanning.current = false
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    streamRef.current?.getTracks().forEach(t => t.stop())
+  }
+
+  async function initScanner() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const BD = (window as any).BarcodeDetector
+    if (!BD) { setStatus('unsupported'); return }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      streamRef.current = stream
+      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+      setStatus('scanning')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
+      scanLoop(detector)
+    } catch { setStatus('error') }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function scanLoop(detector: any) {
+    if (!scanning.current) return
+    animRef.current = requestAnimationFrame(async () => {
+      if (!videoRef.current || !scanning.current) return
+      try {
+        const results = await detector.detect(videoRef.current)
+        if (results.length > 0) { cleanup(); await lookup(results[0].rawValue); return }
+      } catch {}
+      scanLoop(detector)
+    })
+  }
+
+  async function lookup(code: string) {
+    setStatus('loading')
+    try {
+      const res  = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}?fields=product_name,brands,nutriments`)
+      const data = await res.json()
+      if (data.status === 1 && data.product) {
+        const p = data.product; const n = p.nutriments ?? {}
+        setProduct({
+          name:         p.product_name ?? '',
+          brand:        p.brands?.split(',')[0]?.trim() ?? '',
+          calories:     String(Math.round(n['energy-kcal_100g'] ?? 0)),
+          fat:          String(rnd(n.fat_100g)),
+          saturatedFat: String(rnd(n['saturated-fat_100g'])),
+          carbs:        String(rnd(n.carbohydrates_100g)),
+          sugars:       String(rnd(n.sugars_100g)),
+          protein:      String(rnd(n.proteins_100g)),
+          salt:         String(rnd(n.salt_100g)),
+          categoryIds:  [],
+        })
+        setStatus('found')
+      } else { setStatus('notfound') }
+    } catch { setStatus('error') }
+  }
+
+  const C = '#e8924a'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70">
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-md flex flex-col shadow-xl overflow-hidden max-h-[90vh]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <p className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <ScanBarcode size={16} style={{ color: C }} /> Scansiona barcode
+          </p>
+          <button onClick={() => { cleanup(); onClose() }}
+            className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Camera viewfinder */}
+          {(status === 'init' || status === 'scanning') && (
+            <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
+              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+              {/* Scanning frame overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative w-56 h-40">
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-lg" style={{ borderColor: C }} />
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-lg" style={{ borderColor: C }} />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 rounded-bl-lg" style={{ borderColor: C }} />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 rounded-br-lg" style={{ borderColor: C }} />
+                  {status === 'scanning' && (
+                    <div className="absolute inset-x-0 h-0.5 animate-bounce" style={{ top: '50%', backgroundColor: C + 'cc' }} />
+                  )}
+                </div>
+              </div>
+              {status === 'init' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Loader2 size={28} className="animate-spin text-white" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {status === 'loading' && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 size={28} className="animate-spin" style={{ color: C }} />
+              <p className="text-sm text-gray-500">Ricerca prodotto...</p>
+            </div>
+          )}
+
+          {status === 'found' && product && (
+            <div className="p-4 space-y-3">
+              <div className="rounded-xl p-3 space-y-1" style={{ backgroundColor: C + '12' }}>
+                <p className="font-bold text-gray-900 dark:text-gray-100">{product.name || '—'}</p>
+                {product.brand && <p className="text-xs text-gray-500">{product.brand}</p>}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Kcal', val: product.calories, color: '#6abf6a' },
+                  { label: 'Grassi', val: product.fat + 'g', color: '#5b9bd5' },
+                  { label: 'Carb', val: product.carbs + 'g', color: C },
+                  { label: 'Prot', val: product.protein + 'g', color: '#9d8fcc' },
+                ].map(m => (
+                  <div key={m.label} className="rounded-lg p-2 text-center" style={{ backgroundColor: m.color + '15' }}>
+                    <p className="text-[10px] text-gray-400 font-medium">{m.label}</p>
+                    <p className="text-sm font-bold" style={{ color: m.color }}>{m.val}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {status === 'notfound' && (
+            <div className="p-4 space-y-3 text-center">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Prodotto non trovato nel database</p>
+              <p className="text-xs text-gray-400">Puoi aggiungerlo manualmente</p>
+            </div>
+          )}
+
+          {(status === 'error' || status === 'unsupported') && (
+            <div className="p-4 space-y-2 text-center">
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                {status === 'unsupported' ? 'Scanner non supportato dal browser' : 'Errore accesso alla fotocamera'}
+              </p>
+              <p className="text-xs text-gray-400">Inserisci il codice a mano:</p>
+            </div>
+          )}
+
+          {/* Manual barcode input (always visible below camera) */}
+          {status !== 'found' && status !== 'loading' && (
+            <div className="px-4 pb-4 pt-2">
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={manualCode}
+                  onChange={e => setManualCode(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && manualCode.trim() && lookup(manualCode.trim())}
+                  placeholder="Inserisci codice EAN manualmente..."
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+                />
+                <button
+                  onClick={() => manualCode.trim() && lookup(manualCode.trim())}
+                  disabled={!manualCode.trim()}
+                  className="px-3 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40"
+                  style={{ backgroundColor: C }}>
+                  Cerca
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-4 pb-6 pt-3 border-t border-gray-100 dark:border-gray-800 shrink-0 flex gap-2">
+          {status === 'found' && product ? (
+            <>
+              <button onClick={() => { cleanup(); onClose() }}
+                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+                Annulla
+              </button>
+              <button onClick={() => { cleanup(); onFound(product) }}
+                className="flex-1 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2"
+                style={{ backgroundColor: C }}>
+                <Check size={15} /> Aggiungi al database
+              </button>
+            </>
+          ) : (
+            <button onClick={() => { cleanup(); onClose() }}
+              className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+              Chiudi
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const fmt = (v: number | undefined | null, unit = 'g') =>
   v == null || v === 0 ? '—' : `${v} ${unit}`
 
@@ -97,18 +315,19 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
 
   return (
     <div className={cn('border-b border-gray-200 dark:border-gray-700 last:border-0 relative overflow-hidden', selected && 'bg-orange-50 dark:bg-orange-950/20')}>
-      {/* Edit action (swipe right) */}
-      <div className="absolute inset-y-0 left-0 flex items-center justify-center"
-        style={{ width: SNAP, backgroundColor: '#f0aa78' }}
-        onClick={() => { snapTo(null); onEdit() }}>
-        <Pencil size={18} className="text-white" />
-      </div>
-      {/* Delete action (swipe left) */}
-      <div className="absolute inset-y-0 right-0 flex items-center justify-center"
-        style={{ width: SNAP, backgroundColor: '#ef4444' }}
-        onClick={() => { snapTo(null); onDelete() }}>
-        <Trash2 size={18} className="text-white" />
-      </div>
+      {/* Edit / Delete actions — hidden during multi-select */}
+      {!selecting && <>
+        <div className="absolute inset-y-0 left-0 flex items-center justify-center"
+          style={{ width: SNAP, backgroundColor: '#f0aa78' }}
+          onClick={() => { snapTo(null); onEdit() }}>
+          <Pencil size={18} className="text-white" />
+        </div>
+        <div className="absolute inset-y-0 right-0 flex items-center justify-center"
+          style={{ width: SNAP, backgroundColor: '#ef4444' }}
+          onClick={() => { snapTo(null); onDelete() }}>
+          <Trash2 size={18} className="text-white" />
+        </div>
+      </>}
 
       {/* Sliding card content */}
       <div
@@ -511,6 +730,7 @@ function FoodDatabasePage() {
   const [saving, setSaving] = useState(false)
   const [selecting, setSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showScanner, setShowScanner] = useState(false)
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const fetchAll = useCallback(async (query = q, cat = catFilter, fav = favOnly) => {
@@ -655,9 +875,8 @@ function FoodDatabasePage() {
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
           {/* no spinner here — client-side filter is instant */}
         </div>
-        {/* TODO: barcode scanner */}
         <button
-          onClick={() => {/* TODO: open barcode scanner */}}
+          onClick={() => setShowScanner(true)}
           className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
           title="Scansiona barcode"
         >
@@ -711,6 +930,18 @@ function FoodDatabasePage() {
           </div>
           <p className="text-sm text-orange-500 font-semibold">Aggiungi &ldquo;{q}&rdquo; al database</p>
         </button>
+      )}
+
+      {showScanner && (
+        <BarcodeScannerModal
+          onClose={() => setShowScanner(false)}
+          onFound={prefill => {
+            setShowScanner(false)
+            setEditFood(null)
+            setForm(prefill)
+            setShowForm(true)
+          }}
+        />
       )}
 
       {showForm && (
