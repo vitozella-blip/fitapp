@@ -787,10 +787,12 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
 }) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(ex.exercise.name)
-  const rowRef   = useRef<HTMLDivElement>(null)
-  const startX   = useRef(0)
-  const currentX = useRef(0)
-  const snapped  = useRef<'left' | 'right' | null>(null)
+  const rowRef    = useRef<HTMLDivElement>(null)
+  const startX    = useRef(0)
+  const startY    = useRef(0)
+  const currentX  = useRef(0)
+  const snapped   = useRef<'left' | 'right' | null>(null)
+  const dirLocked = useRef<'h' | 'v' | null>(null)
   const SNAP   = 72
   const THRESH = 36
 
@@ -810,10 +812,18 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
   }
   function onTouchStart(e: React.TouchEvent) {
     startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    dirLocked.current = null
     if (rowRef.current) rowRef.current.style.transition = ''
   }
   function onTouchMove(e: React.TouchEvent) {
     const dx = e.touches[0].clientX - startX.current
+    const dy = Math.abs(e.touches[0].clientY - startY.current)
+    if (dirLocked.current === null) {
+      if (Math.abs(dx) < 5 && dy < 5) return
+      dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v'
+    }
+    if (dirLocked.current !== 'h') return
     const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
     setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
   }
@@ -1107,7 +1117,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   const exercises = tmpl.exercises ?? []
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
         <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
         {editing ? (
@@ -1160,7 +1170,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                       onRename={name => renameExercise(ex.exercise.id, name)} />
                   ))}
                 </div>
-                <div className="px-3 pb-2 pt-1">
+                <div className="px-3 pb-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                   <button onClick={() => setAddEx(true)} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed text-xs font-medium transition-colors" style={{ borderColor: color + '60', color }}>
                     <Plus size={13} /> Aggiungi esercizio
                   </button>
