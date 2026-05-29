@@ -120,18 +120,9 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
         transition: swipeAnim ? 'transform 250ms cubic-bezier(0.25,0.46,0.45,0.94)' : 'none',
       }}>
         <div className="flex items-center gap-2 px-4 py-3">
-          {selecting ? (
+          {selecting && (
             <button onClick={onSelect} className={cn('shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors', selected ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
               {selected && <Check size={11} className="text-white" />}
-            </button>
-          ) : (
-            <button
-              onClick={e => { e.stopPropagation(); onToggleFav() }}
-              onTouchStart={e => e.stopPropagation()}
-              onTouchMove={e => e.stopPropagation()}
-              onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onToggleFav() }}
-              className="shrink-0 p-1 -m-1">
-              <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
             </button>
           )}
           <button
@@ -159,6 +150,16 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
               </div>
             )}
           </button>
+          {!selecting && (
+            <button
+              onClick={e => { e.stopPropagation(); onToggleFav() }}
+              onTouchStart={e => e.stopPropagation()}
+              onTouchMove={e => e.stopPropagation()}
+              onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onToggleFav() }}
+              className="shrink-0 p-1 -m-1">
+              <Star size={16} className={cn('transition-colors', isFav ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
+            </button>
+          )}
         </div>
 
         {open && !selecting && (

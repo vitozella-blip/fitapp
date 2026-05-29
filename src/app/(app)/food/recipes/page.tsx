@@ -125,7 +125,6 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
   const [pending, setPending] = useState<{ name: string; brand?: string; food?: Food } | null>(null)
   const [qty, setQty] = useState('')
   const [unit, setUnit] = useState<Unit>('g')
-  const timer = useRef<NodeJS.Timeout | undefined>(undefined)
   const ref = useRef<HTMLDivElement>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
 
@@ -146,21 +145,15 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
   }, [results, q])
 
   useEffect(() => {
-    clearTimeout(timer.current)
     if (q.length < 1) { setOpen(false); return }
     setOpen(true)
-    timer.current = setTimeout(async () => {
-      const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
-      const data = await r.json()
-      setResults(Array.isArray(data) ? data : [])
-    }, 200)
-  }, [q, userId])
+  }, [q])
 
   function pick(food?: Food, freeName?: string) {
     const name = food?.name ?? freeName ?? ''
     setPending({ name, brand: food?.brand, food })
     setQty(''); setUnit('g')
-    setQ(''); setResults([]); setOpen(false)
+    setQ(''); setOpen(false)
     setTimeout(() => qtyRef.current?.focus(), 50)
   }
 

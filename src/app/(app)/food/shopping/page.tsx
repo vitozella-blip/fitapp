@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Plus, X, Check, Trash2, ShoppingCart, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -21,7 +21,6 @@ export default function ShoppingListPage() {
   const [results,  setResults]  = useState<Food[]>([])
   const [searched,  setSearched]  = useState(false)
   const [adding,   setAdding]   = useState(false)
-  const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const fetchItems = useCallback(async () => {
     try {
@@ -43,18 +42,6 @@ export default function ShoppingListPage() {
     return results.filter(f => f.name.toLowerCase().includes(lower) || (f.brand?.toLowerCase().includes(lower) ?? false))
   }, [results, q, selected])
 
-  useEffect(() => {
-    clearTimeout(timer.current)
-    if (selected || q.length < 1) return
-    timer.current = setTimeout(async () => {
-      try {
-        const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}&limit=8`)
-        const data = await r.json()
-        setResults(Array.isArray(data) ? data : [])
-      } catch {}
-    }, 200)
-  }, [q, userId, selected])
-
   async function handleAdd() {
     const name = selected?.name ?? q.trim()
     if (!name) return
@@ -75,7 +62,7 @@ export default function ShoppingListPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, name, foodId, quantity: qty.trim() || null }),
       })
-      setQ(''); setQty(''); setSelected(null); setResults([]); setSearched(false)
+      setQ(''); setQty(''); setSelected(null)
       await fetchItems()
     } catch {}
     setAdding(false)
@@ -142,7 +129,6 @@ export default function ShoppingListPage() {
                 className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{f.name}</span>
                 {f.brand && <span className="text-xs text-gray-400"> — {f.brand}</span>}
-                <span className="text-xs text-gray-400 ml-1.5">{f.calories} kcal/100g</span>
               </button>
             ))}
           </div>
