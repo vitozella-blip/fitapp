@@ -1330,7 +1330,7 @@ function PlanCard({ plan, userId, onChanged }: {
   const isActive = !!(plan as { isActive?: boolean }).isActive
 
   return (
-    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors', 'border-gray-200 dark:border-gray-800')}>
+    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors', isActive ? 'border-blue-300 dark:border-blue-700' : 'border-gray-200 dark:border-gray-800')}>
       <div className="flex items-start gap-3 px-4 py-3">
         <button onClick={() => setExpanded(o => !o)} className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2">
