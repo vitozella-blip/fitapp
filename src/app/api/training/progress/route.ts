@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
     if (templates === 'exercises') {
       const { rows } = await pool.query(
         `WITH user_exercises AS (
-           -- from plans
            SELECT DISTINCT e.id, e.name
            FROM "WorkoutTemplateExercise" te
            JOIN "WorkoutTemplate" t  ON t.id  = te."templateId"
@@ -23,7 +22,6 @@ export async function GET(req: NextRequest) {
            JOIN "Exercise"        e  ON e.id  = te."exerciseId"
            WHERE LOWER(e.name) != 'tennis'
            UNION
-           -- ever logged
            SELECT DISTINCT e.id, e.name
            FROM "WorkoutSet"   s
            JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
@@ -31,33 +29,40 @@ export async function GET(req: NextRequest) {
            WHERE LOWER(e.name) != 'tennis'
          ),
          stats AS (
-           SELECT s."exerciseId",
+           SELECT LOWER(e.name) AS name_key,
                   COUNT(DISTINCT w.date)::int                          AS sessions,
                   MAX(s.weight)                                        AS "maxWeight",
                   MAX(s.duration)                                      AS "maxDuration",
                   BOOL_OR(s.duration IS NOT NULL AND s.weight IS NULL) AS "isDuration"
-           FROM "WorkoutSet"   s
+           FROM "WorkoutSet" s
            JOIN "WorkoutDiary" w ON w.id = s."workoutDiaryId" AND w."userId" = $1
-           GROUP BY s."exerciseId"
+           JOIN "Exercise"     e ON e.id = s."exerciseId"
+           WHERE LOWER(e.name) != 'tennis'
+           GROUP BY LOWER(e.name)
          ),
          plan_names AS (
-           SELECT te."exerciseId",
+           SELECT LOWER(e.name) AS name_key,
                   ARRAY_REMOVE(ARRAY_AGG(DISTINCT pl.name ORDER BY pl.name), NULL) AS "planNames"
            FROM "WorkoutTemplateExercise" te
            JOIN "WorkoutTemplate" t  ON t.id  = te."templateId"
            JOIN "WorkoutPlan"     pl ON pl.id = t."planId" AND pl."userId" = $1
-           GROUP BY te."exerciseId"
+           JOIN "Exercise"        e  ON e.id  = te."exerciseId"
+           WHERE LOWER(e.name) != 'tennis'
+           GROUP BY LOWER(e.name)
          )
-         SELECT ue.id, ue.name,
-                COALESCE(st.sessions, 0)::int        AS sessions,
+         SELECT ARRAY_AGG(DISTINCT ue.id)       AS ids,
+                MIN(ue.id)                       AS id,
+                MIN(ue.name)                     AS name,
+                COALESCE(st.sessions, 0)::int    AS sessions,
                 st."maxWeight",
                 st."maxDuration",
-                COALESCE(st."isDuration", false)      AS "isDuration",
-                COALESCE(pn."planNames", '{}')        AS "planNames"
+                COALESCE(st."isDuration", false) AS "isDuration",
+                COALESCE(pn."planNames", '{}')   AS "planNames"
          FROM user_exercises ue
-         LEFT JOIN stats      st ON st."exerciseId" = ue.id
-         LEFT JOIN plan_names pn ON pn."exerciseId" = ue.id
-         ORDER BY ue.name ASC`,
+         LEFT JOIN stats      st ON st.name_key = LOWER(ue.name)
+         LEFT JOIN plan_names pn ON pn.name_key = LOWER(ue.name)
+         GROUP BY LOWER(ue.name), st.sessions, st."maxWeight", st."maxDuration", st."isDuration", pn."planNames"
+         ORDER BY MIN(ue.name) ASC`,
         [userId]
       )
       return NextResponse.json(rows)
@@ -104,10 +109,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows)
     }
 
-    // ── Time-series for one exercise ─────────────────────────────────────
+    // ── Time-series for one or more exercises (comma-separated ids) ──────
     if (exerciseId) {
+      const exerciseIds = exerciseId.split(',').filter(Boolean)
       const weekIds = req.nextUrl.searchParams.get('weekIds')
-      const params: unknown[] = [userId, exerciseId]
+      const params: unknown[] = [userId, exerciseIds]
       let dateFilter = ''
       if (weekIds) {
         const ids = weekIds.split(',').filter(Boolean)
@@ -135,7 +141,7 @@ export async function GET(req: NextRequest) {
          FROM "WorkoutDiary" w
          JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
          WHERE w."userId" = $1
-           AND s."exerciseId" = $2
+           AND s."exerciseId" = ANY($2::text[])
            ${dateFilter}
          GROUP BY w.date
          ORDER BY w.date ASC`,

@@ -38,7 +38,7 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
   onSelect: () => void; onLongPress: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const lpTimer  = useRef<NodeJS.Timeout | undefined>(undefined)
+  const lpTimer = useRef<NodeJS.Timeout | undefined>(undefined)
   const rowRef    = useRef<HTMLDivElement>(null)
   const startX    = useRef(0)
   const startY    = useRef(0)

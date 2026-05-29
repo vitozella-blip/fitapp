@@ -1329,12 +1329,82 @@ function PlanCard({ plan, userId, onChanged }: {
   const eL = fmtDate((plan as { endDate?: string | null }).endDate)
   const isActive = !!(plan as { isActive?: boolean }).isActive
 
+  const rowRef    = useRef<HTMLDivElement>(null)
+  const startX    = useRef(0)
+  const startY    = useRef(0)
+  const currentX  = useRef(0)
+  const snapped   = useRef<'left' | 'right' | null>(null)
+  const dirLocked = useRef<'h' | 'v' | null>(null)
+  const SNAP = 72; const THRESH = 36
+
+  function setTranslate(x: number) {
+    currentX.current = x
+    if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)`
+  }
+  function snapTo(dir: 'left' | 'right' | null) {
+    snapped.current = dir
+    const x = dir === 'left' ? -SNAP : dir === 'right' ? SNAP : 0
+    if (rowRef.current) {
+      rowRef.current.style.transition = 'transform 0.2s ease'
+      rowRef.current.style.transform  = `translateX(${x}px)`
+      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210)
+    }
+    currentX.current = x
+  }
+  function onTouchStart(e: React.TouchEvent) {
+    if (expanded) return
+    startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    dirLocked.current = null
+    if (rowRef.current) rowRef.current.style.transition = ''
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (expanded) return
+    const dx = e.touches[0].clientX - startX.current
+    const dy = Math.abs(e.touches[0].clientY - startY.current)
+    if (dirLocked.current === null) {
+      if (Math.abs(dx) < 5 && dy < 5) return
+      dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v'
+    }
+    if (dirLocked.current !== 'h') return
+    const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
+    setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
+  }
+  function onTouchEnd() {
+    if (expanded) return
+    const x = currentX.current
+    if      (x < -THRESH) snapTo('left')
+    else if (x >  THRESH) snapTo('right')
+    else                   snapTo(null)
+  }
+
   return (
-    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors', 'border-gray-200 dark:border-gray-800')}>
+    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors overflow-hidden relative', isActive ? 'border-[#7aafc8]' : 'border-gray-200 dark:border-gray-800')}>
+      {/* Swipe left → delete */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-2xl"
+        style={{ width: SNAP, backgroundColor: '#ef4444' }}
+        onClick={() => { snapTo(null); del() }}>
+        <Trash2 size={20} className="text-white" />
+      </div>
+      {/* Swipe right → edit */}
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center rounded-l-2xl"
+        style={{ width: SNAP, backgroundColor: CT }}
+        onClick={() => { snapTo(null); setEditing(true); setExpanded(true); setEName(plan.name); setEStart((plan as { startDate?: string | null }).startDate ?? ''); setEEnd((plan as { endDate?: string | null }).endDate ?? '') }}>
+        <Pencil size={20} className="text-white" />
+      </div>
+
+      {/* Sliding header */}
+      <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-900 touch-pan-y"
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="flex items-start gap-3 px-4 py-3">
-        <button onClick={() => setExpanded(o => !o)} className="flex-1 min-w-0 text-left">
+        <button onClick={() => { if (snapped.current) { snapTo(null); return }; setExpanded(o => !o) }} className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2">
             <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{plan.name}</p>
+            {isActive && (
+              <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: CT }}>
+                Corrente
+              </span>
+            )}
           </div>
           {(sL || eL) && <p className="mt-1 text-xs text-gray-400">{sL ?? '–'} – {eL ?? '–'}</p>}
         </button>
@@ -1343,6 +1413,7 @@ function PlanCard({ plan, userId, onChanged }: {
             onEdit={() => { setEditing(true); setExpanded(true); setEName(plan.name); setEStart((plan as { startDate?: string | null }).startDate ?? ''); setEEnd((plan as { endDate?: string | null }).endDate ?? '') }}
             onDuplicate={duplicate} onDelete={del} />
         </div>
+      </div>
       </div>
 
       {expanded && (
@@ -1427,7 +1498,7 @@ export default function TrainingPlanPage() {
             <button onClick={() => setShowWizard(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold"
               style={{ backgroundColor: CT }}>
-              <Plus size={15} /> Nuovo Piano
+              <Plus size={15} /> Nuovo
             </button>
           ) : undefined
         }
