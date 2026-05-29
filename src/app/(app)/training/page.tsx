@@ -75,7 +75,7 @@ export default function TrainingHubPage() {
       </div>
 
       {/* Body */}
-      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 0.75fr' }}>
+      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '388px auto' }}>
 
         {/* TOP — calendario allenamenti */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
@@ -186,15 +186,15 @@ export default function TrainingHubPage() {
         </div>
 
         {/* BOTTOM — Diario Allenamenti + 2 righe da 2 */}
-        <div className="flex-1 min-h-0 flex flex-col gap-2">
+        <div className="shrink-0 flex flex-col gap-2">
           <Link href={DIARY.href}
-            className="flex items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
-            style={{ flex: '0 0 25%', backgroundColor: COLOR + '35' }}>
-            <DIARY.icon className="!w-6 !h-6" style={{ color: COLOR }} />
+            className="h-14 flex items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
+            style={{ backgroundColor: COLOR + '35' }}>
+            <DIARY.icon className="!w-5 !h-5" style={{ color: COLOR }} />
             <span className="text-sm font-bold tracking-wide" style={{ color: COLOR }}>{DIARY.label}</span>
           </Link>
           {[SECTIONS.slice(0, 2), SECTIONS.slice(2, 4)].map((row, ri) => (
-            <div key={ri} className="flex gap-2 flex-1 min-h-0">
+            <div key={ri} className="h-14 flex gap-2">
               {row.map(s => (
                 <Link key={s.href} href={s.href}
                   className="flex-1 flex flex-col items-center justify-center gap-1.5 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
@@ -205,7 +205,6 @@ export default function TrainingHubPage() {
               ))}
             </div>
           ))}
-          <div className="flex-1 min-h-0" />
         </div>
 
       </div>

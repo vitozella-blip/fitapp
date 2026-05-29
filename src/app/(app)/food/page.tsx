@@ -109,7 +109,7 @@ export default function FoodHubPage() {
       </div>
 
       {/* Body */}
-      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '1fr 0.75fr' }}>
+      <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '388px auto' }}>
 
         {/* TOP — statistics */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
@@ -230,16 +230,14 @@ export default function FoodHubPage() {
           )}
         </div>
 
-        {/* BOTTOM — fixed-height rows to avoid hydration resize */}
+        {/* BOTTOM — fixed-height rows (same as training hub) */}
         <div className="shrink-0 flex flex-col gap-2">
-          {/* Row 1 — Diario Pasti full width */}
           <Link href={DIARY.href}
-            className="h-12 flex items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
+            className="h-14 flex items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
             style={{ backgroundColor: COLOR + '35' }}>
-            <DIARY.icon className="!w-6 !h-6" style={{ color: COLOR }} />
+            <DIARY.icon className="!w-5 !h-5" style={{ color: COLOR }} />
             <span className="text-sm font-bold tracking-wide" style={{ color: COLOR }}>{DIARY.label}</span>
           </Link>
-          {/* Rows 2-4 — 5 sections split into 3 rows of 2 */}
           {[SECTIONS.slice(0, 2), SECTIONS.slice(2, 4), SECTIONS.slice(4, 5)].map((row, ri) => (
             <div key={ri} className="h-14 flex gap-2">
               {row.map(s => (
