@@ -38,87 +38,76 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
   onSelect: () => void; onLongPress: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const lpTimer = useRef<NodeJS.Timeout | undefined>(undefined)
-  const [swipeX, setSwipeX] = useState(0)
-  const [swipeAnim, setSwipeAnim] = useState(false)
-  const txStart = useRef(0)
-  const tyStart = useRef(0)
-  const swipeCommitted = useRef<'none' | 'h' | 'v'>('none')
-  const SWIPE_THRESHOLD = 80
+  const lpTimer  = useRef<NodeJS.Timeout | undefined>(undefined)
+  const rowRef   = useRef<HTMLDivElement>(null)
+  const startX   = useRef(0)
+  const currentX = useRef(0)
+  const snapped  = useRef<'left' | 'right' | null>(null)
+  const SNAP   = 72
+  const THRESH = 36
 
+  function setTranslate(x: number) {
+    currentX.current = x
+    if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)`
+  }
+  function snapTo(dir: 'left' | 'right' | null) {
+    snapped.current = dir
+    const x = dir === 'left' ? -SNAP : dir === 'right' ? SNAP : 0
+    if (rowRef.current) {
+      rowRef.current.style.transition = 'transform 0.2s ease'
+      rowRef.current.style.transform  = `translateX(${x}px)`
+      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210)
+    }
+    currentX.current = x
+  }
   function onTouchStart(e: React.TouchEvent) {
     if (selecting) return
-    txStart.current = e.touches[0].clientX
-    tyStart.current = e.touches[0].clientY
-    swipeCommitted.current = 'none'
-    setSwipeAnim(false)
+    startX.current = e.touches[0].clientX
+    if (rowRef.current) rowRef.current.style.transition = ''
   }
-
   function onTouchMove(e: React.TouchEvent) {
     if (selecting) return
-    const dx = e.touches[0].clientX - txStart.current
-    const dy = e.touches[0].clientY - tyStart.current
-    if (swipeCommitted.current === 'none') {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
-      swipeCommitted.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
-    }
-    if (swipeCommitted.current !== 'h') return
     clearTimeout(lpTimer.current)
-    setSwipeX(dx)
+    const dx = e.touches[0].clientX - startX.current
+    const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
+    setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
   }
-
-  function onTouchEnd(e: React.TouchEvent) {
-    if (selecting || swipeCommitted.current !== 'h') {
-      setSwipeAnim(true); setSwipeX(0); return
-    }
-    const dx = e.changedTouches[0].clientX - txStart.current
-    setSwipeAnim(true)
-    setSwipeX(0)
-    if (Math.abs(dx) >= SWIPE_THRESHOLD) {
-      if (dx < 0) onDelete()
-      else onEdit()
-    }
+  function onTouchEnd() {
+    if (selecting) return
+    const x = currentX.current
+    if      (x < -THRESH) snapTo('left')
+    else if (x >  THRESH) snapTo('right')
+    else                   snapTo(null)
   }
-
   function handleRowClick() {
     if (selecting) { onSelect(); return }
-    if (Math.abs(swipeX) > 4) return
+    if (snapped.current) { snapTo(null); return }
     setOpen(o => !o)
   }
 
-  const revealDelete = swipeX < -12
-  const revealEdit = swipeX > 12
-  const revealPct = Math.min(Math.abs(swipeX) / SWIPE_THRESHOLD, 1)
-
   return (
-    <div
-      className={cn('border-b border-gray-50 dark:border-gray-800 last:border-0 relative overflow-hidden', selected && 'bg-orange-50 dark:bg-orange-950/20')}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* Edit background (swipe right) */}
-      {revealEdit && (
-        <div className="absolute inset-0 flex items-center pl-5 gap-2"
-          style={{ backgroundColor: `rgba(59,130,246,${0.08 + revealPct * 0.15})` }}>
-          <Pencil size={16} style={{ color: `rgba(59,130,246,${0.4 + revealPct * 0.6})` }} />
-          <span className="text-sm font-bold" style={{ color: `rgba(59,130,246,${0.4 + revealPct * 0.6})` }}>Modifica</span>
-        </div>
-      )}
-      {/* Delete background (swipe left) */}
-      {revealDelete && (
-        <div className="absolute inset-0 flex items-center justify-end pr-5 gap-2"
-          style={{ backgroundColor: `rgba(239,68,68,${0.08 + revealPct * 0.15})` }}>
-          <span className="text-sm font-bold" style={{ color: `rgba(239,68,68,${0.4 + revealPct * 0.6})` }}>Elimina</span>
-          <Trash2 size={16} style={{ color: `rgba(239,68,68,${0.4 + revealPct * 0.6})` }} />
-        </div>
-      )}
+    <div className={cn('border-b border-gray-200 dark:border-gray-700 last:border-0 relative overflow-hidden', selected && 'bg-orange-50 dark:bg-orange-950/20')}>
+      {/* Edit action (swipe right) */}
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center"
+        style={{ width: SNAP, backgroundColor: '#f0aa78' }}
+        onClick={() => { snapTo(null); onEdit() }}>
+        <Pencil size={18} className="text-white" />
+      </div>
+      {/* Delete action (swipe left) */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center"
+        style={{ width: SNAP, backgroundColor: '#ef4444' }}
+        onClick={() => { snapTo(null); onDelete() }}>
+        <Trash2 size={18} className="text-white" />
+      </div>
 
       {/* Sliding card content */}
-      <div style={{
-        transform: `translateX(${swipeX}px)`,
-        transition: swipeAnim ? 'transform 250ms cubic-bezier(0.25,0.46,0.45,0.94)' : 'none',
-      }}>
+      <div
+        ref={rowRef}
+        className={cn('relative z-10 touch-pan-y', selected ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-white dark:bg-gray-900')}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         <div className="flex items-center gap-2 px-4 py-3">
           {selecting && (
             <button onClick={onSelect} className={cn('shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors', selected ? 'bg-orange-400 border-orange-400' : 'border-gray-300 dark:border-gray-600')}>
