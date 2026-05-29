@@ -787,10 +787,12 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
 }) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(ex.exercise.name)
-  const rowRef   = useRef<HTMLDivElement>(null)
-  const startX   = useRef(0)
-  const currentX = useRef(0)
-  const snapped  = useRef<'left' | 'right' | null>(null)
+  const rowRef    = useRef<HTMLDivElement>(null)
+  const startX    = useRef(0)
+  const startY    = useRef(0)
+  const currentX  = useRef(0)
+  const snapped   = useRef<'left' | 'right' | null>(null)
+  const dirLocked = useRef<'h' | 'v' | null>(null)
   const SNAP   = 72
   const THRESH = 36
 
@@ -810,10 +812,18 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
   }
   function onTouchStart(e: React.TouchEvent) {
     startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    dirLocked.current = null
     if (rowRef.current) rowRef.current.style.transition = ''
   }
   function onTouchMove(e: React.TouchEvent) {
     const dx = e.touches[0].clientX - startX.current
+    const dy = Math.abs(e.touches[0].clientY - startY.current)
+    if (dirLocked.current === null) {
+      if (Math.abs(dx) < 5 && dy < 5) return
+      dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v'
+    }
+    if (dirLocked.current !== 'h') return
     const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
     setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
   }

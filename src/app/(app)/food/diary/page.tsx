@@ -37,8 +37,10 @@ interface SwipeableRowProps {
 function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) {
   const rowRef    = useRef<HTMLDivElement>(null)
   const startX    = useRef(0)
+  const startY    = useRef(0)
   const currentX  = useRef(0)
   const snapped   = useRef<'left' | 'right' | null>(null)
+  const dirLocked = useRef<'h' | 'v' | null>(null)
 
   function setTranslate(x: number) {
     currentX.current = x
@@ -58,15 +60,21 @@ function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) {
 
   function handleTouchStart(e: React.TouchEvent) {
     startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    dirLocked.current = null
     if (rowRef.current) rowRef.current.style.transition = ''
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    const dx   = e.touches[0].clientX - startX.current
+    const dx = e.touches[0].clientX - startX.current
+    const dy = Math.abs(e.touches[0].clientY - startY.current)
+    if (dirLocked.current === null) {
+      if (Math.abs(dx) < 5 && dy < 5) return
+      dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v'
+    }
+    if (dirLocked.current !== 'h') return
     const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
-    const raw  = base + dx
-    const clamped = Math.max(-SNAP, Math.min(SNAP, raw))
-    setTranslate(clamped)
+    setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
   }
 
   function handleTouchEnd() {

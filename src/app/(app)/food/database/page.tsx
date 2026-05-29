@@ -39,10 +39,12 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
 }) {
   const [open, setOpen] = useState(false)
   const lpTimer  = useRef<NodeJS.Timeout | undefined>(undefined)
-  const rowRef   = useRef<HTMLDivElement>(null)
-  const startX   = useRef(0)
-  const currentX = useRef(0)
-  const snapped  = useRef<'left' | 'right' | null>(null)
+  const rowRef    = useRef<HTMLDivElement>(null)
+  const startX    = useRef(0)
+  const startY    = useRef(0)
+  const currentX  = useRef(0)
+  const snapped   = useRef<'left' | 'right' | null>(null)
+  const dirLocked = useRef<'h' | 'v' | null>(null)
   const SNAP   = 72
   const THRESH = 36
 
@@ -63,12 +65,20 @@ function FoodCard({ food, isFav, categories, onToggleFav, onEdit, onDelete, sele
   function onTouchStart(e: React.TouchEvent) {
     if (selecting) return
     startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    dirLocked.current = null
     if (rowRef.current) rowRef.current.style.transition = ''
   }
   function onTouchMove(e: React.TouchEvent) {
     if (selecting) return
-    clearTimeout(lpTimer.current)
     const dx = e.touches[0].clientX - startX.current
+    const dy = Math.abs(e.touches[0].clientY - startY.current)
+    if (dirLocked.current === null) {
+      if (Math.abs(dx) < 5 && dy < 5) return
+      dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v'
+    }
+    if (dirLocked.current !== 'h') return
+    clearTimeout(lpTimer.current)
     const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
     setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
   }
