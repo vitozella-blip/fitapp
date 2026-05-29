@@ -26,7 +26,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [favFilter, setFavFilter] = useState(false)
   const [catFilter, setCatFilter] = useState('')
-  const timer = useRef<NodeJS.Timeout | undefined>(undefined)
+  const allFoodsRef = useRef<Food[]>([])
 
   useEffect(() => {
     Promise.all([
@@ -42,33 +42,31 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   useEffect(() => {
     fetch(`/api/food?q=&userId=${userId}`)
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) { setResults(data); setSearched(true) } })
+      .then(data => { if (Array.isArray(data)) { allFoodsRef.current = data; setResults(data); setSearched(true) } })
       .catch(() => {})
   }, [userId])
 
+  // Only re-fetch when category/fav filter changes — text search is handled client-side
   useEffect(() => {
-    clearTimeout(timer.current)
     const hasFilter = favFilter || !!catFilter
-    if (q.length < 1 && !hasFilter) return   // keep pre-loaded results, don't reset
-    timer.current = setTimeout(async () => {
-      try {
-        const p = new URLSearchParams({ q: q || '', userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
-        const r = await fetch(`/api/food?${p}`)
-        const data = await r.json()
-        setResults(Array.isArray(data) ? data : [])
-      } catch {}
-      setSearched(true)
-    }, 200)
-  }, [q, userId, favFilter, catFilter])
+    if (!hasFilter) { setResults(allFoodsRef.current); return }
+    const p = new URLSearchParams({ userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
+    fetch(`/api/food?${p}`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setResults(data) })
+      .catch(() => {})
+  }, [userId, favFilter, catFilter])
 
   const displayResults = useMemo(() => {
+    const hasFilter = favFilter || !!catFilter
+    if (!q.trim() && !hasFilter) return []
     if (!q.trim()) return results
     const lower = q.trim().toLowerCase()
     return results.filter(f =>
       f.name.toLowerCase().includes(lower) ||
       (f.brand?.toLowerCase().includes(lower) ?? false)
     )
-  }, [results, q])
+  }, [results, q, favFilter, catFilter])
 
   function addToCart() {
     if (!selected || !qty.trim()) return
@@ -76,8 +74,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
     setSelected(null)
     setQty('')
     setQ('')
-    setResults([])
-    setSearched(false)
+    // keep pre-loaded results so instant filter works immediately for the next item
   }
 
   function removeFromCart(i: number) {
@@ -191,14 +188,14 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
               <button key={f.id} onClick={() => setSelected(f)}
                 className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate flex-1">{f.name}{f.brand && <span className="text-gray-400 font-normal"> — {f.brand}</span>}</p>
                   {favorites.has(f.id) && <Star size={11} className="text-yellow-400 fill-yellow-400 shrink-0" />}
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{f.name}{f.brand && <span className="text-gray-400 font-normal"> — {f.brand}</span>}</p>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {f.calories} kcal ·{' '}
-                  <span style={{ color: '#5b9bd5' }}>G {f.fat}g</span> ·{' '}
-                  <span style={{ color: '#f0aa78' }}>C {f.carbs}g</span> ·{' '}
-                  <span style={{ color: '#9d8fcc' }}>P {f.protein}g</span>
+                  <span style={{ color: '#6abf6a' }}><span className="font-semibold">{f.calories}</span> kcal</span>{' · '}
+                  <span style={{ color: '#5b9bd5' }}>G <span className="font-semibold">{f.fat}</span> g</span>{' · '}
+                  <span style={{ color: '#f0aa78' }}>C <span className="font-semibold">{f.carbs}</span> g</span>{' · '}
+                  <span style={{ color: '#9d8fcc' }}>P <span className="font-semibold">{f.protein}</span> g</span>
                   <span className="text-gray-300"> /100g</span>
                 </p>
               </button>

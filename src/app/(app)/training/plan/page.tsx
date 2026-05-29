@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Plus, Trash2, Pencil, Copy, ChevronUp, ChevronDown, ChevronRight,
+  Plus, Trash2, Pencil, Copy, ChevronRight,
   Check, X, Loader2, Search, MoreVertical, ClipboardList,
   ChevronDown as Chevron,
 } from 'lucide-react'
@@ -300,7 +300,7 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
         </div>
       </div>
       {open && routine.exercises.length > 0 && (
-        <div className="border-t border-gray-50 dark:border-gray-800 px-3 py-2 space-y-1">
+        <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2 space-y-1">
           {routine.exercises.map((ex, i) => (
             <div key={ex.localId} className="flex items-center gap-2">
               <span className="text-[10px] text-gray-300 w-4 shrink-0">{i + 1}.</span>
@@ -729,7 +729,7 @@ function ExerciseFormModal({
                 <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
                   {displayResults.map(ex => (
                     <button key={ex.id} onClick={() => setSelected(ex)}
-                      className="w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      className="w-full text-left px-4 py-3 border-b border-gray-200 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{ex.name}</p>
                     </button>
                   ))}
@@ -781,27 +781,102 @@ function ExerciseFormModal({
 }
 
 // ── Base exercise row ─────────────────────────────────────────────────────────
-function BaseExRow({ ex, isFirst, isLast, onDelete, onReorder, onToggleAbs }: {
-  ex: TemplateExercise; isFirst: boolean; isLast: boolean
-  onDelete: () => void; onReorder: (dir: 'up' | 'down') => void
-  onToggleAbs: () => void
+function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
+  ex: TemplateExercise
+  onDelete: () => void; onToggleAbs: () => void; onRename: (name: string) => void
 }) {
-  return (
-    <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 group">
-      <div className="flex flex-col shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={e => { e.stopPropagation(); onReorder('up') }} disabled={isFirst} className={cn('w-4 h-4 flex items-center justify-center', isFirst ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}><ChevronUp size={10} /></button>
-        <button onClick={e => { e.stopPropagation(); onReorder('down') }} disabled={isLast} className={cn('w-4 h-4 flex items-center justify-center', isLast ? 'text-gray-200 dark:text-gray-700' : 'text-gray-400')}><ChevronDown size={10} /></button>
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(ex.exercise.name)
+  const rowRef   = useRef<HTMLDivElement>(null)
+  const startX   = useRef(0)
+  const currentX = useRef(0)
+  const snapped  = useRef<'left' | 'right' | null>(null)
+  const SNAP   = 72
+  const THRESH = 36
+
+  function setTranslate(x: number) {
+    currentX.current = x
+    if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)`
+  }
+  function snapTo(dir: 'left' | 'right' | null) {
+    snapped.current = dir
+    const x = dir === 'left' ? -SNAP : dir === 'right' ? SNAP : 0
+    if (rowRef.current) {
+      rowRef.current.style.transition = 'transform 0.2s ease'
+      rowRef.current.style.transform  = `translateX(${x}px)`
+      setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210)
+    }
+    currentX.current = x
+  }
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX
+    if (rowRef.current) rowRef.current.style.transition = ''
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - startX.current
+    const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
+    setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
+  }
+  function onTouchEnd() {
+    const x = currentX.current
+    if      (x < -THRESH) snapTo('left')
+    else if (x >  THRESH) snapTo('right')
+    else                   snapTo(null)
+  }
+  function handleEditTap(e: React.MouseEvent) {
+    e.stopPropagation(); snapTo(null)
+    setEditName(ex.exercise.name); setEditing(true)
+  }
+  function handleDeleteTap(e: React.MouseEvent) {
+    e.stopPropagation(); snapTo(null); onDelete()
+  }
+  function saveEdit() {
+    const n = editName.trim()
+    if (n && n !== ex.exercise.name) onRename(n)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+        <input autoFocus value={editName} onChange={e => setEditName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(false) }}
+          onBlur={saveEdit}
+          className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
+        <button onClick={e => { e.stopPropagation(); onToggleAbs() }}
+          className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border shrink-0',
+            ex.isAbs ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
+                     : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600')}>
+          ABS
+        </button>
       </div>
-      <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.exercise.name}</p>
-      {ex.exercise.muscleGroup && <span className="text-[10px] text-gray-400 shrink-0 hidden sm:block">{ex.exercise.muscleGroup}</span>}
-      <button onClick={e => { e.stopPropagation(); onToggleAbs() }} title="Segna come esercizio ABS"
-        className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shrink-0',
-          ex.isAbs
-            ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
-            : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400')}>
-        ABS
-      </button>
-      <button onClick={e => { e.stopPropagation(); onDelete() }} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors shrink-0"><Trash2 size={12} /></button>
+    )
+  }
+
+  return (
+    <div className="relative overflow-hidden border-b border-gray-200 dark:border-gray-700 last:border-0">
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: CT }} onClick={handleEditTap}>
+        <Pencil size={18} className="text-white" />
+      </div>
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: '#ef4444' }} onClick={handleDeleteTap}>
+        <Trash2 size={18} className="text-white" />
+      </div>
+      <div
+        ref={rowRef}
+        className="relative z-10 flex items-center gap-1.5 px-3 py-2.5 bg-white dark:bg-gray-900 touch-pan-y"
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={snapped.current ? () => snapTo(null) : undefined}
+      >
+        <p className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{ex.exercise.name}</p>
+        {ex.exercise.muscleGroup && <span className="text-[10px] text-gray-400 shrink-0 hidden sm:block">{ex.exercise.muscleGroup}</span>}
+        <button onClick={e => { e.stopPropagation(); onToggleAbs() }}
+          className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shrink-0',
+            ex.isAbs
+              ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
+              : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400')}>
+          ABS
+        </button>
+      </div>
     </div>
   )
 }
@@ -826,7 +901,7 @@ function WeekExRow({ ex, weekId, param, color }: {
   }
 
   return (
-    <div className="px-3 py-1.5 border-b border-gray-50 dark:border-gray-800 last:border-0">
+    <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 last:border-0">
       <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
         <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{ex.exercise.name}</p>
         <div className="flex flex-col items-center gap-0.5">
@@ -898,6 +973,41 @@ function WeekMenuBtn({ onRename, onDuplicate, onDelete }: {
   )
 }
 
+// ── Scheda header menu ────────────────────────────────────────────────────────
+function CardMenu({ onEdit, onDuplicate, onDelete }: {
+  onEdit: () => void; onDuplicate: () => void; onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const item = 'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors'
+  return (
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(o => !o)} className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center">
+        <MoreVertical size={13} />
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+          <button onClick={() => { setOpen(false); onEdit() }} className={cn(item, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800')}>
+            <Pencil size={11} className="text-gray-400" /> Rinomina
+          </button>
+          <button onClick={() => { setOpen(false); onDuplicate() }} className={cn(item, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800')}>
+            <Copy size={11} className="text-gray-400" /> Duplica
+          </button>
+          <button onClick={() => { setOpen(false); onDelete() }} className={cn(item, 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50')}>
+            <Trash2 size={11} /> Elimina
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Scheda card with week tabs ────────────────────────────────────────────────
 function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   tmpl: Template; idx: number; userId: string; onRefresh: () => void
@@ -957,12 +1067,12 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
     if (!confirm('Rimuovere esercizio?')) return
     await fetch(`/api/template-exercises/${exId}`, { method: 'DELETE' }); onRefresh()
   }
-  async function reorderExercise(exId: string, dir: 'up' | 'down') {
-    await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reorder', direction: dir }) })
-    onRefresh()
-  }
   async function toggleAbsExercise(exId: string) {
     await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggleAbs' }) })
+    onRefresh()
+  }
+  async function renameExercise(exerciseId: string, newName: string) {
+    await fetch(`/api/exercises/${exerciseId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) })
     onRefresh()
   }
   async function addWeek() {
@@ -1022,9 +1132,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
             </>
           ) : (
             <>
-              <button onClick={() => { setEditing(true); setName(tmpl.name) }} className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center"><Pencil size={11} /></button>
-              <button onClick={dup} className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center"><Copy size={11} /></button>
-              <button onClick={del} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-400 hover:text-red-400 flex items-center justify-center"><Trash2 size={11} /></button>
+              <CardMenu onEdit={() => { setEditing(true); setName(tmpl.name) }} onDuplicate={dup} onDelete={del} />
               <button onClick={() => setCollapsed(o => !o)} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center">
                 <Chevron size={13} className={cn('transition-transform', collapsed && '-rotate-90')} />
               </button>
@@ -1035,7 +1143,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 
       {!collapsed && (
         <>
-          <div className="border-t border-gray-50 dark:border-gray-800">
+          <div className="border-t border-gray-200 dark:border-gray-700">
             <button onClick={() => setBaseCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 text-left" style={{ backgroundColor: color + '0c' }}>
               <Chevron size={12} className={cn('text-gray-400 transition-transform shrink-0', baseCollapsed && '-rotate-90')} />
               <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">
@@ -1045,10 +1153,11 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
             {!baseCollapsed && (
               <>
                 <div>
-                  {exercises.map((ex, ei) => (
-                    <BaseExRow key={ex.id} ex={ex} isFirst={ei === 0} isLast={ei === exercises.length - 1}
-                      onDelete={() => deleteExercise(ex.id)} onReorder={dir => reorderExercise(ex.id, dir)}
-                      onToggleAbs={() => toggleAbsExercise(ex.id)} />
+                  {exercises.map((ex) => (
+                    <BaseExRow key={ex.id} ex={ex}
+                      onDelete={() => deleteExercise(ex.id)}
+                      onToggleAbs={() => toggleAbsExercise(ex.id)}
+                      onRename={name => renameExercise(ex.exercise.id, name)} />
                   ))}
                 </div>
                 <div className="px-3 pb-2 pt-1">
@@ -1060,7 +1169,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
             )}
           </div>
 
-          <div className="border-t border-gray-50 dark:border-gray-800">
+          <div className="border-t border-gray-200 dark:border-gray-700">
             <div onClick={() => setWeeksCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer" style={{ backgroundColor: color + '0c' }}>
               <Chevron size={12} className={cn('text-gray-400 transition-transform shrink-0', weeksCollapsed && '-rotate-90')} />
               <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">
@@ -1211,7 +1320,7 @@ function PlanCard({ plan, userId, onChanged }: {
   const isActive = !!(plan as { isActive?: boolean }).isActive
 
   return (
-    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors', isActive ? 'border-blue-300 dark:border-blue-700' : 'border-gray-200 dark:border-gray-800')}>
+    <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors', 'border-gray-200 dark:border-gray-800')}>
       <div className="flex items-start gap-3 px-4 py-3">
         <button onClick={() => setExpanded(o => !o)} className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2">
