@@ -1170,7 +1170,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                       onRename={name => renameExercise(ex.exercise.id, name)} />
                   ))}
                 </div>
-                <div className="px-3 pb-2 pt-1">
+                <div className="px-3 pb-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                   <button onClick={() => setAddEx(true)} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed text-xs font-medium transition-colors" style={{ borderColor: color + '60', color }}>
                     <Plus size={13} /> Aggiungi esercizio
                   </button>
