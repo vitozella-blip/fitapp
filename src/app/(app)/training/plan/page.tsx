@@ -1117,7 +1117,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   const exercises = tmpl.exercises ?? []
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
         <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
         {editing ? (
