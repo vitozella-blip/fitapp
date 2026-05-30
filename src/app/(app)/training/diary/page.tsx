@@ -58,6 +58,15 @@ function getSchedaColor(date: string): string | null {
     return info.color ?? CT
   } catch { return null }
 }
+function getSchedaOrder(date: string): number {
+  if (typeof window === 'undefined') return 0
+  try {
+    const raw = localStorage.getItem(`workout_scheda_${date}`)
+    if (!raw) return 0
+    const info = JSON.parse(raw)
+    return (info.order ?? 1) - 1   // 0-based index for WorkoutBadge
+  } catch { return 0 }
+}
 function fmtRest(s: number | null): string | null {
   if (!s) return null
   const m = Math.floor(s / 60), sec = s % 60
@@ -350,8 +359,9 @@ async function mergeWeekParams(exercises: TemplateEx[], weekId: string | null): 
 export default function TrainingDiaryPage() {
   const { userId, userProfile, bumpWorkoutVersion } = useAppStore()
   const [selectedDate, setSelectedDate] = useState(localToday)
-  const [workout,    setWorkout]    = useState<Workout | null>(null)
-  const [schedaInfo, setSchedaInfo] = useState<SchedaInfo | null>(null)
+  const [workout,       setWorkout]       = useState<Workout | null>(null)
+  const [schedaInfo,    setSchedaInfo]    = useState<SchedaInfo | null>(null)
+  const [schedaLoading, setSchedaLoading] = useState(true)
   const [showPicker, setShowPicker] = useState(false)
   const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
   const [schedaCollapsed, setSchedaCollapsed] = useState(false)
@@ -701,28 +711,29 @@ export default function TrainingDiaryPage() {
         if (dbInfo?.templateId) {
           try {
             await loadScheda(dbInfo)
-            // Sync back to localStorage
             try { localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify(dbInfo)) } catch {}
           } catch {}
         } else {
           // Fallback to localStorage
           try {
             const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
-            if (!raw) return
-            const info = JSON.parse(raw)
-            if (info.templateId) await loadScheda(info)
+            if (raw) {
+              const info = JSON.parse(raw)
+              if (info.templateId) await loadScheda(info)
+            }
           } catch {}
         }
       })
       .catch(async () => {
-        // On network error, use localStorage
         try {
           const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
-          if (!raw) return
-          const info = JSON.parse(raw)
-          if (info.templateId) await loadScheda(info)
+          if (raw) {
+            const info = JSON.parse(raw)
+            if (info.templateId) await loadScheda(info)
+          }
         } catch {}
       })
+      .finally(() => setSchedaLoading(false))
   }, [selectedDate, userId])
 
   useEffect(() => {
@@ -854,7 +865,14 @@ export default function TrainingDiaryPage() {
   }
 
   function handleDateChange(d: string) {
-    setSelectedDate(d); setExpandedExId(null); setAddExId(null); setEditSetId(null)
+    setSelectedDate(d)
+    setWorkout(null)
+    setSchedaInfo(null)
+    setSchedaLoading(true)
+    setSchedaCollapsed(true)
+    setExpandedExId(null)
+    setAddExId(null)
+    setEditSetId(null)
   }
 
   function cycleStatus(exerciseId: string) {
@@ -1021,7 +1039,8 @@ export default function TrainingDiaryPage() {
   }
 
   const schedaColor = getSchedaColor(selectedDate) ?? CT
-  const hasAny = schedaInfo || Object.keys(extraGrouped).length > 0 || tennisActive
+  const schedaOrder = getSchedaOrder(selectedDate)
+  const hasAny = schedaLoading || schedaInfo || (!schedaLoading && Object.keys(extraGrouped).length > 0) || tennisActive
 
   const allExercisesForPicker: { id: string; name: string }[] = [
     ...(schedaInfo?.exercises.filter(te => !te.isAbs).map(te => ({ id: te.exercise.id, name: te.exercise.name })) ?? []),
@@ -1666,7 +1685,7 @@ export default function TrainingDiaryPage() {
             <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
               onClick={() => setSchedaCollapsed(c => !c)}>
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: schedaColor }} />
+              <WorkoutBadge color={schedaColor} shapeIdx={schedaOrder} size={14} />
               <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
                 {schedaInfo.name}
               </span>
@@ -1949,8 +1968,8 @@ export default function TrainingDiaryPage() {
         )
       })()}
 
-      {/* Extra exercises (not in scheda) */}
-      {Object.entries(extraGrouped).map(([exId, { name, group, sets }]) => {
+      {/* Extra exercises (not in scheda) — hidden while scheda is loading to avoid flicker */}
+      {!schedaLoading && Object.entries(extraGrouped).map(([exId, { name, group, sets }]) => {
         const compKey = `${selectedDate}_${exId}`
         const exSt    = exStatus[compKey]
         const isDone  = exSt === 'done'

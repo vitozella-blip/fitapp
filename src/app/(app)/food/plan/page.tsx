@@ -335,9 +335,9 @@ function PlanNotesView({ notes }: { notes: PlanNote[] }) {
 }
 
 // ── 3-dot dropdown menu ────────────────────────────────────────────────────────
-function PlanMenu({ isActive, onCorrente, onEdit, onDuplicate, onDelete }: {
-  isActive: boolean
-  onCorrente: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void
+// PlanMenu: only Corrente + Duplica — edit/delete via swipe
+function PlanMenu({ isActive, onCorrente, onDuplicate }: {
+  isActive: boolean; onCorrente: () => void; onDuplicate: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -359,17 +359,9 @@ function PlanMenu({ isActive, onCorrente, onEdit, onDuplicate, onDelete }: {
             className={cn(item, 'hover:bg-gray-50 dark:hover:bg-gray-800', isActive ? 'text-orange-500 font-semibold' : 'text-gray-700 dark:text-gray-300')}>
             <Check size={15} className={isActive ? 'opacity-100' : 'opacity-0'} /> Corrente
           </button>
-          <button onClick={() => { setOpen(false); onEdit() }}
-            className={cn(item, 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300')}>
-            <Pencil size={15} className="text-gray-400" /> Modifica
-          </button>
           <button onClick={() => { setOpen(false); onDuplicate() }}
             className={cn(item, 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300')}>
             <Copy size={15} className="text-gray-400" /> Duplica
-          </button>
-          <button onClick={() => { setOpen(false); onDelete() }}
-            className={cn(item, 'hover:bg-red-50 dark:hover:bg-red-950/50 text-red-500')}>
-            <Trash2 size={15} /> Elimina
           </button>
         </div>
       )}
@@ -547,13 +539,42 @@ export default function FoodPlanPage() {
           const sL = fmtDate(plan.startDate)
           const eL = fmtDate(plan.endDate)
           const dt = getDailyTotal(plan.targets)
+          const OC = '#e8924a'
+          const SNAP_FP = 72; const THRESH_FP = 30
+          const fpRef = { current: null as HTMLDivElement | null }
+          const fpCurX = { current: 0 }; const fpSnapped = { current: null as 'left'|'right'|null }
+          const fpStartX = { current: 0 }; const fpStartY = { current: 0 }; const fpDir = { current: null as 'h'|'v'|null }
+          function fpSnap(dir: 'left'|'right'|null) {
+            fpSnapped.current = dir; const x = dir === 'left' ? -SNAP_FP : dir === 'right' ? SNAP_FP : 0
+            if (fpRef.current) { fpRef.current.style.transition = 'transform 0.2s ease'; fpRef.current.style.transform = `translateX(${x}px)`; setTimeout(() => { if (fpRef.current) fpRef.current.style.transition = '' }, 210) }
+            fpCurX.current = x
+          }
           return (
-            <div key={plan.id} className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors',
+            <div key={plan.id} className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors overflow-hidden relative',
               plan.isActive ? 'border-orange-300 dark:border-orange-700' : 'border-gray-200 dark:border-gray-800')}>
+              {/* Swipe actions — hidden when expanded */}
+              {!isExpanded && <>
+                <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP_FP, backgroundColor: OC }}
+                  onClick={() => { fpSnap(null); isEditing ? cancelEdit() : openEdit(plan) }}><Pencil size={18} className="text-white" /></div>
+                <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: SNAP_FP, backgroundColor: '#ef4444' }}
+                  onClick={() => { fpSnap(null); handleDelete(plan.id) }}><Trash2 size={18} className="text-white" /></div>
+              </>}
+              <div ref={el => { fpRef.current = el }} className="relative z-10 bg-white dark:bg-gray-900 touch-pan-y"
+                onTouchStart={e => { if (isExpanded) return; fpStartX.current = e.touches[0].clientX; fpStartY.current = e.touches[0].clientY; fpDir.current = null; if (fpRef.current) fpRef.current.style.transition = '' }}
+                onTouchMove={e => {
+                  if (isExpanded) return
+                  const dx = e.touches[0].clientX - fpStartX.current; const dy = Math.abs(e.touches[0].clientY - fpStartY.current)
+                  if (fpDir.current === null) { if (Math.abs(dx) < 5 && dy < 5) return; fpDir.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v' }
+                  if (fpDir.current !== 'h') return
+                  const base = fpSnapped.current === 'left' ? -SNAP_FP : fpSnapped.current === 'right' ? SNAP_FP : 0
+                  fpCurX.current = Math.max(-SNAP_FP, Math.min(SNAP_FP, base + dx)); if (fpRef.current) fpRef.current.style.transform = `translateX(${fpCurX.current}px)`
+                }}
+                onTouchEnd={() => { if (isExpanded) return; const x = fpCurX.current; if (x < -THRESH_FP) fpSnap('left'); else if (x > THRESH_FP) fpSnap('right'); else fpSnap(null) }}>
               <div className="flex items-start gap-3 px-4 py-3">
-                <button onClick={() => setExpanded(isExpanded ? null : plan.id)} className="flex-1 min-w-0 text-left">
+                <button onClick={() => { if (fpSnapped.current) { fpSnap(null); return }; setExpanded(isExpanded ? null : plan.id) }} className="flex-1 min-w-0 text-left">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{plan.name}</p>
+                    {plan.isActive && <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: OC }}>Corrente</span>}
                   </div>
                   {(sL || eL) && <p className="mt-1 text-xs text-gray-400">{sL ?? '–'} – {eL ?? '–'}</p>}
                   {dt && (
@@ -570,11 +591,10 @@ export default function FoodPlanPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <PlanMenu isActive={plan.isActive}
                     onCorrente={() => setCorrente(plan)}
-                    onEdit={() => isEditing ? cancelEdit() : openEdit(plan)}
-                    onDuplicate={() => handleDuplicate(plan.id)}
-                    onDelete={() => handleDelete(plan.id)} />
+                    onDuplicate={() => handleDuplicate(plan.id)} />
                 </div>
               </div>
+              </div> {/* end sliding div */}
 
               {isExpanded && (
                 <>

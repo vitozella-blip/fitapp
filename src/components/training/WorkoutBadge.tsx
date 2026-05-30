@@ -1,7 +1,8 @@
 // Shared workout template shape badge
 // shapeIdx % 3: 0 = circle · 1 = triangle · 2 = square
 // Colors mirror the diary picker (also stored in localStorage for the calendar)
-export const SCHEDA_COLORS = ['#5b9ec9', '#3a78a8', '#1f5580', '#7aafc8', '#9d8fcc', '#f0aa78']
+const BASE_COLOR = '#5b9ec9'
+export const SCHEDA_COLORS = [BASE_COLOR, BASE_COLOR, BASE_COLOR, BASE_COLOR, BASE_COLOR, BASE_COLOR]
 
 export function WorkoutBadge({ color, shapeIdx, size = 36 }: {
   color: string; shapeIdx: number; size?: number

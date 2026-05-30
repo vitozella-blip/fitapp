@@ -252,17 +252,40 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
   routine: WizRoutine; color: string
   onEdit: () => void; onDuplicate: () => void; onDelete: () => void
 }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  useEffect(() => {
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setMenuOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
+  const rowRef    = useRef<HTMLDivElement>(null)
+  const startX    = useRef(0); const startY = useRef(0)
+  const currentX  = useRef(0); const snapped = useRef<'left'|'right'|null>(null)
+  const dirLocked = useRef<'h'|'v'|null>(null)
+  const SNAP = 64; const THRESH = 28
+
+  function setTranslate(x: number) { currentX.current = x; if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)` }
+  function snapTo(dir: 'left'|'right'|null) {
+    snapped.current = dir; const x = dir === 'left' ? -SNAP : dir === 'right' ? SNAP : 0
+    if (rowRef.current) { rowRef.current.style.transition = 'transform 0.2s ease'; rowRef.current.style.transform = `translateX(${x}px)`; setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210) }
+    currentX.current = x
+  }
+  function onTouchStart(e: React.TouchEvent) { startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY; dirLocked.current = null; if (rowRef.current) rowRef.current.style.transition = '' }
+  function onTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - startX.current; const dy = Math.abs(e.touches[0].clientY - startY.current)
+    if (dirLocked.current === null) { if (Math.abs(dx) < 5 && dy < 5) return; dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v' }
+    if (dirLocked.current !== 'h') return
+    const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
+    setTranslate(Math.max(-SNAP, Math.min(SNAP, base + dx)))
+  }
+  function onTouchEnd() { const x = currentX.current; if (x < -THRESH) snapTo('left'); else if (x > THRESH) snapTo('right'); else snapTo(null) }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl relative overflow-hidden">
+      {/* Swipe right → edit */}
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: color }}
+        onClick={() => { snapTo(null); onEdit() }}><Pencil size={15} className="text-white" /></div>
+      {/* Swipe left → delete */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: '#ef4444' }}
+        onClick={() => { snapTo(null); onDelete() }}><Trash2 size={15} className="text-white" /></div>
+      <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-900 touch-pan-y"
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onClick={() => { if (snapped.current) { snapTo(null) } }}>
       <div className="flex items-center gap-2.5 px-3 py-2.5">
         <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
         <button onClick={() => setOpen(o => !o)} className="flex-1 min-w-0 text-left">
@@ -276,28 +299,10 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
         <button onClick={() => setOpen(o => !o)} className="w-6 h-6 flex items-center justify-center text-gray-400 shrink-0">
           <Chevron size={12} className={cn('transition-transform', !open && '-rotate-90')} />
         </button>
-        <div ref={ref} className="relative shrink-0">
-          <button onClick={() => setMenuOpen(o => !o)}
-            className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center transition-colors">
-            <MoreVertical size={14} />
-          </button>
-          {menuOpen && (
-            <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
-              <button onClick={() => { setMenuOpen(false); onEdit() }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-left">
-                <Pencil size={11} className="text-gray-400" /> Modifica
-              </button>
-              <button onClick={() => { setMenuOpen(false); onDuplicate() }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-left">
-                <Copy size={11} className="text-gray-400" /> Duplica
-              </button>
-              <button onClick={() => { setMenuOpen(false); onDelete() }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 text-left">
-                <Trash2 size={11} /> Elimina
-              </button>
-            </div>
-          )}
-        </div>
+        <button onClick={e => { e.stopPropagation(); snapTo(null); onDuplicate() }}
+          className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center transition-colors">
+          <Copy size={14} />
+        </button>
       </div>
       {open && routine.exercises.length > 0 && (
         <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2 space-y-1">
@@ -318,6 +323,7 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
           ))}
         </div>
       )}
+      </div> {/* end rowRef sliding div */}
     </div>
   )
 }
@@ -984,37 +990,14 @@ function WeekMenuBtn({ onRename, onDuplicate, onDelete }: {
 }
 
 // ── Scheda header menu ────────────────────────────────────────────────────────
-function CardMenu({ onEdit, onDuplicate, onDelete }: {
-  onEdit: () => void; onDuplicate: () => void; onDelete: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [open])
-  const item = 'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors'
+// CardMenu reduced to Duplica only — edit/delete handled by swipe
+function CardDuplicaBtn({ onDuplicate }: { onDuplicate: () => void }) {
   return (
-    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
-      <button onClick={() => setOpen(o => !o)} className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center">
-        <MoreVertical size={13} />
-      </button>
-      {open && (
-        <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
-          <button onClick={() => { setOpen(false); onEdit() }} className={cn(item, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800')}>
-            <Pencil size={11} className="text-gray-400" /> Rinomina
-          </button>
-          <button onClick={() => { setOpen(false); onDuplicate() }} className={cn(item, 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800')}>
-            <Copy size={11} className="text-gray-400" /> Duplica
-          </button>
-          <button onClick={() => { setOpen(false); onDelete() }} className={cn(item, 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50')}>
-            <Trash2 size={11} /> Elimina
-          </button>
-        </div>
-      )}
-    </div>
+    <button onClick={e => { e.stopPropagation(); onDuplicate() }}
+      className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center transition-colors"
+      title="Duplica">
+      <Copy size={13} />
+    </button>
   )
 }
 
@@ -1024,6 +1007,29 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 }) {
   const [editing, setEditing]           = useState(false)
   const [name, setName]                 = useState(tmpl.name)
+
+  // Swipe on header
+  const hdrRef    = useRef<HTMLDivElement>(null)
+  const hdrStartX = useRef(0); const hdrStartY = useRef(0)
+  const hdrCurX   = useRef(0); const hdrSnapped = useRef<'left'|'right'|null>(null)
+  const hdrDir    = useRef<'h'|'v'|null>(null)
+  const H_SNAP = 64; const H_THRESH = 28
+  function hdrTranslate(x: number) { hdrCurX.current = x; if (hdrRef.current) hdrRef.current.style.transform = `translateX(${x}px)` }
+  function hdrSnap(dir: 'left'|'right'|null) {
+    hdrSnapped.current = dir; const x = dir === 'left' ? -H_SNAP : dir === 'right' ? H_SNAP : 0
+    if (hdrRef.current) { hdrRef.current.style.transition = 'transform 0.2s ease'; hdrRef.current.style.transform = `translateX(${x}px)`; setTimeout(() => { if (hdrRef.current) hdrRef.current.style.transition = '' }, 210) }
+    hdrCurX.current = x
+  }
+  function hdrTouchStart(e: React.TouchEvent) { if (editing) return; hdrStartX.current = e.touches[0].clientX; hdrStartY.current = e.touches[0].clientY; hdrDir.current = null; if (hdrRef.current) hdrRef.current.style.transition = '' }
+  function hdrTouchMove(e: React.TouchEvent) {
+    if (editing) return
+    const dx = e.touches[0].clientX - hdrStartX.current; const dy = Math.abs(e.touches[0].clientY - hdrStartY.current)
+    if (hdrDir.current === null) { if (Math.abs(dx) < 5 && dy < 5) return; hdrDir.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v' }
+    if (hdrDir.current !== 'h') return
+    const base = hdrSnapped.current === 'left' ? -H_SNAP : hdrSnapped.current === 'right' ? H_SNAP : 0
+    hdrTranslate(Math.max(-H_SNAP, Math.min(H_SNAP, base + dx)))
+  }
+  function hdrTouchEnd() { if (editing) return; const x = hdrCurX.current; if (x < -H_THRESH) hdrSnap('left'); else if (x > H_THRESH) hdrSnap('right'); else hdrSnap(null) }
   const [addEx, setAddEx]               = useState(false)
   const [collapsed, setCollapsed]       = useState(true)
   const [baseCollapsed, setBaseCollapsed] = useState(true)
@@ -1118,36 +1124,48 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
-        <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
-        {editing ? (
-          <input autoFocus value={name} onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
-            className="flex-1 px-2.5 py-1.5 rounded-xl border text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 outline-none"
-            style={{ borderColor: color }} />
-        ) : (
-          <button onClick={() => setCollapsed(o => !o)} className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-bold truncate leading-tight" style={{ color }}>{tmpl.name}</p>
-            <p className="text-[10px]" style={{ color: color + 'aa' }}>
-              {exCount} {exCount === 1 ? 'esercizio' : 'esercizi'}
-              {weeks.length > 0 && ` · ${weeks.length} ${weeks.length === 1 ? 'routine' : 'routine'}`}
-            </p>
-          </button>
-        )}
-        <div className="flex items-center gap-0.5 shrink-0">
+      {/* Swipeable header */}
+      <div className="relative overflow-hidden">
+        {/* Swipe right → rename */}
+        {!editing && <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: color }}
+          onClick={() => { hdrSnap(null); setEditing(true); setName(tmpl.name) }}><Pencil size={15} className="text-white" /></div>}
+        {/* Swipe left → delete */}
+        {!editing && <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: '#ef4444' }}
+          onClick={() => { hdrSnap(null); del() }}><Trash2 size={15} className="text-white" /></div>}
+        <div ref={hdrRef} className="relative z-10 touch-pan-y flex items-center gap-2 px-3 py-2.5"
+          style={{ backgroundColor: color + '18' }}
+          onTouchStart={hdrTouchStart} onTouchMove={hdrTouchMove} onTouchEnd={hdrTouchEnd}
+          onClick={() => { if (hdrSnapped.current) hdrSnap(null) }}>
+          <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
           {editing ? (
-            <>
-              <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: color }}><Check size={12} /></button>
-              <button onClick={() => setEditing(false)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={12} /></button>
-            </>
+            <input autoFocus value={name} onChange={e => setName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
+              className="flex-1 px-2.5 py-1.5 rounded-xl border text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 outline-none"
+              style={{ borderColor: color }} />
           ) : (
-            <>
-              <CardMenu onEdit={() => { setEditing(true); setName(tmpl.name) }} onDuplicate={dup} onDelete={del} />
-              <button onClick={() => setCollapsed(o => !o)} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center">
-                <Chevron size={13} className={cn('transition-transform', collapsed && '-rotate-90')} />
-              </button>
-            </>
+            <button onClick={e => { e.stopPropagation(); if (!hdrSnapped.current) setCollapsed(o => !o) }} className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-bold truncate leading-tight" style={{ color }}>{tmpl.name}</p>
+              <p className="text-[10px]" style={{ color: color + 'aa' }}>
+                {exCount} {exCount === 1 ? 'esercizio' : 'esercizi'}
+                {weeks.length > 0 && ` · ${weeks.length} ${weeks.length === 1 ? 'routine' : 'routine'}`}
+              </p>
+            </button>
           )}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {editing ? (
+              <>
+                <button onClick={saveName} className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: color }}><Check size={12} /></button>
+                <button onClick={() => setEditing(false)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center"><X size={12} /></button>
+              </>
+            ) : (
+              <>
+                <CardDuplicaBtn onDuplicate={dup} />
+                <button onClick={e => { e.stopPropagation(); if (!hdrSnapped.current) setCollapsed(o => !o) }} className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center">
+                  <Chevron size={13} className={cn('transition-transform', collapsed && '-rotate-90')} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1254,22 +1272,37 @@ function PlanMenu({ isActive, onCorrente, onEdit, onDuplicate, onDelete }: {
   isActive: boolean; onCorrente: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    if (!open) return
+    function h(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
+          btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false)
+    }
     document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
-  }, [])
+  }, [open])
+  function toggle(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: r.right - 176 })
+    }
+    setOpen(o => !o)
+  }
   const item = 'w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors'
   return (
-    <div ref={ref} className="relative shrink-0">
-      <button onClick={() => setOpen(o => !o)} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center transition-colors"><MoreVertical size={16} /></button>
-      {open && (
-        <div className="absolute top-full right-0 mt-1 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+    <div className="relative shrink-0">
+      <button ref={btnRef} onClick={toggle} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 flex items-center justify-center transition-colors"><MoreVertical size={16} /></button>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div ref={menuRef}
+          className="fixed w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] overflow-hidden py-1"
+          style={{ top: pos.top, left: pos.left }}>
           <button onClick={() => { setOpen(false); onCorrente() }} className={cn(item, 'hover:bg-gray-50 dark:hover:bg-gray-800', isActive ? 'font-semibold' : 'text-gray-700 dark:text-gray-300')} style={isActive ? { color: CT } : {}}><Check size={15} className={isActive ? 'opacity-100' : 'opacity-0'} /> Corrente</button>
-          <button onClick={() => { setOpen(false); onEdit() }} className={cn(item, 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300')}><Pencil size={15} className="text-gray-400" /> Modifica</button>
           <button onClick={() => { setOpen(false); onDuplicate() }} className={cn(item, 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300')}><Copy size={15} className="text-gray-400" /> Duplica</button>
-          <button onClick={() => { setOpen(false); onDelete() }} className={cn(item, 'hover:bg-red-50 dark:hover:bg-red-950/50 text-red-500')}><Trash2 size={15} /> Elimina</button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -1380,18 +1413,19 @@ function PlanCard({ plan, userId, onChanged }: {
 
   return (
     <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors overflow-hidden relative', isActive ? 'border-[#7aafc8]' : 'border-gray-200 dark:border-gray-800')}>
-      {/* Swipe left → delete */}
-      <div className="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-2xl"
-        style={{ width: SNAP, backgroundColor: '#ef4444' }}
-        onClick={() => { snapTo(null); del() }}>
-        <Trash2 size={20} className="text-white" />
-      </div>
-      {/* Swipe right → edit */}
-      <div className="absolute inset-y-0 left-0 flex items-center justify-center rounded-l-2xl"
-        style={{ width: SNAP, backgroundColor: CT }}
-        onClick={() => { snapTo(null); setEditing(true); setExpanded(true); setEName(plan.name); setEStart((plan as { startDate?: string | null }).startDate ?? ''); setEEnd((plan as { endDate?: string | null }).endDate ?? '') }}>
-        <Pencil size={20} className="text-white" />
-      </div>
+      {/* Swipe actions — hidden when card is expanded to prevent bleed-through */}
+      {!expanded && <>
+        <div className="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-2xl"
+          style={{ width: SNAP, backgroundColor: '#ef4444' }}
+          onClick={() => { snapTo(null); del() }}>
+          <Trash2 size={20} className="text-white" />
+        </div>
+        <div className="absolute inset-y-0 left-0 flex items-center justify-center rounded-l-2xl"
+          style={{ width: SNAP, backgroundColor: CT }}
+          onClick={() => { snapTo(null); setEditing(true); setExpanded(true); setEName(plan.name); setEStart((plan as { startDate?: string | null }).startDate ?? ''); setEEnd((plan as { endDate?: string | null }).endDate ?? '') }}>
+          <Pencil size={20} className="text-white" />
+        </div>
+      </>}
 
       {/* Sliding header */}
       <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-900 touch-pan-y"
