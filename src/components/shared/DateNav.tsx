@@ -8,6 +8,8 @@ const DOW = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 // Single color used for ALL workout shape indicators in the calendar
 const CAL_WORKOUT_COLOR = '#5b9ec9'
 
+const TENNIS_COLOR = '#6aaa6a'
+
 // shape: 0 = circle, 1 = triangle, 2 = square  (derived from order % 3)
 function buildWorkoutInfo(): Record<string, { color: string; shape: number }> {
   const map: Record<string, { color: string; shape: number }> = {}
@@ -27,6 +29,21 @@ function buildWorkoutInfo(): Record<string, { color: string; shape: number }> {
   return map
 }
 
+function buildTennisDates(): Set<string> {
+  const s = new Set<string>()
+  if (typeof window === 'undefined') return s
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (!key?.startsWith('tennis_meta_')) continue
+    const date = key.slice('tennis_meta_'.length)
+    try {
+      const info = JSON.parse(localStorage.getItem(key) ?? '')
+      if (info?.hours && Number(info.hours) > 0) s.add(date)
+    } catch {}
+  }
+  return s
+}
+
 function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkoutColors = false }: {
   selectedDate: string
   onChange: (d: string) => void
@@ -38,7 +55,8 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   const initial = new Date(selectedDate + 'T12:00:00')
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
 
-  const workoutInfo = useMemo(() => disableWorkoutColors ? {} : buildWorkoutInfo(), [view, disableWorkoutColors])
+  const workoutInfo  = useMemo(() => disableWorkoutColors ? {} : buildWorkoutInfo(), [view, disableWorkoutColors])
+  const tennisDates  = useMemo(() => buildTennisDates(), [view])
 
   const { year, month } = view
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // Mon-first
@@ -102,58 +120,100 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             if (!day) return <div key={i} />
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const isSelected = dateStr === selectedDate
-            const isToday = dateStr === today
-            const info = workoutInfo[dateStr]
-            const color = info ? CAL_WORKOUT_COLOR : undefined
-            const shape = info?.shape ?? 0
+            const isToday    = dateStr === today
+            const info       = workoutInfo[dateStr]
+            const shape      = info?.shape ?? 0        // 0=circle 1=triangle 2=square
+            const hasWO      = !!info
+            const hasTennis  = tennisDates.has(dateStr)
 
-            const todayDot = isToday && !isSelected && (
-              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                style={{ backgroundColor: accent }} />
-            )
-
-            // Triangle shape — SVG with day number inside
-            if (color && shape === 1) {
+            // ── SELECTED + WO or TENNIS → filled shape ──────────────────────
+            if (isSelected && (hasWO || hasTennis)) {
+              const fillColor = hasTennis ? TENNIS_COLOR : CAL_WORKOUT_COLOR
+              const br = hasWO && !hasTennis && shape === 2 ? '4px' : '50%'
+              if (hasWO && !hasTennis && shape === 1) {
+                return (
+                  <button key={i} onClick={() => pick(day)}
+                    className="flex items-center justify-center py-1 rounded-xl relative">
+                    <div className="relative flex items-end justify-center" style={{ width: 28, height: 28 }}>
+                      <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                        <polygon points="14,2 27,26 1,26" fill={fillColor} />
+                      </svg>
+                      <span className="relative z-10 text-sm font-bold text-white" style={{ lineHeight: 1, paddingBottom: 2 }}>{day}</span>
+                    </div>
+                  </button>
+                )
+              }
               return (
-                <button key={i} onClick={() => pick(day)}
-                  className="flex flex-col items-center justify-center py-1 rounded-xl transition-colors relative">
-                  <div className="relative flex items-end justify-center" style={{ width: 28, height: 28 }}>
-                    <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                      <polygon points="14,2 27,26 1,26" fill={isSelected ? color : color + '45'} />
-                    </svg>
-                    <span className={cn('relative z-10 text-sm font-medium', isSelected && 'font-bold')}
-                      style={{ color: isSelected ? '#fff' : color, lineHeight: 1, paddingBottom: 2 }}>
-                      {day}
-                    </span>
-                  </div>
-                  {todayDot}
+                <button key={i} onClick={() => pick(day)} className="flex items-center justify-center py-1 rounded-xl relative">
+                  <span className="w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
+                    style={{ backgroundColor: fillColor, borderRadius: br }}>{day}</span>
                 </button>
               )
             }
 
-            // Circle (shape=0) or Square (shape=2)
-            const borderRadius = color ? (shape === 2 ? '4px' : '50%') : undefined
+            // ── SELECTED + no WO/tennis → accent filled circle ───────────────
+            if (isSelected) {
+              return (
+                <button key={i} onClick={() => pick(day)} className="flex items-center justify-center py-1 rounded-xl relative">
+                  <span className="w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
+                    style={{ backgroundColor: accent, borderRadius: '50%' }}>{day}</span>
+                </button>
+              )
+            }
+
+            // ── WO day (not selected) → hollow shape, blue number ───────────
+            if (hasWO) {
+              if (shape === 1) {
+                return (
+                  <button key={i} onClick={() => pick(day)}
+                    className="flex flex-col items-center justify-center py-1 rounded-xl relative">
+                    <div className="relative flex items-end justify-center" style={{ width: 28, height: 28 }}>
+                      <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                        <polygon points="14,2 27,26 1,26" fill="none" stroke={CAL_WORKOUT_COLOR} strokeWidth="2" />
+                      </svg>
+                      <span className={cn('relative z-10 text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}
+                        style={{ lineHeight: 1, paddingBottom: 2 }}>{day}</span>
+                    </div>
+                    {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: CAL_WORKOUT_COLOR }} />}
+                  </button>
+                )
+              }
+              const br = shape === 2 ? '4px' : '50%'
+              return (
+                <button key={i} onClick={() => pick(day)}
+                  className="flex flex-col items-center justify-center py-1 rounded-xl relative">
+                  <span className={cn('w-7 h-7 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}
+                    style={{ border: `2px solid ${CAL_WORKOUT_COLOR}`, borderRadius: br }}>
+                    {day}
+                  </span>
+                  {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: CAL_WORKOUT_COLOR }} />}
+                </button>
+              )
+            }
+
+            // ── Tennis day (not selected) → hollow green circle, green number ─
+            if (hasTennis) {
+              return (
+                <button key={i} onClick={() => pick(day)}
+                  className="flex flex-col items-center justify-center py-1 rounded-xl relative">
+                  <span className={cn('w-7 h-7 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}
+                    style={{ border: `2px solid ${TENNIS_COLOR}`, borderRadius: '50%' }}>
+                    {day}
+                  </span>
+                  {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: TENNIS_COLOR }} />}
+                </button>
+              )
+            }
+
+            // ── Regular day ─────────────────────────────────────────────────
             return (
               <button key={i} onClick={() => pick(day)}
-                className="flex flex-col items-center justify-center py-1 rounded-xl transition-colors relative">
-                <span
-                  className={cn(
-                    'w-7 h-7 flex items-center justify-center text-sm font-medium transition-colors',
-                    isSelected
-                      ? 'text-white font-bold'
-                      : isToday
-                      ? 'font-bold text-gray-900 dark:text-gray-100'
-                      : 'text-gray-700 dark:text-gray-300'
-                  )}
-                  style={isSelected
-                    ? { backgroundColor: color ?? accent, borderRadius: borderRadius ?? '50%' }
-                    : color
-                    ? { backgroundColor: color + '45', color, borderRadius }
-                    : undefined}
-                >
+                className="flex flex-col items-center justify-center py-1 rounded-xl relative">
+                <span className={cn('w-7 h-7 flex items-center justify-center text-sm',
+                  isToday ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400')}>
                   {day}
                 </span>
-                {todayDot}
+                {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: accent }} />}
               </button>
             )
           })}
