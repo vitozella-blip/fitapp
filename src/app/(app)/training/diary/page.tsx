@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2, Play, Pause, RotateCcw, Timer, Pencil } from 'lucide-react'
+import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2, Play, Pause, RotateCcw, Timer, Pencil, History } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -355,6 +355,9 @@ async function mergeWeekParams(exercises: TemplateEx[], weekId: string | null): 
   } catch { return exercises }
 }
 
+// ── Template memory cache (survives re-renders, cleared only on unmount) ─────
+const templateCache = new Map<string, Template>()
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function TrainingDiaryPage() {
   const { userId, userProfile, bumpWorkoutVersion } = useAppStore()
@@ -692,19 +695,39 @@ export default function TrainingDiaryPage() {
   // Sync hours draft whenever saved value changes (API load / date change)
   useEffect(() => { setTennisHoursDraft(tennisMeta.hours) }, [tennisMeta.hours])
 
-  // Load scheda + week params — DB authoritative, localStorage fallback
+  // Load scheda + week params — cache first, then DB
   useEffect(() => {
-    setSchedaInfo(null)
     if (typeof window === 'undefined') return
 
-    async function loadScheda(info: { templateId: string; weekId?: string | null; weekName?: string | null }) {
-      const t: Template = await fetch(`/api/workout-templates/${info.templateId}`).then(r => r.json())
-      if (!t?.id) return
+    async function loadScheda(info: { templateId: string; weekId?: string | null; weekName?: string | null }, instant = false) {
+      // Check memory cache first for instant display
+      let t = templateCache.get(info.templateId)
+      if (!t) {
+        t = await fetch(`/api/workout-templates/${info.templateId}`).then(r => r.json())
+        if (!t?.id) return
+        templateCache.set(info.templateId, t)
+      }
       const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
       setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged })
+      if (instant) setSchedaLoading(false)
     }
 
-    // Load from DB first
+    // Try localStorage first for instant display (no network wait)
+    let shownFromCache = false
+    try {
+      const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
+      if (raw) {
+        const info = JSON.parse(raw)
+        if (info.templateId && templateCache.has(info.templateId)) {
+          loadScheda(info, true)  // instant — no await, shows immediately
+          shownFromCache = true
+        }
+      }
+    } catch {}
+
+    if (!shownFromCache) setSchedaInfo(null)
+
+    // Load from DB (authoritative) in background
     fetch(`/api/workout-scheda?userId=${userId}&date=${selectedDate}`)
       .then(r => r.json())
       .then(async dbInfo => {
@@ -867,12 +890,26 @@ export default function TrainingDiaryPage() {
   function handleDateChange(d: string) {
     setSelectedDate(d)
     setWorkout(null)
-    setSchedaInfo(null)
-    setSchedaLoading(true)
     setSchedaCollapsed(true)
     setExpandedExId(null)
     setAddExId(null)
     setEditSetId(null)
+    // Show scheda instantly from cache if available
+    let cachedInstantly = false
+    try {
+      const raw = localStorage.getItem(`workout_scheda_${d}`)
+      if (raw) {
+        const info = JSON.parse(raw)
+        if (info.templateId && templateCache.has(info.templateId)) {
+          cachedInstantly = true
+          setSchedaLoading(false)
+        }
+      }
+    } catch {}
+    if (!cachedInstantly) {
+      setSchedaInfo(null)
+      setSchedaLoading(true)
+    }
   }
 
   function cycleStatus(exerciseId: string) {
@@ -1038,7 +1075,7 @@ export default function TrainingDiaryPage() {
     await fetchWorkout(); setTennisLoading(false); bumpWorkoutVersion()
   }
 
-  const schedaColor = getSchedaColor(selectedDate) ?? CT
+  const schedaColor = CT  // colore unico per tutti i WO
   const schedaOrder = getSchedaOrder(selectedDate)
   const hasAny = schedaLoading || schedaInfo || (!schedaLoading && Object.keys(extraGrouped).length > 0) || tennisActive
 
@@ -1383,7 +1420,7 @@ export default function TrainingDiaryPage() {
                     className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800 transition-colors"
                     onClick={() => toggleHistory(te.id, exId)}
                     title="Carichi sessione precedente">
-                    <Dumbbell size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
+                    <History size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
                   </button>
                 </div>
                 {noteEdit?.exId === te.id && (
