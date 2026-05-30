@@ -434,10 +434,40 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
     if (res.ok) onDelete()
   }
 
+  const rowRef    = useRef<HTMLDivElement>(null)
+  const startX    = useRef(0); const startY = useRef(0)
+  const currentX  = useRef(0); const snapped = useRef<'left'|'right'|null>(null)
+  const dirLocked = useRef<'h'|'v'|null>(null)
+  const SNAP = 72; const THRESH = 30
+  function snapTo(dir: 'left'|'right'|null) {
+    snapped.current = dir; const x = dir === 'left' ? -SNAP : dir === 'right' ? SNAP : 0
+    if (rowRef.current) { rowRef.current.style.transition = 'transform 0.2s ease'; rowRef.current.style.transform = `translateX(${x}px)`; setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210) }
+    currentX.current = x
+  }
+
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden relative">
+      {/* Swipe actions — hidden when editing */}
+      {!editing && <>
+        <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: OC }}
+          onClick={() => { snapTo(null); startEdit() }}><Pencil size={18} className="text-white" /></div>
+        <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: '#ef4444' }}
+          onClick={() => { snapTo(null); del() }}><Trash2 size={18} className="text-white" /></div>
+      </>}
+      <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-900 touch-pan-y"
+        onTouchStart={e => { if (editing) return; startX.current = e.touches[0].clientX; startY.current = e.touches[0].clientY; dirLocked.current = null; if (rowRef.current) rowRef.current.style.transition = '' }}
+        onTouchMove={e => {
+          if (editing) return
+          const dx = e.touches[0].clientX - startX.current; const dy = Math.abs(e.touches[0].clientY - startY.current)
+          if (dirLocked.current === null) { if (Math.abs(dx) < 5 && dy < 5) return; dirLocked.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v' }
+          if (dirLocked.current !== 'h') return
+          const base = snapped.current === 'left' ? -SNAP : snapped.current === 'right' ? SNAP : 0
+          currentX.current = Math.max(-SNAP, Math.min(SNAP, base + dx)); if (rowRef.current) rowRef.current.style.transform = `translateX(${currentX.current}px)`
+        }}
+        onTouchEnd={() => { if (editing) return; const x = currentX.current; if (x < -THRESH) snapTo('left'); else if (x > THRESH) snapTo('right'); else snapTo(null) }}>
       {/* Header */}
-      <div className="flex items-start gap-3 px-4 py-3 cursor-pointer" onClick={() => { if (!editing) setOpen(o => !o) }}>
+      <div className="flex items-start gap-3 px-4 py-3 cursor-pointer"
+        onClick={() => { if (snapped.current) { snapTo(null); return }; if (!editing) setOpen(o => !o) }}>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{recipe.name}</p>
           {totals.p100 && (
@@ -451,18 +481,17 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-          {!editing && <ChevronDown size={14} className={cn('text-gray-400 transition-transform', open && 'rotate-180')} />}
-          <button onClick={editing ? cancelEdit : startEdit}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-            style={editing ? { color: OC } : { color: '#9ca3af' }}>
-            <Pencil size={13} />
+        {!editing && (
+          <ChevronDown size={14} className={cn('text-gray-400 transition-transform shrink-0 mt-1', open && 'rotate-180')} />
+        )}
+        {editing && (
+          <button onClick={e => { e.stopPropagation(); cancelEdit() }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 shrink-0">
+            <X size={13} />
           </button>
-          <button onClick={del} className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
-            <Trash2 size={13} />
-          </button>
-        </div>
+        )}
       </div>
+      </div> {/* end sliding div */}
 
       {/* Edit mode */}
       {editing && (
