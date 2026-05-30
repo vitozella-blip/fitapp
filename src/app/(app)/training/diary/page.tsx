@@ -894,7 +894,7 @@ export default function TrainingDiaryPage() {
     setExpandedExId(null)
     setAddExId(null)
     setEditSetId(null)
-    // Check if we can show scheda instantly from cache
+    // Show scheda instantly from cache if available
     let cachedInstantly = false
     try {
       const raw = localStorage.getItem(`workout_scheda_${d}`)
@@ -903,7 +903,6 @@ export default function TrainingDiaryPage() {
         if (info.templateId && templateCache.has(info.templateId)) {
           cachedInstantly = true
           setSchedaLoading(false)
-          // schedaInfo will be set by the useEffect immediately
         }
       }
     } catch {}
