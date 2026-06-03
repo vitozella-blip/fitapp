@@ -58,6 +58,9 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   const today = localToday()
   const initial = new Date(selectedDate + 'T12:00:00')
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
+  // testo scuro quando l'accento è bianco/chiaro (per leggibilità su fill chiaro)
+  const isLightAccent = accent.toLowerCase() === '#ffffff' || accent.toLowerCase() === '#fff'
+  const accentText = isLightAccent ? '#1f2937' : '#fff'
 
   const workoutInfo  = useMemo(() => disableWorkoutColors ? {} : buildWorkoutInfo(), [view, disableWorkoutColors])
   const tennisDates  = useMemo(() => buildTennisDates(), [view])
@@ -160,8 +163,8 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             if (isSelected) {
               return (
                 <button key={i} onClick={() => pick(day)} className="flex items-center justify-center py-1 rounded-xl relative">
-                  <span className="w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
-                    style={{ backgroundColor: accent, borderRadius: '4px' }}>{day}</span>
+                  <span className="w-7 h-7 flex items-center justify-center text-sm font-bold"
+                    style={{ backgroundColor: accent, borderRadius: '4px', color: accentText }}>{day}</span>
                 </button>
               )
             }
@@ -228,8 +231,8 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
 
         {/* Oggi shortcut */}
         <button onClick={() => { onChange(today); onClose() }}
-          className="mt-3 w-full py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: accent + 'cc' }}>
+          className="mt-3 w-full py-2.5 rounded-xl text-sm font-semibold"
+          style={{ backgroundColor: isLightAccent ? accent : accent + 'cc', color: accentText }}>
           Oggi
         </button>
       </div>
@@ -237,13 +240,15 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   )
 }
 
-export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorkoutColors = true }: {
+export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorkoutColors = true, controlColor }: {
   selectedDate: string
   onChange: (d: string) => void
   accent: string
   schedaColor?: string
   showWorkoutColors?: boolean
+  controlColor?: string   // colore di icona calendario + bottone Oggi (default = accent)
 }) {
+  const ctrl = controlColor ?? accent
   const [open, setOpen] = useState(false)
   const today    = new Date().toISOString().split('T')[0]
   const isToday  = selectedDate === today
@@ -278,7 +283,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
         {/* Calendar button */}
         <button onClick={() => setOpen(true)}
           className="w-9 h-9 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl flex items-center justify-center shrink-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          <Calendar size={16} style={{ color: accent }} />
+          <Calendar size={16} style={{ color: ctrl }} />
         </button>
 
         {/* Oggi button */}
@@ -287,9 +292,9 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
             'shrink-0 h-9 px-3 rounded-xl text-xs font-bold border transition-colors',
             isToday
               ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'
-              : 'border-transparent text-white'
+              : 'border-transparent'
           )}
-          style={isToday ? {} : { backgroundColor: accent + 'cc' }}>
+          style={isToday ? {} : (controlColor ? { backgroundColor: controlColor, color: '#1f2937' } : { backgroundColor: accent + 'cc', color: '#fff' })}>
           Oggi
         </button>
       </div>
@@ -299,7 +304,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
           selectedDate={selectedDate}
           onChange={onChange}
           onClose={() => setOpen(false)}
-          accent={accent}
+          accent={ctrl}
           disableWorkoutColors={!showWorkoutColors}
         />
       )}

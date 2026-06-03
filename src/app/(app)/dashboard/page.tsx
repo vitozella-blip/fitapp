@@ -182,7 +182,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="shrink-0">
-        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} />
+        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} controlColor="#ffffff" />
       </div>
 
       <div className="flex flex-col gap-2 flex-1 min-h-0 md:grid md:gap-3" style={{ gridTemplateRows: gridRows }}>
