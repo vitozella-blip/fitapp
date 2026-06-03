@@ -447,8 +447,8 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden relative">
-      {/* Swipe actions — hidden when editing */}
-      {!editing && <>
+      {/* Swipe actions — nascosti quando la card è aperta o in editing */}
+      {!editing && !open && <>
         <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: OC }}
           onClick={() => { snapTo(null); startEdit() }}><Pencil size={18} className="text-white" /></div>
         <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: '#ef4444' }}

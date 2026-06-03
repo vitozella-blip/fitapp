@@ -1132,10 +1132,10 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
         {/* Swipe left → delete */}
         {!editing && <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: '#ef4444' }}
           onClick={() => { hdrSnap(null); del() }}><Trash2 size={15} className="text-white" /></div>}
-        <div ref={hdrRef} className="relative z-10 touch-pan-y flex items-center gap-2 px-3 py-2.5"
-          style={{ backgroundColor: color + '18' }}
+        <div ref={hdrRef} className="relative z-10 touch-pan-y bg-white dark:bg-gray-900"
           onTouchStart={hdrTouchStart} onTouchMove={hdrTouchMove} onTouchEnd={hdrTouchEnd}
           onClick={() => { if (hdrSnapped.current) hdrSnap(null) }}>
+        <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
           <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
           {editing ? (
             <input autoFocus value={name} onChange={e => setName(e.target.value)}
@@ -1166,6 +1166,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
               </>
             )}
           </div>
+        </div>
         </div>
       </div>
 
