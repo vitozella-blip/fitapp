@@ -5,8 +5,10 @@ import { useAppStore } from '@/store/useAppStore'
 import { Dumbbell, TrendingUp, History, ClipboardList, Scale } from 'lucide-react'
 import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 import { cn } from '@/lib/utils'
+import { SECTION, ACTIVITY } from '@/lib/theme'
+import { TennisBall } from '@/components/shared/icons'
 
-const COLOR = '#7aafc8'
+const COLOR = SECTION.training
 
 const DIARY = { label: 'Diario Allenamenti', href: '/training/diary', icon: Dumbbell }
 const SECTIONS = [
@@ -78,11 +80,12 @@ export default function TrainingHubPage() {
       <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '350px auto' }}>
 
         {/* TOP — calendario allenamenti */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
+        <div className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col min-h-0"
+          style={{ borderTopWidth: 3, borderTopColor: COLOR }}>
           <div className="px-2 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800"
             style={{ backgroundColor: COLOR + '12' }}>
             <div className="flex items-center gap-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest shrink-0" style={{ color: COLOR }}>Allenamenti</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest shrink-0 text-gray-400">Allenamenti</p>
               <div className="flex items-center gap-1 flex-1">
                 {(['settimana', 'mese', 'mese_scorso', 'custom'] as const).map(p => (
                   <button key={p} onClick={() => applyPeriod(p)}
@@ -134,22 +137,21 @@ export default function TrainingHubPage() {
             </div>
           ) : (
             <div
-              className="flex-1 min-h-0 grid divide-x divide-gray-100 dark:divide-gray-800"
+              className="flex-1 min-h-0 grid"
               style={{ gridTemplateColumns: `repeat(${templates.length + 1}, minmax(0, 1fr))` }}
             >
               {/* Tennis column */}
               <div className="flex flex-col min-h-0">
-                <div className="px-2 h-[32px] border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
-                  <span style={{ fontSize: 13, lineHeight: 1 }}>🎾</span>
+                <div className="h-[32px] shrink-0 flex items-center justify-center">
+                  <TennisBall size={14} color={ACTIVITY.tennis} strokeWidth={2} />
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   {tennisDates.length === 0 ? (
-                    <p className="px-2 py-3 text-xs text-gray-400">—</p>
+                    <p className="py-3 text-xs text-gray-400 text-center">—</p>
                   ) : (
                     [...tennisDates].sort().map(date => (
                       <Link key={date} href={`/training/diary?date=${date}`}
-                        className="flex items-center gap-0.5 px-1 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                        <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: COLOR }} />
+                        className="flex justify-center py-1 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                         <span className="text-[9px] text-gray-600 dark:text-gray-300 capitalize leading-tight whitespace-nowrap">{fmtDate(date)}</span>
                       </Link>
                     ))
@@ -162,17 +164,16 @@ export default function TrainingHubPage() {
                 const tColor = SCHEDA_COLORS[tArrIdx % SCHEDA_COLORS.length]
                 return (
                   <div key={t.id} className="flex flex-col min-h-0">
-                    <div className="px-2 h-[32px] border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-center">
+                    <div className="h-[32px] shrink-0 flex items-center justify-center">
                       <WorkoutBadge color={tColor} shapeIdx={tArrIdx} size={12} />
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {t.dates.length === 0 ? (
-                        <p className="px-2 py-3 text-xs text-gray-400">—</p>
+                        <p className="py-3 text-xs text-gray-400 text-center">—</p>
                       ) : (
                         [...t.dates].sort().map(date => (
                           <Link key={date} href={`/training/diary?date=${date}`}
-                            className="flex items-center gap-0.5 px-1 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                            <WorkoutBadge color={tColor} shapeIdx={tArrIdx} size={7} />
+                            className="flex justify-center py-1 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                             <span className="text-[9px] text-gray-600 dark:text-gray-300 capitalize leading-tight whitespace-nowrap">{fmtDate(date)}</span>
                           </Link>
                         ))
@@ -185,22 +186,24 @@ export default function TrainingHubPage() {
           )}
         </div>
 
-        {/* BOTTOM — Diario Allenamenti + 2 righe da 2 */}
+        {/* BOTTOM — bottoni alleggeriti (sfondo neutro, icona colorata) */}
         <div className="shrink-0 flex flex-col gap-2">
           <Link href={DIARY.href}
-            className="h-14 flex items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
-            style={{ backgroundColor: COLOR + '35' }}>
-            <DIARY.icon className="!w-5 !h-5" style={{ color: COLOR }} />
-            <span className="text-sm font-bold tracking-wide" style={{ color: COLOR }}>{DIARY.label}</span>
+            className="surface h-14 flex items-center justify-center gap-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: COLOR + '1e' }}>
+              <DIARY.icon className="!w-4 !h-4" style={{ color: COLOR }} />
+            </span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{DIARY.label}</span>
           </Link>
           {[SECTIONS.slice(0, 2), SECTIONS.slice(2, 4)].map((row, ri) => (
             <div key={ri} className="h-14 flex gap-2">
               {row.map(s => (
                 <Link key={s.href} href={s.href}
-                  className="flex-1 flex flex-col items-center justify-center gap-1.5 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
-                  style={{ backgroundColor: COLOR + '20' }}>
-                  <s.icon className="!w-5 !h-5" style={{ color: COLOR }} />
-                  <span className="text-xs font-bold text-center leading-tight px-1" style={{ color: COLOR }}>{s.label}</span>
+                  className="surface flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all px-2">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: COLOR + '1e' }}>
+                    <s.icon className="!w-4 !h-4" style={{ color: COLOR }} />
+                  </span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-gray-100 leading-tight">{s.label}</span>
                 </Link>
               ))}
             </div>

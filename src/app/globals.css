@@ -34,4 +34,20 @@
   --color-gray-200: oklch(92.8% 0.006 264.531);
   --color-gray-300: oklch(87.2% 0.01  258.338);
   --color-gray-400: oklch(70.7% 0.022 261.325);
+  /* Sfondo pagina più profondo → maggiore stacco con le card (gray-900) */
+  --color-gray-950: oklch(15% 0.015 264);
+}
+
+/* ── Premium card surface: profondità con ombra morbida ───────────────────
+   Light: ombra delicata + bordo tenue.  Dark: ombra più marcata, card un filo
+   più chiara dello sfondo pagina per effetto "sollevato".
+   ────────────────────────────────────────────────────────────────────── */
+.surface {
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04),
+              0 6px 20px -10px rgba(17, 24, 39, 0.18);
+}
+.dark .surface {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5),
+              0 8px 24px -12px rgba(0, 0, 0, 0.7);
 }
