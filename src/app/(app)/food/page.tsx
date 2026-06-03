@@ -5,9 +5,11 @@ import { useAppStore } from '@/store/useAppStore'
 import { localToday } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { BookOpen, Apple, ShoppingCart, ChefHat, Target, CalendarDays } from 'lucide-react'
+import { MACRO, SECTION } from '@/lib/theme'
+import { MealIcon } from '@/components/shared/icons'
 
-const COLOR = '#e8924a'
-const C = { kcal: '#6abf6a', protein: '#9d8fcc', carbs: '#f0aa78', fat: '#5b9bd5' }
+const COLOR = SECTION.food
+const C = { kcal: MACRO.kcal, protein: MACRO.protein, carbs: MACRO.carbs, fat: MACRO.fat }
 
 const DIARY  = { label: 'Diario Pasti', href: '/food/diary', icon: BookOpen }
 const SECTIONS = [
@@ -20,13 +22,6 @@ const SECTIONS = [
 
 type Period = 'settimana' | 'mese' | 'mese_scorso' | 'custom'
 
-const MEAL_META: Record<string, { label: string; emoji: string }> = {
-  'Colazione':           { label: 'Colazione',  emoji: '☕' },
-  'Spuntino mattina':    { label: 'Sp. Mattina', emoji: '🍫' },
-  'Pranzo':              { label: 'Pranzo',      emoji: '🍗' },
-  'Spuntino pomeriggio': { label: 'Sp. Pom.',    emoji: '🍌' },
-  'Cena':                { label: 'Cena',        emoji: '🐟' },
-}
 
 type MacroData = {
   totals:  { calories: number; protein: number; carbs: number; fat: number }
@@ -112,12 +107,13 @@ export default function FoodHubPage() {
       <div className="grid gap-2 md:gap-4 flex-1 min-h-0" style={{ gridTemplateRows: '350px auto' }}>
 
         {/* TOP — statistics */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden flex flex-col min-h-0">
+        <div className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col min-h-0"
+          style={{ borderTopWidth: 3, borderTopColor: COLOR }}>
 
           <div className="px-2 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800"
             style={{ backgroundColor: COLOR + '12' }}>
             <div className="flex items-center gap-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest shrink-0" style={{ color: COLOR }}>Statistiche</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest shrink-0 text-gray-400">Statistiche</p>
               <div className="flex items-center gap-1 flex-1">
                 {(['settimana', 'mese', 'mese_scorso', 'custom'] as const).map(p => (
                   <button key={p} onClick={() => applyPeriod(p)}
@@ -202,20 +198,22 @@ export default function FoodHubPage() {
               {/* Row 2 — avg per meal (dashboard structure) */}
               <div className="flex-1 min-h-0 overflow-hidden px-2 py-2 grid grid-cols-5 gap-1.5">
                 {stats.meals.map(meal => {
-                  const meta = MEAL_META[meal.name]
                   const kcal = meal.avgCalories
                   return (
                     <div key={meal.name} className="flex flex-col min-h-0 min-w-0">
                       <div className="flex items-center justify-center py-2 px-1 rounded-xl bg-gray-100 dark:bg-gray-800 shrink-0">
-                        <span style={{ fontSize: 18, lineHeight: 1, display: 'inline-block', userSelect: 'none' }}>{meta?.emoji}</span>
+                        <MealIcon name={meal.name} size={18} color={kcal > 0 ? COLOR : '#9ca3af'} />
                       </div>
                       <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                         {kcal > 0 ? (
                           <>
                             <p className="text-xs font-bold text-center leading-tight" style={{ color: C.kcal }}>{kcal}<span className="text-[10px] font-medium"> kcal</span></p>
-                            <p className="text-xs font-semibold leading-tight text-center"><span style={{ color: C.fat }}>G </span><span style={{ color: C.fat }}>{meal.avgFat}</span></p>
-                            <p className="text-xs font-semibold leading-tight text-center"><span style={{ color: C.carbs }}>C </span><span style={{ color: C.carbs }}>{meal.avgCarbs}</span></p>
-                            <p className="text-xs font-semibold leading-tight text-center"><span style={{ color: C.protein }}>P </span><span style={{ color: C.protein }}>{meal.avgProtein}</span></p>
+                            {([['fat', meal.avgFat], ['carbs', meal.avgCarbs], ['protein', meal.avgProtein]] as const).map(([k, v]) => (
+                              <span key={k} className="flex items-center justify-center gap-1 leading-tight">
+                                <span style={{ width: 6, height: 6, borderRadius: 9999, backgroundColor: C[k], display: 'inline-block', flexShrink: 0 }} />
+                                <span className="text-xs font-semibold" style={{ color: C[k] }}>{v}</span>
+                              </span>
+                            ))}
                           </>
                         ) : (
                           <p className="text-xs text-gray-400 text-center">—</p>
@@ -230,22 +228,24 @@ export default function FoodHubPage() {
           )}
         </div>
 
-        {/* BOTTOM — fixed-height rows (same as training hub) */}
+        {/* BOTTOM — bottoni alleggeriti (sfondo neutro, icona colorata) */}
         <div className="shrink-0 flex flex-col gap-2">
           <Link href={DIARY.href}
-            className="h-14 flex items-center justify-center gap-3 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
-            style={{ backgroundColor: COLOR + '35' }}>
-            <DIARY.icon className="!w-5 !h-5" style={{ color: COLOR }} />
-            <span className="text-sm font-bold tracking-wide" style={{ color: COLOR }}>{DIARY.label}</span>
+            className="surface h-14 flex items-center justify-center gap-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: COLOR + '1e' }}>
+              <DIARY.icon className="!w-4 !h-4" style={{ color: COLOR }} />
+            </span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{DIARY.label}</span>
           </Link>
           {[SECTIONS.slice(0, 2), SECTIONS.slice(2, 4), SECTIONS.slice(4, 5)].map((row, ri) => (
             <div key={ri} className="h-14 flex gap-2">
               {row.map(s => (
                 <Link key={s.href} href={s.href}
-                  className="flex-1 flex flex-col items-center justify-center gap-1.5 rounded-2xl active:scale-[0.98] transition-all hover:opacity-90"
-                  style={{ backgroundColor: COLOR + '20' }}>
-                  <s.icon className="!w-5 !h-5" style={{ color: COLOR }} />
-                  <span className="text-xs font-bold text-center leading-tight px-1" style={{ color: COLOR }}>{s.label}</span>
+                  className="surface flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all px-2">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: COLOR + '1e' }}>
+                    <s.icon className="!w-4 !h-4" style={{ color: COLOR }} />
+                  </span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-gray-100 leading-tight">{s.label}</span>
                 </Link>
               ))}
               {row.length < 2 && <div className="flex-1" />}

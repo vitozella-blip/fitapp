@@ -10,7 +10,11 @@ const CAL_WORKOUT_COLOR = '#5b9ec9'
 
 const TENNIS_COLOR = '#6aaa6a'
 
-// shape: 0 = circle, 1 = triangle, 2 = square  (derived from order % 3)
+// shape: 0 = circle · 1 = hexagon · 2 = diamond  (derived from order % 3)
+// Hexagon (pointy-top) for 28×28 viewBox (center 14,14 r=11)
+const CAL_HEXAGON = '14,3 24,9 24,20 14,25 4,20 4,9'
+// Diamond for 28×28 viewBox
+const CAL_DIAMOND = '14,2 26,14 14,26 2,14'
 function buildWorkoutInfo(): Record<string, { color: string; shape: number }> {
   const map: Record<string, { color: string; shape: number }> = {}
   if (typeof window === 'undefined') return map
@@ -122,23 +126,24 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             const isSelected = dateStr === selectedDate
             const isToday    = dateStr === today
             const info       = workoutInfo[dateStr]
-            const shape      = info?.shape ?? 0        // 0=circle 1=triangle 2=square
+            const shape      = info?.shape ?? 0        // 0=circle 1=hexagon 2=diamond
             const hasWO      = !!info
             const hasTennis  = tennisDates.has(dateStr)
 
             // ── SELECTED + WO or TENNIS → filled shape ──────────────────────
             if (isSelected && (hasWO || hasTennis)) {
               const fillColor = hasTennis ? TENNIS_COLOR : CAL_WORKOUT_COLOR
-              const br = hasWO && !hasTennis && shape === 2 ? '4px' : '50%'
-              if (hasWO && !hasTennis && shape === 1) {
+              // Shape 1 (hexagon) or 2 (diamond) → SVG filled; shape 0 → CSS circle
+              if (hasWO && !hasTennis && shape !== 0) {
+                const pts = shape === 2 ? CAL_DIAMOND : CAL_HEXAGON
                 return (
                   <button key={i} onClick={() => pick(day)}
                     className="flex items-center justify-center py-1 rounded-xl relative">
-                    <div className="relative flex items-end justify-center" style={{ width: 28, height: 28 }}>
+                    <div className="relative flex items-center justify-center" style={{ width: 28, height: 28 }}>
                       <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                        <polygon points="14,2 27,26 1,26" fill={fillColor} />
+                        <polygon points={pts} fill={fillColor} />
                       </svg>
-                      <span className="relative z-10 text-sm font-bold text-white" style={{ lineHeight: 1, paddingBottom: 2 }}>{day}</span>
+                      <span className="relative z-10 text-sm font-bold text-white">{day}</span>
                     </div>
                   </button>
                 )
@@ -146,46 +151,48 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
               return (
                 <button key={i} onClick={() => pick(day)} className="flex items-center justify-center py-1 rounded-xl relative">
                   <span className="w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
-                    style={{ backgroundColor: fillColor, borderRadius: br }}>{day}</span>
+                    style={{ backgroundColor: fillColor, borderRadius: '50%' }}>{day}</span>
                 </button>
               )
             }
 
-            // ── SELECTED + no WO/tennis → accent filled circle ───────────────
+            // ── SELECTED + no WO/tennis → accent filled square ───────────────
             if (isSelected) {
               return (
                 <button key={i} onClick={() => pick(day)} className="flex items-center justify-center py-1 rounded-xl relative">
                   <span className="w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
-                    style={{ backgroundColor: accent, borderRadius: '50%' }}>{day}</span>
+                    style={{ backgroundColor: accent, borderRadius: '4px' }}>{day}</span>
                 </button>
               )
             }
 
-            // ── WO day (not selected) → hollow shape, blue number ───────────
+            // ── WO day (not selected) → hollow shape, neutral number ────────
             if (hasWO) {
-              if (shape === 1) {
+              // Shape 0: circle (CSS), Shape 1: hexagon (SVG), Shape 2: diamond (SVG)
+              if (shape === 0) {
                 return (
                   <button key={i} onClick={() => pick(day)}
                     className="flex flex-col items-center justify-center py-1 rounded-xl relative">
-                    <div className="relative flex items-end justify-center" style={{ width: 28, height: 28 }}>
-                      <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                        <polygon points="14,2 27,26 1,26" fill="none" stroke={CAL_WORKOUT_COLOR} strokeWidth="2" />
-                      </svg>
-                      <span className={cn('relative z-10 text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}
-                        style={{ lineHeight: 1, paddingBottom: 2 }}>{day}</span>
-                    </div>
+                    <span className={cn('w-7 h-7 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}
+                      style={{ border: `2px solid ${CAL_WORKOUT_COLOR}`, borderRadius: '50%' }}>
+                      {day}
+                    </span>
                     {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: CAL_WORKOUT_COLOR }} />}
                   </button>
                 )
               }
-              const br = shape === 2 ? '4px' : '50%'
+              const pts = shape === 2 ? CAL_DIAMOND : CAL_HEXAGON
               return (
                 <button key={i} onClick={() => pick(day)}
                   className="flex flex-col items-center justify-center py-1 rounded-xl relative">
-                  <span className={cn('w-7 h-7 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}
-                    style={{ border: `2px solid ${CAL_WORKOUT_COLOR}`, borderRadius: br }}>
-                    {day}
-                  </span>
+                  <div className="relative flex items-center justify-center" style={{ width: 28, height: 28 }}>
+                    <svg viewBox="0 0 28 28" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                      <polygon points={pts} fill="none" stroke={CAL_WORKOUT_COLOR} strokeWidth="2" />
+                    </svg>
+                    <span className={cn('relative z-10 text-sm text-gray-500 dark:text-gray-400', isToday && 'font-bold text-gray-900 dark:text-gray-100')}>
+                      {day}
+                    </span>
+                  </div>
                   {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: CAL_WORKOUT_COLOR }} />}
                 </button>
               )
