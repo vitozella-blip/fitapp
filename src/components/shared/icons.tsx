@@ -1,5 +1,33 @@
-import { Coffee, Cookie, Drumstick, Banana, Fish } from 'lucide-react'
+import { Coffee, Cookie, Drumstick, Banana, Fish, Dumbbell, Flame, Zap, Star, Target, Shield, Trophy, Heart, Activity, Bike, Timer, Swords } from 'lucide-react'
 import type { ReactElement } from 'react'
+
+// ── Icone disponibili per badge WO personalizzati ────────────────────────────
+export const BADGE_ICONS: Record<string, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
+  dumbbell: Dumbbell, flame: Flame, zap: Zap, star: Star,
+  target: Target, shield: Shield, trophy: Trophy, heart: Heart,
+  activity: Activity, bike: Bike, timer: Timer, swords: Swords,
+}
+export const BADGE_ICON_NAMES = Object.keys(BADGE_ICONS) as (keyof typeof BADGE_ICONS)[]
+
+// ── Badge WO con supporto testo o icona ──────────────────────────────────────
+export function WorkoutBadgeDisplay({ color, label, icon, size = 22 }: {
+  color: string; label?: string | null; icon?: string | null; size?: number
+}) {
+  const Icon = icon ? BADGE_ICONS[icon] : null
+  return (
+    <span style={{
+      width: size, height: size, borderRadius: '50%', backgroundColor: color, color: '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    }}>
+      {Icon
+        ? <Icon size={Math.round(size * 0.52)} color="#fff" strokeWidth={2.2} />
+        : <span style={{ fontSize: Math.round(size * 0.42), fontWeight: 800, lineHeight: 1 }}>
+            {label ?? '?'}
+          </span>
+      }
+    </span>
+  )
+}
 
 // ── Badge scheda: sigla colorata (es. CB / L / SM) ──────────────────────────
 export function SchedaBadge({ label, color, size = 22 }: {

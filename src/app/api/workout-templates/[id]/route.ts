@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
+async function ensureBadgeColumns() {
+  await Promise.all([
+    pool.query(`ALTER TABLE "WorkoutTemplate" ADD COLUMN IF NOT EXISTS "badgeColor" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutTemplate" ADD COLUMN IF NOT EXISTS "badgeLabel" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutTemplate" ADD COLUMN IF NOT EXISTS "badgeIcon"  TEXT`).catch(() => {}),
+  ])
+}
+
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   try {
-    const { rows: [t] } = await pool.query(`SELECT id, name FROM "WorkoutTemplate" WHERE id=$1`, [id])
+    await ensureBadgeColumns()
+    const { rows: [t] } = await pool.query(`SELECT id, name, "badgeColor", "badgeLabel", "badgeIcon" FROM "WorkoutTemplate" WHERE id=$1`, [id])
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const { rows: exs } = await pool.query(
       `SELECT te.id, te.sets, te.reps, te."restSeconds", te."noteScheda", te."notePersonali", te."isAbs",
@@ -16,6 +25,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     )
     return NextResponse.json({
       id: t.id, name: t.name,
+      badgeColor: t.badgeColor, badgeLabel: t.badgeLabel, badgeIcon: t.badgeIcon,
       exercises: exs.map(r => ({
         id: r.id, sets: r.sets, reps: r.reps, restSeconds: r.restSeconds,
         noteScheda: r.noteScheda, notePersonali: r.notePersonali, isAbs: r.isAbs,
@@ -40,7 +50,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
       return NextResponse.json({ ok: true })
     }
-    await pool.query(`UPDATE "WorkoutTemplate" SET name=$1 WHERE id=$2`, [body.name, id])
+    await ensureBadgeColumns()
+    if (body.badge !== undefined) {
+      // Salva solo i campi badge
+      await pool.query(
+        `UPDATE "WorkoutTemplate" SET "badgeColor"=$1, "badgeLabel"=$2, "badgeIcon"=$3 WHERE id=$4`,
+        [body.badge.color ?? null, body.badge.label ?? null, body.badge.icon ?? null, id]
+      )
+    } else {
+      await pool.query(`UPDATE "WorkoutTemplate" SET name=$1 WHERE id=$2`, [body.name, id])
+    }
     return NextResponse.json({ ok: true })
   } catch (e) { console.error(e); return NextResponse.json({ error: 'Errore' }, { status: 500 }) }
 }
