@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { History, Dumbbell, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
-import { SchedaBadge } from '@/components/shared/icons'
+import { SchedaBadge, TennisBadge } from '@/components/shared/icons'
 import { schedaAbbrev } from '@/lib/theme'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
@@ -170,7 +170,10 @@ export default function TrainingHistoryPage() {
             const tplName  = w.templateName ? abbrevTemplate(w.templateName) : null
             const tplIdx   = w.templateOrder ?? 0   // already 0-based from SQL rank
             const tplColor = SCHEDA_COLORS[tplIdx % SCHEDA_COLORS.length]
-            const tennis  = !!w.isTennis
+            const tennis    = !!w.isTennis
+            // Giorno con WO reale: ha templateName oppure più di 1 esercizio (esclude puro tennis)
+            const hasGym    = !!(w.templateName || (w.exerciseCount ?? 0) > 1)
+            const purelyTennis = tennis && !hasGym
 
             const tennisLabel = w.tennisTag
               ? w.tennisTag.charAt(0).toUpperCase() + w.tennisTag.slice(1)
@@ -182,20 +185,17 @@ export default function TrainingHistoryPage() {
             return (
               <div key={w.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
 
-                {tennis ? (
-                  /* Tennis row — not expandable */
+                {purelyTennis ? (
+                  /* Solo tennis — non espandibile */
                   <div className="px-4 py-3 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
-                      style={{ backgroundColor: C.training + '20' }}>
-                      🎾
-                    </div>
+                    <TennisBadge size={40} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{tennisLabel}{tennisHoursLabel}</p>
                     </div>
                   </div>
                 ) : (
-                  /* Workout row — expandable */
+                  /* WO (con o senza tennis) — espandibile */
                   <button onClick={() => toggle(w)}
                     className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -212,6 +212,12 @@ export default function TrainingHistoryPage() {
                             <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
                           </span>
                         )}
+                        {tennis && (
+                          <span className="flex items-center gap-1">
+                            <TennisBadge size={14} />
+                            <span className="text-[10px] text-gray-400">{tennisLabel}{tennisHoursLabel}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     {isOpen
@@ -220,7 +226,7 @@ export default function TrainingHistoryPage() {
                   </button>
                 )}
 
-                {!tennis && isOpen && (
+                {hasGym && isOpen && (
                   <div className="border-t border-gray-100 dark:border-gray-800">
                     {detailLoading === w.id ? (
                       <div className="flex justify-center py-6">
