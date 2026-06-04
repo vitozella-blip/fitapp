@@ -187,25 +187,26 @@ export default function DashboardPage() {
 
       <div className="flex flex-col gap-2 flex-1 min-h-0 md:grid md:gap-3" style={{ gridTemplateRows: gridRows }}>
 
-        {/* MACRO — identica al mockup */}
-        <div className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col min-h-0"
+        {/* MACRO — al posto dei pasti, con ordine: kcal → 3 macro → Ti restano */}
+        <button onClick={() => router.push('/food/diary')}
+          className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform"
           style={{ borderTopWidth: 3, borderTopColor: '#9ca3af' }}>
           <div className="flex-1 min-h-0 flex flex-col justify-center gap-2.5 px-4 py-3">
 
-            {/* Titolo */}
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Macro</p>
-
-            {/* Legenda */}
-            <div className="flex items-center gap-3 flex-wrap">
-              {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
-                <span key={lbl} className="flex items-center gap-1.5">
-                  <span style={{ width: 8, height: 8, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">{lbl}</span>
-                </span>
-              ))}
+            {/* Titolo + legenda */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Macro</p>
+              <div className="flex items-center gap-2.5 flex-wrap justify-end">
+                {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
+                  <span key={lbl} className="flex items-center gap-1">
+                    <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
+                    <span className="text-[10px] text-gray-400">{lbl}</span>
+                  </span>
+                ))}
+              </div>
             </div>
 
-            {/* Numero calorie */}
+            {/* Kcal */}
             <div className="flex items-baseline justify-between">
               <div className="flex items-center gap-2">
                 <span style={{ width: 9, height: 9, borderRadius: 9999, backgroundColor: calOver ? '#f87171' : C.kcal, display: 'inline-block' }} />
@@ -218,9 +219,28 @@ export default function DashboardPage() {
             </div>
 
             {/* Barra calorie */}
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#ffffff14' }}>
+            <div className="h-1.5 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
               <div className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
+            </div>
+
+            {/* 3 Macro */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { val: t.fat,     tgt: tg.fat,     color: C.fat },
+                { val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
+                { val: t.protein, tgt: tg.protein, color: C.protein },
+              ].map((m, i) => (
+                <div key={i}>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: m.color, display: 'inline-block' }} />
+                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{m.val}<span className="text-gray-400 font-medium">/{m.tgt} g</span></span>
+                  </div>
+                  <div className="rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ height: 6 }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Ti restano */}
@@ -237,38 +257,17 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {/* Macro: pallino + valore/target + barra */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { val: t.fat,     tgt: tg.fat,     color: C.fat },
-                { val: t.carbs,   tgt: tg.carbs,   color: C.carbs },
-                { val: t.protein, tgt: tg.protein, color: C.protein },
-              ].map((m, i) => (
-                <div key={i}>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: m.color, display: 'inline-block' }} />
-                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{m.val}<span className="text-gray-400 font-medium">/{m.tgt} g</span></span>
-                  </div>
-                  <div className="rounded-full overflow-hidden" style={{ height: 6, backgroundColor: '#ffffff14' }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
           </div>
-        </div>
+        </button>
 
-        {/* PASTI — meals in a horizontal row */}
+        {/* PASTI */}
         <button onClick={() => router.push('/food/diary')}
           className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform"
           style={{ borderTopWidth: 3, borderTopColor: SECTION.food }}>
-
           <div className="px-3 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Pasti</p>
             <ChevronRight size={16} className="text-gray-400 shrink-0" />
           </div>
-
           <div className="flex-1 min-h-0 px-1 py-2 grid grid-cols-5 gap-1">
             {MEALS.map(({ name, short }) => {
               const m    = data?.meals.find(x => x.name === name)
