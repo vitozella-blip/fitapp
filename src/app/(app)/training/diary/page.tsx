@@ -706,7 +706,7 @@ export default function TrainingDiaryPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    async function loadScheda(info: { templateId: string; weekId?: string | null; weekName?: string | null }, instant = false) {
+    async function loadScheda(info: { templateId: string; weekId?: string | null; weekName?: string | null; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }, instant = false) {
       // Check memory cache first for instant display
       let t = templateCache.get(info.templateId)
       if (!t) {
