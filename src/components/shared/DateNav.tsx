@@ -20,7 +20,9 @@ function buildWorkoutInfo(): Record<string, { color: string; label: string }> {
       const info = JSON.parse(localStorage.getItem(key) ?? '')
       if (info?.templateId || info?.name) {
         const order = typeof info.order === 'number' ? info.order : 1
-        map[date] = { color: schedaColorByOrder(order), label: schedaAbbrev(info.name ?? '') }
+        const color = info.badgeColor ?? schedaColorByOrder(order)
+        const label = info.badgeLabel || schedaAbbrev(info.name ?? '')
+        map[date] = { color, label }
       }
     } catch {}
   }

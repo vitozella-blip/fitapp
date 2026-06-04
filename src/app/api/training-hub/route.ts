@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       // Workout template dates: only diary entries with at least one set logged
       pool.query(
         `SELECT
-           t.id, t.name, t."order",
+           t.id, t.name, t."order", t."badgeColor", t."badgeLabel", t."badgeIcon",
            COALESCE(
              json_agg(DISTINCT wd.date::text)
                FILTER (WHERE wd.date IS NOT NULL AND wd.date >= $2 AND wd.date < $3

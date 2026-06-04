@@ -35,7 +35,7 @@ type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string |
 type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[] }
 type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; isWarmup?: boolean; tag?: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
-type Template   = { id: string; name: string; exercises: TemplateEx[] }
+type Template   = { id: string; name: string; exercises: TemplateEx[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
 type Plan       = { id: string; name: string; isActive?: boolean }
 type Week       = { id: string; name: string; order: number }
 type WeekParamRow = { weekId: string; templateExId: string; sets: number; reps: string | null; restSeconds: number | null }
@@ -809,8 +809,8 @@ export default function TrainingDiaryPage() {
   }, [schedaInfo, userId])
 
   async function pickScheda(t: Template, idx: number, weekId: string | null, weekName: string | null, weekOrder: number | null) {
-    const color = SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
-    const schedaPayload = { templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder }
+    const color = t.badgeColor ?? SCHEDA_COLORS[idx % SCHEDA_COLORS.length]
+    const schedaPayload = { templateId: t.id, name: t.name, order: idx + 1, color, weekId, weekName, weekOrder, badgeColor: t.badgeColor ?? null, badgeLabel: t.badgeLabel ?? null, badgeIcon: t.badgeIcon ?? null }
     localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify(schedaPayload))
     fetch('/api/workout-scheda', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
