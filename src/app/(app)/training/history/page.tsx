@@ -4,7 +4,9 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { History, Dumbbell, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SchedaBadge } from '@/components/shared/icons'
+import { schedaAbbrev } from '@/lib/theme'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
 
@@ -206,7 +208,7 @@ export default function TrainingHistoryPage() {
                         <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
                         {tplName && (
                           <span className="flex items-center gap-1">
-                            <WorkoutBadge color={tplColor} shapeIdx={tplIdx} size={12} />
+                            <SchedaBadge label={schedaAbbrev(w.templateName ?? '')} color={tplColor} size={16} />
                             <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
                           </span>
                         )}

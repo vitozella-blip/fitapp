@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { MACRO, SECTION, ACTIVITY, alpha } from '@/lib/theme'
-import { MealIcon, TennisBall } from '@/components/shared/icons'
+import { MealIcon, TennisBall, TennisBadge } from '@/components/shared/icons'
 
 const C = {
   kcal:     MACRO.kcal,
@@ -182,7 +182,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="shrink-0">
-        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} controlColor="#ffffff" />
+        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} controlColor="#9d8fcc" />
       </div>
 
       <div className="flex flex-col gap-2 flex-1 min-h-0 md:grid md:gap-3" style={{ gridTemplateRows: gridRows }}>
@@ -334,7 +334,7 @@ export default function DashboardPage() {
                         {WEEK_LABELS[i]}
                       </span>
                       {entry?.hasGym && entry?.hasTennis ? (
-                        <div className={circle} style={{ position: 'relative', width: 22, height: 22, overflow: 'hidden', background: `linear-gradient(135deg, ${ACTIVITY.gym} 0 50%, ${ACTIVITY.tennis} 50% 100%)` }}>
+                        <div className={circle} style={{ position: 'relative', width: 22, height: 22, overflow: 'hidden', background: `linear-gradient(135deg, ${ACTIVITY.gym} 0 50%, #c8a800 50% 100%)` }}>
                           <Dumbbell size={9} color="#fff" style={{ position: 'absolute', top: 2, left: 1.5 }} />
                           <span style={{ position: 'absolute', bottom: 1.5, right: 1 }}><TennisBall size={9} color="#fff" strokeWidth={2.4} /></span>
                         </div>
@@ -343,9 +343,7 @@ export default function DashboardPage() {
                           <Dumbbell size={11} color="#fff" />
                         </div>
                       ) : entry?.hasTennis ? (
-                        <div className={circle} style={{ width: 22, height: 22, backgroundColor: ACTIVITY.tennis }}>
-                          <TennisBall size={12} color="#fff" strokeWidth={2} />
-                        </div>
+                        <TennisBadge size={22} />
                       ) : (
                         <div className={circle} style={{ width: 22, height: 22, border: `1.5px solid ${isToday ? C.training : '#d1d5db'}` }} />
                       )}

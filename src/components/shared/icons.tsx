@@ -14,7 +14,7 @@ export function SchedaBadge({ label, color, size = 22 }: {
   )
 }
 
-// ── Pallina da tennis in stile lucide (stroke, no fill) ─────────────────────
+// ── Pallina da tennis: solo SVG stroke (usata dentro cerchi colorati) ────────
 export function TennisBall({ size = 24, color = 'currentColor', strokeWidth = 2 }: {
   size?: number; color?: string; strokeWidth?: number
 }) {
@@ -26,6 +26,18 @@ export function TennisBall({ size = 24, color = 'currentColor', strokeWidth = 2 
       <path d="M5 5 C 9 9, 9 15, 5 19" />
       <path d="M19 5 C 15 9, 15 15, 19 19" />
     </svg>
+  )
+}
+
+// ── Badge tennis: cerchio giallo con SVG pallina inside ───────────────────────
+export function TennisBadge({ size = 22 }: { size?: number }) {
+  return (
+    <span style={{
+      width: size, height: size, borderRadius: '50%', backgroundColor: '#c8a800',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    }}>
+      <TennisBall size={Math.round(size * 0.58)} color="#fff" strokeWidth={2.2} />
+    </span>
   )
 }
 

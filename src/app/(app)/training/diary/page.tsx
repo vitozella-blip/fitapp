@@ -7,7 +7,8 @@ import { DateNav } from '@/components/shared/DateNav'
 import { cn, localToday } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
-import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SchedaBadge } from '@/components/shared/icons'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
@@ -283,7 +284,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
               return (
                 <button key={t.id} onClick={() => selectTemplate(t, i)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                  <WorkoutBadge color={color} shapeIdx={i} size={36} />
+                  <SchedaBadge label={schedaAbbrev(t.name)} color={color} size={36} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-gray-400 truncate">{label1}</p>
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{label2 ?? label1}</p>
@@ -1722,7 +1723,7 @@ export default function TrainingDiaryPage() {
             <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
               onClick={() => setSchedaCollapsed(c => !c)}>
-              <WorkoutBadge color={schedaColor} shapeIdx={schedaOrder} size={14} />
+              <SchedaBadge label={schedaAbbrev(schedaInfo.name)} color={schedaColor} size={18} />
               <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
                 {schedaInfo.name}
               </span>
