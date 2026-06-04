@@ -275,6 +275,12 @@ export default function FoodDiaryPage() {
     : 0
   const calOver = totals.calories > userProfile.targetCalories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
+  const left = {
+    calories: Math.max(0, userProfile.targetCalories - totals.calories),
+    fat:      Math.max(0, userProfile.targetFat      - totals.fat),
+    carbs:    Math.max(0, userProfile.targetCarbs    - totals.carbs),
+    protein:  Math.max(0, userProfile.targetProtein  - totals.protein),
+  }
 
   const swipe = useDateSwipe(selectedDate, setSelectedDate)
 
@@ -288,55 +294,75 @@ export default function FoodDiaryPage() {
         <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.carbs} showWorkoutColors={false} />
       </div>
 
-      {/* Macro summary — swipe orizzontale cambia data */}
-      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden" {...swipe}>
-        <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-800">
-          <p className="text-center text-[10px] font-bold uppercase tracking-widest"
-            style={{ color: C.kcal }}>Macro</p>
-        </div>
-        <div className="px-4 pt-2 pb-3">
-          <div className="flex items-baseline justify-between mb-1.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
-                {totals.calories}
-              </span>
-              <span className="text-sm font-medium text-gray-500">/ {userProfile.targetCalories} kcal</span>
-              {freeMeals.size > 0 && (
-                <span className="text-[10px] font-medium ml-1" style={{ color: C.carbs }}>
-                  ({freeMeals.size} libero)
+      {/* Macro — identica alla dashboard */}
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" {...swipe}>
+        <div className="flex flex-col gap-2.5 px-4 py-3">
+
+          {/* Titolo + legenda */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Macro</p>
+            <div className="flex items-center gap-2.5 flex-wrap justify-end">
+              {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
+                <span key={lbl} className="flex items-center gap-1">
+                  <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
+                  <span className="text-[10px] text-gray-400">{lbl}</span>
                 </span>
-              )}
+              ))}
             </div>
-            <span className="text-xl font-bold" style={{ color: calOver ? '#f87171' : C.kcal }}>
-              {calOver ? `+${totals.calories - userProfile.targetCalories} kcal` : `${calPct}%`}
+          </div>
+
+          {/* Kcal */}
+          <div className="flex items-baseline justify-between">
+            <div className="flex items-center gap-2">
+              <span style={{ width: 9, height: 9, borderRadius: 9999, backgroundColor: calOver ? '#f87171' : C.kcal, display: 'inline-block' }} />
+              <span className="text-3xl font-extrabold leading-none tracking-tight" style={{ color: calOver ? '#f87171' : C.kcal }}>{totals.calories}</span>
+              <span className="text-xs text-gray-400 font-medium">/ {userProfile.targetCalories} kcal</span>
+              {freeMeals.size > 0 && <span className="text-[10px] font-medium" style={{ color: C.carbs }}>({freeMeals.size} libero)</span>}
+            </div>
+            <span className="text-lg font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
+              {calOver ? `+${totals.calories - userProfile.targetCalories}` : `${calPct}%`}
             </span>
           </div>
 
-          <div className="h-1.5 rounded-full overflow-hidden mb-2.5"
-            style={{ backgroundColor: C.kcal + '38' }}>
+          {/* Barra calorie */}
+          <div className="h-1.5 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
             <div className="h-full rounded-full transition-all duration-500"
               style={{ width: `${calPct}%`, backgroundColor: calOver ? '#f87171' : C.kcal }} />
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-center">
+          {/* 3 Macro */}
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Grassi',      val: totals.fat,     tgt: userProfile.targetFat,     color: C.fat },
-              { label: 'Carboidrati', val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
-              { label: 'Proteine',    val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
-            ].map(m => (
-              <div key={m.label}>
-                <p className="text-[10px] font-bold mb-0.5" style={{ color: m.color }}>{m.label}</p>
-                <p className="text-lg font-bold leading-none" style={{ color: m.color }}>
-                  {m.val}<span className="text-xs font-medium text-gray-500"> / {m.tgt} g</span>
-                </p>
-                <div className="h-1 rounded-full overflow-hidden mt-1"
-                  style={{ backgroundColor: m.color + '40' }}>
-                  <div className="h-full rounded-full transition-all"
-                    style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
+              { val: totals.fat,     tgt: userProfile.targetFat,     color: C.fat },
+              { val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
+              { val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
+            ].map((m, i) => (
+              <div key={i}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: m.color, display: 'inline-block' }} />
+                  <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{m.val}<span className="text-gray-400 font-medium">/{m.tgt} g</span></span>
+                </div>
+                <div className="rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ height: 6 }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Ti restano */}
+          <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ backgroundColor: C.kcal + '1f' }}>
+            <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Ti restano</span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="text-sm font-extrabold" style={{ color: C.kcal }}>{left.calories}<span className="text-[10px] font-medium text-gray-400"> kcal</span></span>
+              <span className="text-gray-300 dark:text-gray-600">·</span>
+              <span className="text-[13px] font-medium" style={{ color: C.fat }}>{left.fat}<span className="text-[9px] text-gray-400">g</span></span>
+              <span className="text-gray-300 dark:text-gray-600">/</span>
+              <span className="text-[13px] font-medium" style={{ color: C.carbs }}>{left.carbs}<span className="text-[9px] text-gray-400">g</span></span>
+              <span className="text-gray-300 dark:text-gray-600">/</span>
+              <span className="text-[13px] font-medium" style={{ color: C.protein }}>{left.protein}<span className="text-[9px] text-gray-400">g</span></span>
+            </span>
+          </div>
+
         </div>
       </div>
 
