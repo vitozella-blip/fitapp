@@ -8,7 +8,7 @@ import { cn, localToday } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
-import { SchedaBadge, TennisBadge } from '@/components/shared/icons'
+import { SchedaBadge, TennisBadge, WorkoutBadgeDisplay } from '@/components/shared/icons'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
@@ -32,7 +32,7 @@ type ExStatus = 'done' | 'partial' | 'skipped'
 
 type Exercise   = { id: string; name: string; muscleGroup: string }
 type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null; isAbs: boolean }
-type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[] }
+type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
 type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; isWarmup?: boolean; tag?: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
 type Template   = { id: string; name: string; exercises: TemplateEx[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
@@ -715,7 +715,7 @@ export default function TrainingDiaryPage() {
         templateCache.set(info.templateId, t)
       }
       const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
-      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged })
+      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged, badgeColor: info.badgeColor ?? t.badgeColor ?? null, badgeLabel: info.badgeLabel ?? t.badgeLabel ?? null, badgeIcon: info.badgeIcon ?? t.badgeIcon ?? null })
       if (instant) setSchedaLoading(false)
     }
 
@@ -817,7 +817,7 @@ export default function TrainingDiaryPage() {
       body: JSON.stringify({ userId, date: selectedDate, ...schedaPayload }),
     }).catch(() => {})
     const merged = await mergeWeekParams(t.exercises, weekId)
-    setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged })
+    setSchedaInfo({ id: t.id, name: t.name, weekId, weekName, exercises: merged, badgeColor: t.badgeColor ?? null, badgeLabel: t.badgeLabel ?? null, badgeIcon: t.badgeIcon ?? null })
     setSchedaCollapsed(false)
     setShowPicker(false)
     bumpWorkoutVersion()
@@ -1082,7 +1082,7 @@ export default function TrainingDiaryPage() {
     await fetchWorkout(); setTennisLoading(false); bumpWorkoutVersion()
   }
 
-  const schedaColor = CT  // colore unico per tutti i WO
+  const schedaColor = schedaInfo?.badgeColor ?? CT
   const schedaOrder = getSchedaOrder(selectedDate)
   const hasAny = schedaLoading || schedaInfo || (!schedaLoading && Object.keys(extraGrouped).length > 0) || tennisActive
 
@@ -1729,7 +1729,7 @@ export default function TrainingDiaryPage() {
             <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
               onClick={() => setSchedaCollapsed(c => !c)}>
-              <SchedaBadge label={schedaAbbrev(schedaInfo.name)} color={schedaColor} size={18} />
+              <WorkoutBadgeDisplay color={schedaColor} label={schedaInfo.badgeLabel || schedaAbbrev(schedaInfo.name)} icon={schedaInfo.badgeIcon ?? null} size={18} />
               <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
                 {schedaInfo.name}
               </span>
