@@ -8,11 +8,11 @@ import { cn, localToday } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
-import { SchedaBadge } from '@/components/shared/icons'
+import { SchedaBadge, TennisBadge } from '@/components/shared/icons'
 
 const CT            = '#7aafc8'
 const C_WARM        = '#f0aa78'
-const C_TENNIS      = '#6aaa6a'
+const C_TENNIS      = '#c8a800'
 const TENNIS_NAME   = 'Tennis'
 
 function schedaAbbrev(name: string) {
@@ -363,6 +363,7 @@ const templateCache = new Map<string, Template>()
 export default function TrainingDiaryPage() {
   const { userId, userProfile, bumpWorkoutVersion } = useAppStore()
   const [selectedDate, setSelectedDate] = useState(localToday)
+  const workoutCache = useRef<Map<string, Workout>>(new Map())
   const [workout,       setWorkout]       = useState<Workout | null>(null)
   const [schedaInfo,    setSchedaInfo]    = useState<SchedaInfo | null>(null)
   const [schedaLoading, setSchedaLoading] = useState(true)
@@ -562,8 +563,13 @@ export default function TrainingDiaryPage() {
   }, [userId])
 
   const fetchWorkout = useCallback(async () => {
+    // Serve dalla cache immediatamente per eliminare il lag visivo
+    const cached = workoutCache.current.get(selectedDate)
+    if (cached) setWorkout(cached)
+
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     const w: Workout = await r.json()
+    workoutCache.current.set(selectedDate, w)
     setWorkout(w)
     if (w?.sets) {
       // Merge DB isWarmup/tag with localStorage (DB wins for each set)
@@ -1118,7 +1124,7 @@ export default function TrainingDiaryPage() {
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
           <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
           <div className="px-4 py-2.5 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C_TENNIS }} />
+            <TennisBadge size={18} />
             <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
               onClick={() => setTennisCollapsed(c => !c)}>
               Tennis{tennisMeta.type ? ` — ${tennisMeta.type}` : ''}{tennisMeta.hours ? <span className="normal-case font-semibold"> {tennisMeta.hours}h</span> : ''}

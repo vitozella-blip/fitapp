@@ -28,7 +28,7 @@ export const SECTION = {
 // ── Colori ATTIVITÀ ─────────────────────────────────────────────────────────
 export const ACTIVITY = {
   gym:    SECTION.training,  // palestra — azzurro
-  tennis: '#6aaa6a',         // tennis  — verde
+  tennis: '#c8a800',         // tennis  — giallo
 } as const
 
 // ── Schede: colori distinti + sigla ─────────────────────────────────────────
