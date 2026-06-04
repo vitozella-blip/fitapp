@@ -9,7 +9,9 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
-import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SchedaBadge } from '@/components/shared/icons'
+import { schedaAbbrev, schedaColorByOrder } from '@/lib/theme'
 
 const CT = '#7aafc8'
 
@@ -1136,7 +1138,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
           onTouchStart={hdrTouchStart} onTouchMove={hdrTouchMove} onTouchEnd={hdrTouchEnd}
           onClick={() => { if (hdrSnapped.current) hdrSnap(null) }}>
         <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
-          <WorkoutBadge color={color} shapeIdx={tIdx} size={14} />
+          <SchedaBadge label={schedaAbbrev(tmpl.name)} color={color} size={18} />
           {editing ? (
             <input autoFocus value={name} onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}

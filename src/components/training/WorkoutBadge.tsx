@@ -1,8 +1,8 @@
+import { SCHEDA_PALETTE } from '@/lib/theme'
+
 // Shared workout template shape badge
 // shapeIdx % 3: 0 = circle · 1 = hexagon · 2 = diamond
-// Colors mirror the diary picker (also stored in localStorage for the calendar)
-const BASE_COLOR = '#5b9ec9'
-export const SCHEDA_COLORS = [BASE_COLOR, BASE_COLOR, BASE_COLOR, BASE_COLOR, BASE_COLOR, BASE_COLOR]
+export const SCHEDA_COLORS = SCHEDA_PALETTE
 
 // Hexagon (pointy-top) inscribed in 36×36 viewBox (center 18,18 r=14)
 const HEXAGON = '18,4 30,11 30,25 18,32 6,25 6,11'

@@ -6,7 +6,7 @@ import { schedaColorByOrder, schedaAbbrev } from '@/lib/theme'
 
 const DOW = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 
-const TENNIS_COLOR = '#6aaa6a'
+const TENNIS_COLOR = '#c8a800'
 
 // Mappa data → scheda svolta (colore distinto per ordine + sigla dal nome)
 function buildWorkoutInfo(): Record<string, { color: string; label: string }> {
@@ -128,19 +128,20 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             // colore di fondo: scheda (per ordine) ha priorità, poi tennis
             const fill = hasWO ? info!.color : hasTennis ? TENNIS_COLOR : null
 
-            // ── Giorno allenato → numero in cerchio colorato (+ pallino verde se anche tennis) ──
+            // ── Giorno allenato → numero in cerchio colorato ──
             if (fill) {
+              const circleBg = hasWO && hasTennis
+                ? { background: `linear-gradient(135deg, ${info!.color} 50%, ${TENNIS_COLOR} 50%)` }
+                : { backgroundColor: fill }
+              const ringColor = hasWO ? info!.color : TENNIS_COLOR
               return (
                 <button key={i} onClick={() => pick(day)}
                   className="flex flex-col items-center justify-center py-1 rounded-xl relative">
                   <span className="relative w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
-                    style={{ backgroundColor: fill, borderRadius: '50%', boxShadow: isSelected ? '0 0 0 2px #fff, 0 0 0 4px ' + fill : undefined }}>
+                    style={{ ...circleBg, borderRadius: '50%', boxShadow: isSelected ? `0 0 0 2px #fff, 0 0 0 4px ${ringColor}` : undefined, textShadow: '0 0 3px rgba(0,0,0,0.4)' }}>
                     {day}
-                    {hasWO && hasTennis && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white dark:border-gray-900" style={{ backgroundColor: TENNIS_COLOR }} />
-                    )}
                   </span>
-                  {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: fill }} />}
+                  {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: ringColor }} />}
                 </button>
               )
             }
@@ -203,10 +204,16 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
   return (
     <>
       <div className="flex items-center gap-2">
-        {/* Date band */}
+        {/* Date band — colorata con ctrl quando oggi è selezionato */}
         <div className={cn("flex-1 min-w-0 h-9 rounded-2xl px-1 flex items-center gap-0.5 border transition-colors",
-            !schedaColor && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
-          style={schedaColor ? { backgroundColor: schedaColor + '18', borderColor: schedaColor + '50' } : undefined}>
+            !schedaColor && !isToday && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
+          style={
+            isToday && ctrl
+              ? { backgroundColor: ctrl + '55', borderColor: ctrl }
+              : schedaColor
+              ? { backgroundColor: schedaColor + '18', borderColor: schedaColor + '50' }
+              : undefined
+          }>
           <button onClick={() => changeDate(-1)}
             className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0 transition-colors">
             <ChevronLeft size={16} />
@@ -226,7 +233,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
           <Calendar size={16} style={{ color: ctrl }} />
         </button>
 
-        {/* Oggi button */}
+        {/* Oggi button — colorato solo quando NON si è su oggi */}
         <button onClick={() => onChange(today)} disabled={isToday}
           className={cn(
             'shrink-0 h-9 px-3 rounded-xl text-xs font-bold border transition-colors',
@@ -234,7 +241,7 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
               ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'
               : 'border-transparent'
           )}
-          style={isToday ? {} : (controlColor ? { backgroundColor: controlColor, color: '#1f2937' } : { backgroundColor: accent + 'cc', color: '#fff' })}>
+          style={isToday ? {} : { backgroundColor: ctrl, color: '#fff' }}>
           Oggi
         </button>
       </div>

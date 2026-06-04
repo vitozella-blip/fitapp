@@ -5,7 +5,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { Dumbbell, TrendingUp, History, ClipboardList, Scale } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SECTION, ACTIVITY, schedaAbbrev, schedaColorByOrder } from '@/lib/theme'
-import { TennisBall, SchedaBadge } from '@/components/shared/icons'
+import { TennisBadge, SchedaBadge } from '@/components/shared/icons'
 
 const COLOR = SECTION.training
 
@@ -142,11 +142,11 @@ export default function TrainingHubPage() {
               {/* Tennis column */}
               <div className="flex flex-col min-h-0">
                 <div className="h-[32px] shrink-0 flex items-center justify-center">
-                  <TennisBall size={14} color={ACTIVITY.tennis} strokeWidth={2} />
+                  <TennisBadge size={22} />
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   {tennisDates.length === 0 ? (
-                    <p className="py-3 text-xs text-gray-400 text-center">—</p>
+                    <p className="py-1 text-xs text-gray-400 text-center">—</p>
                   ) : (
                     [...tennisDates].sort().map(date => (
                       <Link key={date} href={`/training/diary?date=${date}`}
@@ -167,7 +167,7 @@ export default function TrainingHubPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {t.dates.length === 0 ? (
-                        <p className="py-3 text-xs text-gray-400 text-center">—</p>
+                        <p className="py-1 text-xs text-gray-400 text-center">—</p>
                       ) : (
                         [...t.dates].sort().map(date => (
                           <Link key={date} href={`/training/diary?date=${date}`}

@@ -2,7 +2,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X, Plus, Loader2, ChevronLeft, ChevronRight, Trash2, Check, Flame } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
+import { SchedaBadge } from '@/components/shared/icons'
+import { schedaAbbrev } from '@/lib/theme'
 
 const CT = '#7aafc8'
 const C_WARM = '#f0aa78'
@@ -170,7 +172,7 @@ function SchedeList({ templates, loading, onPick, onPickAbs }: {
         return (
         <button key={t.id} onClick={() => onPick(t)}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
-          <WorkoutBadge color={color} shapeIdx={i} size={36} />
+          <SchedaBadge label={schedaAbbrev(t.name)} color={color} size={36} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
             <p className="text-[10px] text-gray-400">{t.exercises?.length ?? 0} esercizi</p>
