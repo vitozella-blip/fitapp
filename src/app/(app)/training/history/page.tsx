@@ -185,6 +185,7 @@ export default function TrainingHistoryPage() {
             return (
               <div key={w.id} className="space-y-2">
 
+<<<<<<< HEAD
                 {/* ── Riga WO (se presente) ── */}
                 {hasGym && (
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
@@ -193,6 +194,38 @@ export default function TrainingHistoryPage() {
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                         style={{ backgroundColor: C.training + '20', color: C.training }}>
                         <Dumbbell size={18} />
+=======
+                {tennis ? (
+                  /* Tennis row — not expandable */
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
+                      style={{ backgroundColor: C.training + '20' }}>
+                      🎾
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{tennisLabel}{tennisHoursLabel}</p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Workout row — expandable */
+                  <button onClick={() => toggle(w)}
+                    className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: C.training + '20', color: C.training }}>
+                      <Dumbbell size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
+                        {tplName && (
+                          <span className="flex items-center gap-1">
+                            <SchedaBadge label={schedaAbbrev(w.templateName ?? '')} color={tplColor} size={16} />
+                            <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
+                          </span>
+                        )}
+>>>>>>> origin/main
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
