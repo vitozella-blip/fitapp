@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { History, Dumbbell, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
-import { SchedaBadge } from '@/components/shared/icons'
+import { SchedaBadge, TennisBadge } from '@/components/shared/icons'
 import { schedaAbbrev } from '@/lib/theme'
 
 const C = { training: '#7aafc8', accent: '#9d8fcc' }
@@ -170,7 +170,10 @@ export default function TrainingHistoryPage() {
             const tplName  = w.templateName ? abbrevTemplate(w.templateName) : null
             const tplIdx   = w.templateOrder ?? 0   // already 0-based from SQL rank
             const tplColor = SCHEDA_COLORS[tplIdx % SCHEDA_COLORS.length]
-            const tennis  = !!w.isTennis
+            const tennis    = !!w.isTennis
+            // Giorno con WO reale: ha templateName oppure più di 1 esercizio (esclude puro tennis)
+            const hasGym    = !!(w.templateName || (w.exerciseCount ?? 0) > 1)
+            const purelyTennis = tennis && !hasGym
 
             const tennisLabel = w.tennisTag
               ? w.tennisTag.charAt(0).toUpperCase() + w.tennisTag.slice(1)
@@ -180,95 +183,99 @@ export default function TrainingHistoryPage() {
               : ''
 
             return (
-              <div key={w.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+              <div key={w.id} className="space-y-2">
 
-                {tennis ? (
-                  /* Tennis row — not expandable */
-                  <div className="px-4 py-3 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl"
-                      style={{ backgroundColor: C.training + '20' }}>
-                      🎾
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{tennisLabel}{tennisHoursLabel}</p>
-                    </div>
-                  </div>
-                ) : (
-                  /* Workout row — expandable */
-                  <button onClick={() => toggle(w)}
-                    className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: C.training + '20', color: C.training }}>
-                      <Dumbbell size={18} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
-                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                        <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
-                        {tplName && (
-                          <span className="flex items-center gap-1">
-                            <SchedaBadge label={schedaAbbrev(w.templateName ?? '')} color={tplColor} size={16} />
-                            <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
-                          </span>
-                        )}
+                {/* ── Riga WO (se presente) ── */}
+                {hasGym && (
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                    <button onClick={() => toggle(w)}
+                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: C.training + '20', color: C.training }}>
+                        <Dumbbell size={18} />
                       </div>
-                    </div>
-                    {isOpen
-                      ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
-                      : <ChevronRight size={14} className="text-gray-300 shrink-0" />}
-                  </button>
-                )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          <p className="text-xs text-gray-400">{w.exerciseCount} esercizi · {w.setCount} serie</p>
+                          {tplName && (
+                            <span className="flex items-center gap-1">
+                              <SchedaBadge label={schedaAbbrev(w.templateName ?? '')} color={tplColor} size={16} />
+                              <span className="text-[10px] font-bold" style={{ color: tplColor }}>{tplName}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isOpen
+                        ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                        : <ChevronRight size={14} className="text-gray-300 shrink-0" />}
+                    </button>
 
-                {!tennis && isOpen && (
-                  <div className="border-t border-gray-100 dark:border-gray-800">
-                    {detailLoading === w.id ? (
-                      <div className="flex justify-center py-6">
-                        <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
-                          style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
-                      </div>
-                    ) : groups.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-6">Nessun dato disponibile</p>
-                    ) : (
-                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {groups.map((g, i) => (
-                          <div key={i} className="px-4 py-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: C.training + '20' }}>
-                                <Dumbbell size={11} style={{ color: C.training }} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{g.name}</p>
-                                {g.muscleGroup && (
-                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded"
-                                    style={{ backgroundColor: C.training + '18', color: C.training }}>
-                                    {g.muscleGroup}
-                                  </span>
-                                )}
-                              </div>
-                              {!g.isDuration && g.sets.some(s => s.weight) && (
-                                <p className="text-xs font-semibold shrink-0" style={{ color: C.training }}>
-                                  max {Math.max(...g.sets.map(s => s.weight ?? 0))} kg
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {g.sets.map((s, j) => (
-                                <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                  style={s.isWarmup
-                                    ? { backgroundColor: C_WARM + '20', color: C_WARM }
-                                    : { backgroundColor: C.training + '18', color: C.training }}>
-                                  {fmtSet(s, g.isDuration)}{s.tag ? <> <span className="font-bold opacity-80">{s.tag}</span></> : null}
-                                </span>
-                              ))}
-                            </div>
+                    {isOpen && (
+                      <div className="border-t border-gray-100 dark:border-gray-800">
+                        {detailLoading === w.id ? (
+                          <div className="flex justify-center py-6">
+                            <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                              style={{ borderColor: C.training, borderTopColor: 'transparent' }} />
                           </div>
-                        ))}
+                        ) : groups.length === 0 ? (
+                          <p className="text-xs text-gray-400 text-center py-6">Nessun dato disponibile</p>
+                        ) : (
+                          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {groups.map((g, i) => (
+                              <div key={i} className="px-4 py-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                                    style={{ backgroundColor: C.training + '20' }}>
+                                    <Dumbbell size={11} style={{ color: C.training }} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{g.name}</p>
+                                    {g.muscleGroup && (
+                                      <span className="text-[9px] font-bold px-1 py-0.5 rounded"
+                                        style={{ backgroundColor: C.training + '18', color: C.training }}>
+                                        {g.muscleGroup}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!g.isDuration && g.sets.some(s => s.weight) && (
+                                    <p className="text-xs font-semibold shrink-0" style={{ color: C.training }}>
+                                      max {Math.max(...g.sets.map(s => s.weight ?? 0))} kg
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {g.sets.map((s, j) => (
+                                    <span key={j} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                      style={s.isWarmup
+                                        ? { backgroundColor: C_WARM + '20', color: C_WARM }
+                                        : { backgroundColor: C.training + '18', color: C.training }}>
+                                      {fmtSet(s, g.isDuration)}{s.tag ? <> <span className="font-bold opacity-80">{s.tag}</span></> : null}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 )}
+
+                {/* ── Riga Tennis (se presente, sempre separata) ── */}
+                {tennis && (
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      <TennisBadge size={40} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize">{date}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{tennisLabel}{tennisHoursLabel}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
             )
           })}

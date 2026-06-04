@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
+async function ensureBadgeColumns() {
+  await Promise.all([
+    pool.query(`ALTER TABLE "WorkoutTemplate" ADD COLUMN IF NOT EXISTS "badgeColor" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutTemplate" ADD COLUMN IF NOT EXISTS "badgeLabel" TEXT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutTemplate" ADD COLUMN IF NOT EXISTS "badgeIcon"  TEXT`).catch(() => {}),
+  ])
+}
+
 export async function GET(req: NextRequest) {
   const planId = req.nextUrl.searchParams.get('planId')
   if (!planId) return NextResponse.json([])
   try {
+    await ensureBadgeColumns()
     const { rows } = await pool.query(
       `SELECT t.*,
         COALESCE((

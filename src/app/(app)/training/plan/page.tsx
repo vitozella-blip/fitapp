@@ -10,8 +10,8 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
-import { SchedaBadge } from '@/components/shared/icons'
-import { schedaAbbrev, schedaColorByOrder } from '@/lib/theme'
+import { SchedaBadge, WorkoutBadgeDisplay, BADGE_ICON_NAMES, BADGE_ICONS } from '@/components/shared/icons'
+import { schedaAbbrev, schedaColorByOrder, SCHEDA_PALETTE } from '@/lib/theme'
 
 const CT = '#7aafc8'
 
@@ -24,7 +24,7 @@ type TemplateExercise = {
   isAbs: boolean
   exercise: { id: string; name: string; muscleGroup: string }
 }
-type Template = { id: string; planId: string; name: string; order: number; exercises: TemplateExercise[] }
+type Template = { id: string; planId: string; name: string; order: number; exercises: TemplateExercise[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
 type Exercise = { id: string; name: string; muscleGroup: string }
 type Plan = {
   id: string; name: string; order: number
@@ -1003,12 +1003,128 @@ function CardDuplicaBtn({ onDuplicate }: { onDuplicate: () => void }) {
   )
 }
 
-// ── Scheda card with week tabs ────────────────────────────────────────────────
+// ── Badge picker ─────────────────────────────────────────────────────────────
+const PICKER_COLORS = [...SCHEDA_PALETTE, '#e05c5c', '#e0a050', '#50c878', '#888888']
+
+function BadgePicker({ current, onSave, onClose }: {
+  current: { color: string; label: string; icon: string | null }
+  onSave: (b: { color: string; label: string; icon: string | null }) => void
+  onClose: () => void
+}) {
+  const [color,  setColor]  = useState(current.color)
+  const [label,  setLabel]  = useState(current.label)
+  const [icon,   setIcon]   = useState<string | null>(current.icon)
+  const [mode,   setMode]   = useState<'text' | 'icon'>(current.icon ? 'icon' : 'text')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-sm p-5 shadow-xl space-y-4"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Anteprima */}
+        <div className="flex items-center justify-center gap-3">
+          <WorkoutBadgeDisplay color={color} label={mode === 'text' ? label : null} icon={mode === 'icon' ? icon : null} size={48} />
+          <div>
+            <p className="text-xs text-gray-400 font-medium">Anteprima</p>
+            <p className="text-xs text-gray-300">{mode === 'icon' ? (icon ?? '—') : (label || '—')}</p>
+          </div>
+        </div>
+
+        {/* Colori */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Colore</p>
+          <div className="grid grid-cols-8 gap-2">
+            {PICKER_COLORS.map(c => (
+              <button key={c} onClick={() => setColor(c)}
+                className="w-8 h-8 rounded-full transition-transform hover:scale-110"
+                style={{ backgroundColor: c, boxShadow: color === c ? `0 0 0 2px #fff, 0 0 0 4px ${c}` : undefined }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Modalità testo / icona */}
+        <div className="flex gap-2">
+          <button onClick={() => setMode('text')}
+            className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            style={mode === 'text' ? { backgroundColor: color, color: '#fff' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}>
+            Testo
+          </button>
+          <button onClick={() => setMode('icon')}
+            className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            style={mode === 'icon' ? { backgroundColor: color, color: '#fff' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}>
+            Icona
+          </button>
+        </div>
+
+        {/* Input testo */}
+        {mode === 'text' && (
+          <input
+            autoFocus
+            value={label}
+            onChange={e => setLabel(e.target.value.slice(0, 3).toUpperCase())}
+            placeholder="es. CB"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-center text-lg font-extrabold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
+            style={{ borderColor: color }}
+          />
+        )}
+
+        {/* Griglia icone */}
+        {mode === 'icon' && (
+          <div className="grid grid-cols-6 gap-2">
+            {BADGE_ICON_NAMES.map(name => {
+              const Icon = BADGE_ICONS[name]
+              return (
+                <button key={name} onClick={() => setIcon(name)}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+                  style={icon === name
+                    ? { backgroundColor: color, color: '#fff' }
+                    : { backgroundColor: '#f3f4f6', color: '#6b7280' }}>
+                  <Icon size={18} />
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Azioni */}
+        <div className="flex gap-2 pt-1">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+            Annulla
+          </button>
+          <button
+            onClick={() => { onSave({ color, label: mode === 'text' ? label : '', icon: mode === 'icon' ? icon : null }); onClose() }}
+            className="flex-1 py-2.5 rounded-xl text-white font-semibold text-sm"
+            style={{ backgroundColor: color }}>
+            Salva
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Scheda card with week tabs ─────────────────────────────────────────────────
 function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   tmpl: Template; idx: number; userId: string; onRefresh: () => void
 }) {
   const [editing, setEditing]           = useState(false)
   const [name, setName]                 = useState(tmpl.name)
+  const [showBadgePicker, setShowBadgePicker] = useState(false)
+  const [badge, setBadge] = useState({
+    color: tmpl.badgeColor ?? SCHEDA_COLORS[idx % SCHEDA_COLORS.length],
+    label: tmpl.badgeLabel ?? schedaAbbrev(tmpl.name),
+    icon:  tmpl.badgeIcon  ?? null as string | null,
+  })
+
+  async function saveBadge(b: { color: string; label: string; icon: string | null }) {
+    setBadge(b)
+    await fetch(`/api/workout-templates/${tmpl.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ badge: { color: b.color, label: b.label, icon: b.icon } }),
+    })
+    onRefresh()
+  }
 
   // Swipe on header
   const hdrRef    = useRef<HTMLDivElement>(null)
@@ -1137,8 +1253,11 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
         <div ref={hdrRef} className="relative z-10 touch-pan-y bg-white dark:bg-gray-900"
           onTouchStart={hdrTouchStart} onTouchMove={hdrTouchMove} onTouchEnd={hdrTouchEnd}
           onClick={() => { if (hdrSnapped.current) hdrSnap(null) }}>
-        <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: color + '18' }}>
-          <SchedaBadge label={schedaAbbrev(tmpl.name)} color={color} size={18} />
+        <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: badge.color + '18' }}>
+          <button onClick={e => { e.stopPropagation(); if (!hdrSnapped.current) setShowBadgePicker(true) }}
+            className="shrink-0 rounded-full transition-transform active:scale-90">
+            <WorkoutBadgeDisplay color={badge.color} label={badge.label || schedaAbbrev(tmpl.name)} icon={badge.icon} size={22} />
+          </button>
           {editing ? (
             <input autoFocus value={name} onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false) }}
@@ -1146,8 +1265,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
               style={{ borderColor: color }} />
           ) : (
             <button onClick={e => { e.stopPropagation(); if (!hdrSnapped.current) setCollapsed(o => !o) }} className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-bold truncate leading-tight" style={{ color }}>{tmpl.name}</p>
-              <p className="text-[10px]" style={{ color: color + 'aa' }}>
+              <p className="text-sm font-bold truncate leading-tight" style={{ color: badge.color }}>{tmpl.name}</p>
+              <p className="text-[10px]" style={{ color: badge.color + 'aa' }}>
                 {exCount} {exCount === 1 ? 'esercizio' : 'esercizi'}
                 {weeks.length > 0 && ` · ${weeks.length} ${weeks.length === 1 ? 'routine' : 'routine'}`}
               </p>
@@ -1266,6 +1385,13 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
       )}
 
       {addEx && <ExerciseFormModal templateId={tmpl.id} userId={userId} onClose={() => setAddEx(false)} onSaved={() => { setAddEx(false); onRefresh() }} />}
+      {showBadgePicker && (
+        <BadgePicker
+          current={badge}
+          onSave={saveBadge}
+          onClose={() => setShowBadgePicker(false)}
+        />
+      )}
     </div>
   )
 }

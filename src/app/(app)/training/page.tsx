@@ -5,7 +5,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { Dumbbell, TrendingUp, History, ClipboardList, Scale } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SECTION, ACTIVITY, schedaAbbrev, schedaColorByOrder } from '@/lib/theme'
-import { TennisBadge, SchedaBadge } from '@/components/shared/icons'
+import { TennisBadge, WorkoutBadgeDisplay } from '@/components/shared/icons'
 
 const COLOR = SECTION.training
 
@@ -24,7 +24,7 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-type Template = { id: string; name: string; order: number; dates: string[] }
+type Template = { id: string; name: string; order: number; dates: string[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
 
 function toIso(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -163,7 +163,12 @@ export default function TrainingHubPage() {
                 return (
                   <div key={t.id} className="flex flex-col min-h-0">
                     <div className="h-[32px] shrink-0 flex items-center justify-center">
-                      <SchedaBadge label={schedaAbbrev(t.name)} color={schedaColorByOrder(tArrIdx + 1)} size={22} />
+                      <WorkoutBadgeDisplay
+                        color={t.badgeColor ?? schedaColorByOrder(tArrIdx + 1)}
+                        label={t.badgeLabel || schedaAbbrev(t.name)}
+                        icon={t.badgeIcon ?? null}
+                        size={22}
+                      />
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {t.dates.length === 0 ? (

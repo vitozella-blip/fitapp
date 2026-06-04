@@ -51,8 +51,16 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+      })
       streamRef.current = stream
+      // Attiva autofocus continuo se supportato
+      try {
+        const track = stream.getVideoTracks()[0]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] })
+      } catch {}
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
