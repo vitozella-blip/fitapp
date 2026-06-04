@@ -3,10 +3,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAppStore } from '@/store/useAppStore'
 import { Dumbbell, TrendingUp, History, ClipboardList, Scale } from 'lucide-react'
-import { WorkoutBadge, SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 import { cn } from '@/lib/utils'
-import { SECTION, ACTIVITY } from '@/lib/theme'
-import { TennisBall } from '@/components/shared/icons'
+import { SECTION, ACTIVITY, schedaAbbrev, schedaColorByOrder } from '@/lib/theme'
+import { TennisBall, SchedaBadge } from '@/components/shared/icons'
 
 const COLOR = SECTION.training
 
@@ -161,11 +160,10 @@ export default function TrainingHubPage() {
 
               {/* Workout template columns */}
               {templates.map((t, tArrIdx) => {
-                const tColor = SCHEDA_COLORS[tArrIdx % SCHEDA_COLORS.length]
                 return (
                   <div key={t.id} className="flex flex-col min-h-0">
                     <div className="h-[32px] shrink-0 flex items-center justify-center">
-                      <WorkoutBadge color={tColor} shapeIdx={tArrIdx} size={12} />
+                      <SchedaBadge label={schedaAbbrev(t.name)} color={schedaColorByOrder(tArrIdx + 1)} size={22} />
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {t.dates.length === 0 ? (

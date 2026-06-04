@@ -1,6 +1,19 @@
 import { Coffee, Cookie, Drumstick, Banana, Fish } from 'lucide-react'
 import type { ReactElement } from 'react'
 
+// ── Badge scheda: sigla colorata (es. CB / L / SM) ──────────────────────────
+export function SchedaBadge({ label, color, size = 22 }: {
+  label: string; color: string; size?: number
+}) {
+  return (
+    <span style={{
+      width: size, height: size, borderRadius: '50%', backgroundColor: color, color: '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: Math.round(size * 0.42), fontWeight: 800, lineHeight: 1, flexShrink: 0,
+    }}>{label}</span>
+  )
+}
+
 // ── Pallina da tennis in stile lucide (stroke, no fill) ─────────────────────
 export function TennisBall({ size = 24, color = 'currentColor', strokeWidth = 2 }: {
   size?: number; color?: string; strokeWidth?: number
