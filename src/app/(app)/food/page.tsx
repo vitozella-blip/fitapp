@@ -158,36 +158,48 @@ export default function FoodHubPage() {
           ) : (
             <div className="flex-1 min-h-0 grid overflow-hidden" style={{ gridTemplateRows: '1fr 1fr' }}>
 
-              {/* Row 1 — avg macros */}
-              <div className="px-3 py-2 min-h-0 border-b border-gray-100 dark:border-gray-800 flex flex-col justify-center">
-                <p className="text-[9px] font-bold uppercase tracking-widest mb-1 text-gray-400">Media giornaliera</p>
-                <div className="flex items-baseline justify-between mb-0.5">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-extrabold leading-none" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>
-                      {stats.avgCalories}
-                    </span>
+              {/* Row 1 — avg macros (stile dashboard) */}
+              <div className="px-3 py-2 min-h-0 border-b border-gray-100 dark:border-gray-800 flex flex-col justify-center gap-2">
+                {/* Titolo + legenda */}
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Media giornaliera</p>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
+                      <span key={lbl} className="flex items-center gap-1">
+                        <span style={{ width: 6, height: 6, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
+                        <span className="text-[9px] text-gray-400">{lbl}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {/* Kcal */}
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span style={{ width: 8, height: 8, borderRadius: 9999, backgroundColor: avgCalOver ? '#f87171' : C.kcal, display: 'inline-block' }} />
+                    <span className="text-2xl font-extrabold leading-none" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>{stats.avgCalories}</span>
                     <span className="text-[10px] text-gray-400 font-medium">/ {tg.calories} kcal</span>
                   </div>
                   <span className="text-sm font-extrabold" style={{ color: avgCalOver ? '#f87171' : C.kcal }}>
                     {avgCalOver ? `+${stats.avgCalories - tg.calories}` : `${avgCalPct}%`}
                   </span>
                 </div>
-                <div className="shrink-0 rounded-full overflow-hidden mb-2" style={{ height: 8, backgroundColor: C.kcal + '40' }}>
+                {/* Barra kcal */}
+                <div className="rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ height: 6 }}>
                   <div style={{ height: '100%', width: `${avgCalPct}%`, borderRadius: 9999, backgroundColor: avgCalOver ? '#f87171' : C.kcal }} />
                 </div>
+                {/* 3 macro — solo pallino + valore/target + barra, senza etichetta testo */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: 'Grassi',      val: stats.avgFat,     tgt: tg.fat,     color: C.fat },
-                    { label: 'Carboidrati', val: stats.avgCarbs,   tgt: tg.carbs,   color: C.carbs },
-                    { label: 'Proteine',    val: stats.avgProtein, tgt: tg.protein, color: C.protein },
-                  ].map(m => (
-                    <div key={m.label}>
-                      <p className="text-[8px] font-bold uppercase tracking-wide mb-0.5 text-gray-400">{m.label}</p>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-base font-bold leading-none" style={{ color: m.color }}>{m.val}</span>
-                        <span className="text-[10px] text-gray-500">/ {m.tgt} g</span>
+                    { val: stats.avgFat,     tgt: tg.fat,     color: C.fat },
+                    { val: stats.avgCarbs,   tgt: tg.carbs,   color: C.carbs },
+                    { val: stats.avgProtein, tgt: tg.protein, color: C.protein },
+                  ].map((m, i) => (
+                    <div key={i}>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span style={{ width: 6, height: 6, borderRadius: 9999, backgroundColor: m.color, display: 'inline-block' }} />
+                        <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{m.val}<span className="text-gray-400 font-medium">/{m.tgt}g</span></span>
                       </div>
-                      <div className="shrink-0 rounded-full overflow-hidden mt-0.5" style={{ height: 4, backgroundColor: m.color + '30' }}>
+                      <div className="rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ height: 4 }}>
                         <div className="h-full rounded-full" style={{ width: `${pct(m.val, m.tgt)}%`, backgroundColor: m.color }} />
                       </div>
                     </div>
