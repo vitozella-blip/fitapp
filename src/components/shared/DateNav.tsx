@@ -20,8 +20,17 @@ function buildWorkoutInfo(): Record<string, { color: string; label: string }> {
       const info = JSON.parse(localStorage.getItem(key) ?? '')
       if (info?.templateId || info?.name) {
         const order = typeof info.order === 'number' ? info.order : 1
-        const color = info.badgeColor ?? schedaColorByOrder(order)
-        const label = info.badgeLabel || schedaAbbrev(info.name ?? '')
+        // Leggi badge config aggiornata (salvata dal picker) se disponibile
+        let freshColor: string | null = null
+        let freshLabel: string | null = null
+        if (info.templateId) {
+          try {
+            const raw = localStorage.getItem(`badge_config_${info.templateId}`)
+            if (raw) { const bc = JSON.parse(raw); freshColor = bc.color ?? null; freshLabel = bc.label ?? null }
+          } catch {}
+        }
+        const color = freshColor ?? info.badgeColor ?? schedaColorByOrder(order)
+        const label = freshLabel || info.badgeLabel || schedaAbbrev(info.name ?? '')
         map[date] = { color, label }
       }
     } catch {}

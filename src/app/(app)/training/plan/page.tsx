@@ -1119,6 +1119,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 
   async function saveBadge(b: { color: string; label: string; icon: string | null }) {
     setBadge(b)
+    // Aggiorna cache localStorage — usata da DateNav per il colore nel calendario
+    try { localStorage.setItem(`badge_config_${tmpl.id}`, JSON.stringify(b)) } catch {}
     await fetch(`/api/workout-templates/${tmpl.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ badge: { color: b.color, label: b.label, icon: b.icon } }),
