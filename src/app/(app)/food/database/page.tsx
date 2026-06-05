@@ -55,22 +55,31 @@ function BarcodeScannerModal({ onClose, onFound }: {
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       })
       streamRef.current = stream
-      // Attiva autofocus continuo solo se la fotocamera lo supporta
-      try {
-        const track = stream.getVideoTracks()[0]
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const caps = (track.getCapabilities?.() ?? {}) as any
-        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] })
-        }
-      } catch {}
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
+      // Applica autofocus DOPO play() (prima viene ignorato) + retry, perché molti
+      // dispositivi accettano il vincolo solo a track avviato
+      applyContinuousFocus()
+      setTimeout(applyContinuousFocus, 600)
+      setTimeout(applyContinuousFocus, 1500)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
       scanLoop(detector)
     } catch { setStatus('error') }
+  }
+
+  // Applica autofocus continuo se supportato
+  async function applyContinuousFocus() {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track || !scanning.current) return
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const caps = (track.getCapabilities?.() ?? {}) as any
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] })
+      }
+    } catch {}
   }
 
   // Tap-to-focus: forza una rimessa a fuoco single-shot e torna a continuo

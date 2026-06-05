@@ -1247,7 +1247,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
       {/* Swipeable header */}
       <div className="relative overflow-hidden">
         {/* Swipe right → rename */}
-        {!editing && <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: color }}
+        {!editing && <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: CT }}
           onClick={() => { hdrSnap(null); setEditing(true); setName(tmpl.name) }}><Pencil size={15} className="text-white" /></div>}
         {/* Swipe left → delete */}
         {!editing && <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: '#ef4444' }}
