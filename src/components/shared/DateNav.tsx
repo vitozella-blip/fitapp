@@ -68,7 +68,7 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
   const accentText = isLightAccent ? '#1f2937' : '#fff'
 
   const workoutInfo  = useMemo(() => disableWorkoutColors ? {} : buildWorkoutInfo(), [view, disableWorkoutColors])
-  const tennisDates  = useMemo(() => buildTennisDates(), [view])
+  const tennisDates  = useMemo(() => disableWorkoutColors ? new Set<string>() : buildTennisDates(), [view, disableWorkoutColors])
 
   const { year, month } = view
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // Mon-first
@@ -139,7 +139,8 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             // colore di fondo: scheda (per ordine) ha priorità, poi tennis
             const fill = hasWO ? info!.color : hasTennis ? TENNIS_COLOR : null
 
-            const CAL_ACCENT = '#7aafc8'
+            // Colore di accento del calendario = accent della sezione (blu allenamento, arancio cibo, ecc.)
+            const CAL_ACCENT = accent
 
             // Pallino angolo basso-destra per "oggi"
             const todayDot = isToday && (
