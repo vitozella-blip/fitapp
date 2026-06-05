@@ -715,7 +715,14 @@ export default function TrainingDiaryPage() {
         templateCache.set(info.templateId, t)
       }
       const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
-      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged, badgeColor: info.badgeColor ?? t.badgeColor ?? null, badgeLabel: info.badgeLabel ?? t.badgeLabel ?? null, badgeIcon: info.badgeIcon ?? t.badgeIcon ?? null })
+      // Il DB è autoritativo per il badge: aggiorna la cache usata dal calendario
+      const dbColor = t.badgeColor ?? null
+      const dbLabel = t.badgeLabel ?? null
+      const dbIcon  = t.badgeIcon  ?? null
+      if (dbColor || dbLabel || dbIcon) {
+        try { localStorage.setItem(`badge_config_${t.id}`, JSON.stringify({ color: dbColor, label: dbLabel, icon: dbIcon })) } catch {}
+      }
+      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged, badgeColor: dbColor ?? info.badgeColor ?? null, badgeLabel: dbLabel ?? info.badgeLabel ?? null, badgeIcon: dbIcon ?? info.badgeIcon ?? null })
       if (instant) setSchedaLoading(false)
     }
 
