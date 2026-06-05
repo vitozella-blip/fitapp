@@ -715,7 +715,14 @@ export default function TrainingDiaryPage() {
         templateCache.set(info.templateId, t)
       }
       const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
-      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged, badgeColor: info.badgeColor ?? t.badgeColor ?? null, badgeLabel: info.badgeLabel ?? t.badgeLabel ?? null, badgeIcon: info.badgeIcon ?? t.badgeIcon ?? null })
+      // Il DB è autoritativo per il badge: aggiorna la cache usata dal calendario
+      const dbColor = t.badgeColor ?? null
+      const dbLabel = t.badgeLabel ?? null
+      const dbIcon  = t.badgeIcon  ?? null
+      if (dbColor || dbLabel || dbIcon) {
+        try { localStorage.setItem(`badge_config_${t.id}`, JSON.stringify({ color: dbColor, label: dbLabel, icon: dbIcon })) } catch {}
+      }
+      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged, badgeColor: dbColor ?? info.badgeColor ?? null, badgeLabel: dbLabel ?? info.badgeLabel ?? null, badgeIcon: dbIcon ?? info.badgeIcon ?? null })
       if (instant) setSchedaLoading(false)
     }
 
@@ -1149,7 +1156,7 @@ export default function TrainingDiaryPage() {
                 <input type="number" min="0" max="24" step="0.5"
                   value={tennisHoursDraft}
                   onChange={e => setTennisHoursDraft(e.target.value)}
-                  placeholder="—"
+                  placeholder=""
                   className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-center outline-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
               </div>
               {tennisHoursDraft && Number(tennisHoursDraft) > 0 && (
@@ -1530,7 +1537,7 @@ export default function TrainingDiaryPage() {
                                   <div>
                                     <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
                                     <input type="number" step="0.5" min="0" value={editWeight}
-                                      onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                      onChange={e => setEditWeight(e.target.value)} placeholder=""
                                       className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                                   </div>
                                 </div>
@@ -1934,7 +1941,7 @@ export default function TrainingDiaryPage() {
                                       <div>
                                         <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
                                         <input type="number" step="0.5" min="0" value={editWeight}
-                                          onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                          onChange={e => setEditWeight(e.target.value)} placeholder=""
                                           className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                                       </div>
                                     </div>
@@ -2127,7 +2134,7 @@ export default function TrainingDiaryPage() {
                             <div>
                               <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
                               <input type="number" step="0.5" min="0" value={editWeight}
-                                onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                onChange={e => setEditWeight(e.target.value)} placeholder=""
                                 className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                             </div>
                           </div>

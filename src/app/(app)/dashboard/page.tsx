@@ -8,6 +8,8 @@ import { DateNav } from '@/components/shared/DateNav'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
+import { useNutritionTargets } from '@/hooks/useNutritionTargets'
+import { useToday } from '@/hooks/useToday'
 import { MACRO, SECTION, ACTIVITY, alpha } from '@/lib/theme'
 import { MealIcon, TennisBall, TennisBadge } from '@/components/shared/icons'
 
@@ -54,7 +56,16 @@ function getISOWeekDates(isoDate: string): string[] {
 
 export default function DashboardPage() {
   const { userId, userProfile, workoutDataVersion } = useAppStore()
+  const todayStr = useToday()
   const [selectedDate, setSelectedDate] = useState(localToday)
+  const prevTodayRef = React.useRef(todayStr)
+  // Alla mezzanotte: se l'utente stava guardando "oggi", avanza automaticamente
+  useEffect(() => {
+    if (todayStr !== prevTodayRef.current) {
+      setSelectedDate(prev => prev === prevTodayRef.current ? todayStr : prev)
+      prevTodayRef.current = todayStr
+    }
+  }, [todayStr])
   const router = useRouter()
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
@@ -124,9 +135,13 @@ export default function DashboardPage() {
   useRefreshOnFocus(refreshAll)
 
   const t  = data?.totals  ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
-  const tg = data?.targets ?? {
-    calories: userProfile.targetCalories, protein: userProfile.targetProtein,
-    carbs:    userProfile.targetCarbs,    fat:     userProfile.targetFat,
+  // Target date-sensitive: usa il piano alimentare attivo per la data selezionata
+  const dateTargets = useNutritionTargets(selectedDate)
+  const tg = {
+    calories: dateTargets.targetCalories,
+    protein:  dateTargets.targetProtein,
+    carbs:    dateTargets.targetCarbs,
+    fat:      dateTargets.targetFat,
   }
 
   const calPct  = tg.calories > 0 ? Math.min(100, Math.round((t.calories / tg.calories) * 100)) : 0

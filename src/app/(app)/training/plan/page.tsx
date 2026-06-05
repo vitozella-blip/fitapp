@@ -929,7 +929,7 @@ function WeekExRow({ ex, weekId, param, color }: {
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>
-          <input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder="—"
+          <input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder=""
             className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
         </div>
         <div className="flex flex-col items-center gap-0.5">
@@ -1119,6 +1119,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
 
   async function saveBadge(b: { color: string; label: string; icon: string | null }) {
     setBadge(b)
+    // Aggiorna cache localStorage — usata da DateNav per il colore nel calendario
+    try { localStorage.setItem(`badge_config_${tmpl.id}`, JSON.stringify(b)) } catch {}
     await fetch(`/api/workout-templates/${tmpl.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ badge: { color: b.color, label: b.label, icon: b.icon } }),
