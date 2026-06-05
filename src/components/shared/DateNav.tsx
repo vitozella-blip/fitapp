@@ -130,7 +130,18 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             // colore di fondo: scheda (per ordine) ha priorità, poi tennis
             const fill = hasWO ? info!.color : hasTennis ? TENNIS_COLOR : null
 
-            // ── Giorno allenato → numero in cerchio colorato ──
+            const CAL_ACCENT = '#7aafc8'
+
+            // Pallino angolo basso-destra per "oggi"
+            const todayDot = isToday && (
+              <span style={{
+                position: 'absolute', bottom: 4, right: 5,
+                width: 4, height: 4, borderRadius: '50%',
+                backgroundColor: CAL_ACCENT,
+              }} />
+            )
+
+            // ── Giorno con WO/tennis ──
             if (fill) {
               const circleBg = hasWO && hasTennis
                 ? { background: `linear-gradient(135deg, ${info!.color} 50%, ${TENNIS_COLOR} 50%)` }
@@ -138,22 +149,38 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
               const ringColor = hasWO ? info!.color : TENNIS_COLOR
               return (
                 <button key={i} onClick={() => pick(day)}
-                  className="flex flex-col items-center justify-center py-1 rounded-xl relative">
-                  <span className="relative w-7 h-7 flex items-center justify-center text-sm font-bold text-white"
-                    style={{ ...circleBg, borderRadius: '50%', boxShadow: isSelected ? `0 0 0 2px #fff, 0 0 0 4px ${ringColor}` : undefined, textShadow: '0 0 3px rgba(0,0,0,0.4)' }}>
+                  className="flex items-center justify-center py-1 rounded-xl relative">
+                  <span className="w-7 h-7 flex items-center justify-center text-sm text-white"
+                    style={{
+                      ...circleBg, borderRadius: '50%',
+                      fontWeight: isToday ? 800 : 700,
+                      textShadow: '0 0 3px rgba(0,0,0,0.4)',
+                      // Selezionato: bordo bianco + anello colore WO
+                      border: isSelected ? '2px solid #fff' : undefined,
+                      boxShadow: isSelected ? `0 0 0 2px ${ringColor}` : undefined,
+                    }}>
                     {day}
                   </span>
-                  {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: ringColor }} />}
+                  {todayDot}
                 </button>
               )
             }
 
-            // ── Selezionato (giorno senza allenamento) → cerchio accento ──
+            // ── Selezionato senza WO → cerchio vuoto (outline) blu allenamento ──
             if (isSelected) {
               return (
-                <button key={i} onClick={() => pick(day)} className="flex items-center justify-center py-1 rounded-xl relative">
-                  <span className="w-7 h-7 flex items-center justify-center text-sm font-bold"
-                    style={{ backgroundColor: accent, borderRadius: '50%', color: accentText }}>{day}</span>
+                <button key={i} onClick={() => pick(day)}
+                  className="flex items-center justify-center py-1 rounded-xl relative">
+                  <span className="w-7 h-7 flex items-center justify-center text-sm"
+                    style={{
+                      borderRadius: '50%',
+                      border: `2px solid ${CAL_ACCENT}`,
+                      color: CAL_ACCENT,
+                      fontWeight: isToday ? 800 : 700,
+                    }}>
+                    {day}
+                  </span>
+                  {todayDot}
                 </button>
               )
             }
@@ -161,12 +188,14 @@ function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkout
             // ── Giorno normale ──
             return (
               <button key={i} onClick={() => pick(day)}
-                className="flex flex-col items-center justify-center py-1 rounded-xl relative">
+                className="flex items-center justify-center py-1 rounded-xl relative">
                 <span className={cn('w-7 h-7 flex items-center justify-center text-sm',
-                  isToday ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400')}>
+                  isToday
+                    ? 'font-bold text-gray-900 dark:text-gray-100'
+                    : 'font-normal text-gray-500 dark:text-gray-400')}>
                   {day}
                 </span>
-                {isToday && <span className="w-3 h-0.5 rounded-full mt-0.5" style={{ backgroundColor: accent }} />}
+                {todayDot}
               </button>
             )
           })}
