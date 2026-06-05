@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react'
 import { cn, localToday, shiftDate } from '@/lib/utils'
 import { schedaColorByOrder, schedaAbbrev } from '@/lib/theme'
@@ -193,7 +193,19 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
 }) {
   const ctrl = controlColor ?? accent
   const [open, setOpen] = useState(false)
-  const today    = new Date().toISOString().split('T')[0]
+  const [today, setToday] = useState(() => localToday())
+
+  // Aggiorna "today" alla mezzanotte automaticamente
+  useEffect(() => {
+    function schedule() {
+      const now = new Date()
+      const ms = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
+      return setTimeout(() => { setToday(localToday()); schedule() }, ms + 100)
+    }
+    const t = schedule()
+    return () => clearTimeout(t)
+  }, [])
+
   const isToday  = selectedDate === today
   const dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long',

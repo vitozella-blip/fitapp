@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { useNutritionTargets } from '@/hooks/useNutritionTargets'
+import { useToday } from '@/hooks/useToday'
 import { MACRO, SECTION, ACTIVITY, alpha } from '@/lib/theme'
 import { MealIcon, TennisBall, TennisBadge } from '@/components/shared/icons'
 
@@ -55,7 +56,16 @@ function getISOWeekDates(isoDate: string): string[] {
 
 export default function DashboardPage() {
   const { userId, userProfile, workoutDataVersion } = useAppStore()
+  const todayStr = useToday()
   const [selectedDate, setSelectedDate] = useState(localToday)
+  const prevTodayRef = React.useRef(todayStr)
+  // Alla mezzanotte: se l'utente stava guardando "oggi", avanza automaticamente
+  useEffect(() => {
+    if (todayStr !== prevTodayRef.current) {
+      setSelectedDate(prev => prev === prevTodayRef.current ? todayStr : prev)
+      prevTodayRef.current = todayStr
+    }
+  }, [todayStr])
   const router = useRouter()
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
