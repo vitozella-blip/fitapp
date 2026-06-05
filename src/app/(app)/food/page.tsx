@@ -207,11 +207,14 @@ export default function FoodHubPage() {
                       <div className="flex-1 flex flex-col justify-center gap-0.5 px-1 pt-1">
                         {kcal > 0 ? (
                           <>
-                            <p className="text-xs font-bold text-center leading-tight" style={{ color: C.kcal }}>{kcal}<span className="text-[10px] font-medium"> kcal</span></p>
+                            <span className="flex items-center justify-center gap-1 leading-tight">
+                              <span style={{ width: 6, height: 6, borderRadius: 9999, backgroundColor: C.kcal, display: 'inline-block', flexShrink: 0 }} />
+                              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{kcal}</span>
+                            </span>
                             {([['fat', meal.avgFat], ['carbs', meal.avgCarbs], ['protein', meal.avgProtein]] as const).map(([k, v]) => (
                               <span key={k} className="flex items-center justify-center gap-1 leading-tight">
                                 <span style={{ width: 6, height: 6, borderRadius: 9999, backgroundColor: C[k], display: 'inline-block', flexShrink: 0 }} />
-                                <span className="text-xs font-semibold" style={{ color: C[k] }}>{v}</span>
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{v}</span>
                               </span>
                             ))}
                           </>
