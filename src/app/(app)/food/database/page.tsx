@@ -42,7 +42,7 @@ function BarcodeScannerModal({ onClose, onFound }: {
 
   function cleanup() {
     scanning.current = false
-    if (animRef.current) cancelAnimationFrame(animRef.current)
+    if (animRef.current) clearTimeout(animRef.current)
     streamRef.current?.getTracks().forEach(t => t.stop())
   }
 
@@ -52,14 +52,18 @@ function BarcodeScannerModal({ onClose, onFound }: {
     if (!BD) { setStatus('unsupported'); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       })
       streamRef.current = stream
-      // Attiva autofocus continuo se supportato
+      // Attiva autofocus continuo solo se la fotocamera lo supporta
       try {
         const track = stream.getVideoTracks()[0]
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] })
+        const caps = (track.getCapabilities?.() ?? {}) as any
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] })
+        }
       } catch {}
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
@@ -69,17 +73,42 @@ function BarcodeScannerModal({ onClose, onFound }: {
     } catch { setStatus('error') }
   }
 
+  // Tap-to-focus: forza una rimessa a fuoco single-shot e torna a continuo
+  async function refocus() {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track) return
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const caps = (track.getCapabilities?.() ?? {}) as any
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' } as any] })
+        if (caps.focusMode.includes('continuous')) {
+          setTimeout(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
+          }, 1200)
+        }
+      } else if (Array.isArray(caps.focusMode) && caps.focusMode.includes('manual') && caps.focusDistance) {
+        // Manual sweep per forzare il refocus
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await track.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: caps.focusDistance.min } as any] })
+      }
+    } catch {}
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function scanLoop(detector: any) {
     if (!scanning.current) return
-    animRef.current = requestAnimationFrame(async () => {
+    // Throttle a ~150ms: ridurre il carico aiuta la fotocamera a mantenere il fuoco
+    animRef.current = window.setTimeout(async () => {
       if (!videoRef.current || !scanning.current) return
       try {
         const results = await detector.detect(videoRef.current)
         if (results.length > 0) { cleanup(); await lookup(results[0].rawValue); return }
       } catch {}
       scanLoop(detector)
-    })
+    }, 150) as unknown as number
   }
 
   async function lookup(code: string) {
@@ -128,7 +157,7 @@ function BarcodeScannerModal({ onClose, onFound }: {
           {/* Camera viewfinder */}
           {(status === 'init' || status === 'scanning') && (
             <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
-              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+              <video ref={videoRef} onClick={refocus} className="w-full h-full object-cover cursor-pointer" playsInline muted autoPlay />
               {/* Scanning frame overlay */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="relative w-56 h-40">
@@ -141,6 +170,13 @@ function BarcodeScannerModal({ onClose, onFound }: {
                   )}
                 </div>
               </div>
+              {status === 'scanning' && (
+                <div className="absolute bottom-2 inset-x-0 flex justify-center pointer-events-none">
+                  <span className="text-[10px] font-medium text-white/80 bg-black/40 px-2 py-0.5 rounded-full">
+                    Tocca per mettere a fuoco
+                  </span>
+                </div>
+              )}
               {status === 'init' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <Loader2 size={28} className="animate-spin text-white" />
