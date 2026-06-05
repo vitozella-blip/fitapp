@@ -8,6 +8,7 @@ import { AddFoodModal } from '@/components/food/AddFoodModal'
 import { cn, localToday, shiftDate } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
+import { useNutritionTargets } from '@/hooks/useNutritionTargets'
 
 const C = {
   kcal:    '#6abf6a',
@@ -190,6 +191,7 @@ export default function FoodDiaryPage() {
   const userId      = useAppStore(s => s.userId)
   const userProfile = useAppStore(s => s.userProfile)
   const [selectedDate, setSelectedDate] = useState(localToday)
+  const dateTargets = useNutritionTargets(selectedDate)
   const [entries, setEntries] = useState<Entry[]>([])
   const [modal, setModal] = useState<string | null>(null)
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
@@ -270,16 +272,16 @@ export default function FoodDiaryPage() {
     fat:      acc.fat      + calc(e.food.fat,      e.quantity),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
-  const calPct  = userProfile.targetCalories > 0
-    ? Math.min(100, Math.round((totals.calories / userProfile.targetCalories) * 100))
+  const calPct  = dateTargets.targetCalories > 0
+    ? Math.min(100, Math.round((totals.calories / dateTargets.targetCalories) * 100))
     : 0
-  const calOver = totals.calories > userProfile.targetCalories
+  const calOver = totals.calories > dateTargets.targetCalories
   const pct = (v: number, mx: number) => mx > 0 ? Math.min(100, Math.round((v / mx) * 100)) : 0
   const left = {
-    calories: Math.max(0, userProfile.targetCalories - totals.calories),
-    fat:      Math.max(0, userProfile.targetFat      - totals.fat),
-    carbs:    Math.max(0, userProfile.targetCarbs    - totals.carbs),
-    protein:  Math.max(0, userProfile.targetProtein  - totals.protein),
+    calories: Math.max(0, dateTargets.targetCalories - totals.calories),
+    fat:      Math.max(0, dateTargets.targetFat      - totals.fat),
+    carbs:    Math.max(0, dateTargets.targetCarbs    - totals.carbs),
+    protein:  Math.max(0, dateTargets.targetProtein  - totals.protein),
   }
 
   const swipe = useDateSwipe(selectedDate, setSelectedDate)
@@ -316,11 +318,11 @@ export default function FoodDiaryPage() {
             <div className="flex items-center gap-2">
               <span style={{ width: 9, height: 9, borderRadius: 9999, backgroundColor: calOver ? '#f87171' : C.kcal, display: 'inline-block' }} />
               <span className="text-3xl font-extrabold leading-none tracking-tight" style={{ color: calOver ? '#f87171' : C.kcal }}>{totals.calories}</span>
-              <span className="text-xs text-gray-400 font-medium">/ {userProfile.targetCalories} kcal</span>
+              <span className="text-xs text-gray-400 font-medium">/ {dateTargets.targetCalories} kcal</span>
               {freeMeals.size > 0 && <span className="text-[10px] font-medium" style={{ color: C.carbs }}>({freeMeals.size} libero)</span>}
             </div>
             <span className="text-lg font-extrabold" style={{ color: calOver ? '#f87171' : C.kcal }}>
-              {calOver ? `+${totals.calories - userProfile.targetCalories}` : `${calPct}%`}
+              {calOver ? `+${totals.calories - dateTargets.targetCalories}` : `${calPct}%`}
             </span>
           </div>
 
@@ -333,9 +335,9 @@ export default function FoodDiaryPage() {
           {/* 3 Macro */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { val: totals.fat,     tgt: userProfile.targetFat,     color: C.fat },
-              { val: totals.carbs,   tgt: userProfile.targetCarbs,   color: C.carbs },
-              { val: totals.protein, tgt: userProfile.targetProtein, color: C.protein },
+              { val: totals.fat,     tgt: dateTargets.targetFat,     color: C.fat },
+              { val: totals.carbs,   tgt: dateTargets.targetCarbs,   color: C.carbs },
+              { val: totals.protein, tgt: dateTargets.targetProtein, color: C.protein },
             ].map((m, i) => (
               <div key={i}>
                 <div className="flex items-center gap-1.5 mb-1.5">

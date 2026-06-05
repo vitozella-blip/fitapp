@@ -8,6 +8,7 @@ import { DateNav } from '@/components/shared/DateNav'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
+import { useNutritionTargets } from '@/hooks/useNutritionTargets'
 import { MACRO, SECTION, ACTIVITY, alpha } from '@/lib/theme'
 import { MealIcon, TennisBall, TennisBadge } from '@/components/shared/icons'
 
@@ -124,9 +125,13 @@ export default function DashboardPage() {
   useRefreshOnFocus(refreshAll)
 
   const t  = data?.totals  ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
-  const tg = data?.targets ?? {
-    calories: userProfile.targetCalories, protein: userProfile.targetProtein,
-    carbs:    userProfile.targetCarbs,    fat:     userProfile.targetFat,
+  // Target date-sensitive: usa il piano alimentare attivo per la data selezionata
+  const dateTargets = useNutritionTargets(selectedDate)
+  const tg = {
+    calories: dateTargets.targetCalories,
+    protein:  dateTargets.targetProtein,
+    carbs:    dateTargets.targetCarbs,
+    fat:      dateTargets.targetFat,
   }
 
   const calPct  = tg.calories > 0 ? Math.min(100, Math.round((t.calories / tg.calories) * 100)) : 0
