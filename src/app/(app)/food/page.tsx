@@ -252,20 +252,17 @@ export default function FoodHubPage() {
             </span>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{DIARY.label}</span>
           </Link>
-          {[SECTIONS.slice(0, 2), SECTIONS.slice(2, 4), SECTIONS.slice(4, 5)].map((row, ri) => (
-            <div key={ri} className="h-14 flex gap-2">
-              {row.map(s => (
-                <Link key={s.href} href={s.href}
-                  className="surface flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all px-2">
-                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: COLOR + '1e' }}>
-                    <s.icon className="!w-4 !h-4" style={{ color: COLOR }} />
-                  </span>
-                  <span className="text-xs font-bold text-gray-900 dark:text-gray-100 leading-tight">{s.label}</span>
-                </Link>
-              ))}
-              {row.length < 2 && <div className="flex-1" />}
-            </div>
-          ))}
+          <div className="grid grid-cols-2 gap-2">
+            {SECTIONS.map(s => (
+              <Link key={s.href} href={s.href}
+                className="surface h-14 flex items-center justify-center gap-2 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all px-2">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: COLOR + '1e' }}>
+                  <s.icon className="!w-4 !h-4" style={{ color: COLOR }} />
+                </span>
+                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 leading-tight">{s.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
 
       </div>

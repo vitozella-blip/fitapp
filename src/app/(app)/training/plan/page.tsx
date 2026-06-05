@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -15,7 +15,7 @@ import { schedaAbbrev, schedaColorByOrder, SCHEDA_PALETTE } from '@/lib/theme'
 
 const CT = '#7aafc8'
 
-// ── Shared types ──────────────────────────────────────────────────────────────
+// â”€â”€ Shared types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type WeekExercise = { id: string; name: string; sets: number; reps: string; restSeconds: number }
 type WeekItem = { name: string; exercises?: WeekExercise[] }
 type TemplateExercise = {
@@ -38,7 +38,7 @@ type WeekParam = {
   restSeconds: number | null; notes: string | null
 }
 
-// ── Wizard types ──────────────────────────────────────────────────────────────
+// â”€â”€ Wizard types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type WizExercise = {
   localId: string
   name: string
@@ -74,7 +74,7 @@ function parseWeeks(w: unknown): WeekItem[] {
   return []
 }
 
-// ── Wizard: step indicator ────────────────────────────────────────────────────
+// â”€â”€ Wizard: step indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function WizardStepper({ step }: { step: 1 | 2 | 3 | 4 }) {
   const steps = ['Info', 'Scheda', 'Routine', 'Fine']
   return (
@@ -108,7 +108,7 @@ function WizardStepper({ step }: { step: 1 | 2 | 3 | 4 }) {
   )
 }
 
-// ── Wizard: routine editor ────────────────────────────────────────────────────
+// â”€â”€ Wizard: routine editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RoutineEditor({
   initialRoutine, color, onSave, onCancel,
 }: {
@@ -249,7 +249,7 @@ function RoutineEditor({
   )
 }
 
-// ── Wizard: routine card ──────────────────────────────────────────────────────
+// â”€â”€ Wizard: routine card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
   routine: WizRoutine; color: string
   onEdit: () => void; onDuplicate: () => void; onDelete: () => void
@@ -279,10 +279,10 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl relative overflow-hidden">
-      {/* Swipe right → edit */}
+      {/* Swipe right â†’ edit */}
       <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: color }}
         onClick={() => { snapTo(null); onEdit() }}><Pencil size={15} className="text-white" /></div>
-      {/* Swipe left → delete */}
+      {/* Swipe left â†’ delete */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: '#ef4444' }}
         onClick={() => { snapTo(null); onDelete() }}><Trash2 size={15} className="text-white" /></div>
       <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-900 touch-pan-y"
@@ -315,7 +315,7 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
               {ex.sets > 0 && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
                   style={{ backgroundColor: color + '18', color }}>
-                  {ex.sets}×{ex.reps || '?'}
+                  {ex.sets}Ã—{ex.reps || '?'}
                 </span>
               )}
               {ex.restSeconds > 0 && (
@@ -330,7 +330,7 @@ function RoutineCard({ routine, color, onEdit, onDuplicate, onDelete }: {
   )
 }
 
-// ── Plan creation wizard ──────────────────────────────────────────────────────
+// â”€â”€ Plan creation wizard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PlanWizard({ userId, onComplete, onClose }: {
   userId: string
   onComplete: () => void
@@ -361,7 +361,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
 
   const color = SCHEDA_COLORS[schede.length % SCHEDA_COLORS.length]
 
-  // ── Step 1 → 2 ──
+  // â”€â”€ Step 1 â†’ 2 â”€â”€
   async function goStep2() {
     if (!planName.trim()) return
     setSavingPlan(true)
@@ -384,7 +384,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
     setStep(2)
   }
 
-  // ── Step 2 → 3 ──
+  // â”€â”€ Step 2 â†’ 3 â”€â”€
   async function goStep3() {
     if (!schedaName.trim() || !planId) return
     setSavingScheda(true)
@@ -401,13 +401,13 @@ function PlanWizard({ userId, onComplete, onClose }: {
     setStep(3)
   }
 
-  // ── Step 3 → 4 ──
+  // â”€â”€ Step 3 â†’ 4 â”€â”€
   function goStep4() {
     setSchede(prev => [...prev, { id: schedaId!, name: schedaName, routineCount: routines.length }])
     setStep(4)
   }
 
-  // ── Step 4 → add scheda ──
+  // â”€â”€ Step 4 â†’ add scheda â”€â”€
   function addAnotherScheda() {
     setSchedaName('')
     setSchedaId(null)
@@ -416,7 +416,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
     setStep(2)
   }
 
-  // ── Routine CRUD ──
+  // â”€â”€ Routine CRUD â”€â”€
   async function saveRoutine(routine: WizRoutine) {
     if (!schedaId) return
     try {
@@ -491,7 +491,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
 
       <div className="p-4 space-y-4">
 
-        {/* ── STEP 1: Info Piano ─────────────────────────────────────────────── */}
+        {/* â”€â”€ STEP 1: Info Piano â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 1 && (
           <div className="space-y-3">
             <input
@@ -521,7 +521,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
           </div>
         )}
 
-        {/* ── STEP 2: Scheda ────────────────────────────────────────────────── */}
+        {/* â”€â”€ STEP 2: Scheda â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 2 && (
           <div className="space-y-3">
             {schede.length > 0 && (
@@ -548,7 +548,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
                 value={schedaName}
                 onChange={e => setSchedaName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && schedaName.trim() && goStep3()}
-                placeholder='es. Workout 1 – Chest + Back'
+                placeholder='es. Workout 1 â€“ Chest + Back'
                 className={inp}
               />
             </div>
@@ -568,7 +568,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
           </div>
         )}
 
-        {/* ── STEP 3: Routine ───────────────────────────────────────────────── */}
+        {/* â”€â”€ STEP 3: Routine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 3 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -627,7 +627,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
           </div>
         )}
 
-        {/* ── STEP 4: Completa o aggiungi ──────────────────────────────────── */}
+        {/* â”€â”€ STEP 4: Completa o aggiungi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 4 && (
           <div className="space-y-3">
             {/* Summary */}
@@ -635,7 +635,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: CT }}>{planName}</p>
               {(planStart || planEnd) && (
                 <p className="text-xs text-gray-400">
-                  {planStart ? fmtDate(planStart) : '–'} → {planEnd ? fmtDate(planEnd) : '–'}
+                  {planStart ? fmtDate(planStart) : 'â€“'} â†’ {planEnd ? fmtDate(planEnd) : 'â€“'}
                 </p>
               )}
               <div className="space-y-1 mt-1">
@@ -667,7 +667,7 @@ function PlanWizard({ userId, onComplete, onClose }: {
   )
 }
 
-// ── Add exercise modal (for existing plan editing) ────────────────────────────
+// â”€â”€ Add exercise modal (for existing plan editing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ExerciseFormModal({
   templateId, userId, onClose, onSaved,
 }: {
@@ -788,7 +788,7 @@ function ExerciseFormModal({
   )
 }
 
-// ── Base exercise row ─────────────────────────────────────────────────────────
+// â”€â”€ Base exercise row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
   ex: TemplateExercise
   onDelete: () => void; onToggleAbs: () => void; onRename: (name: string) => void
@@ -899,7 +899,7 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
   )
 }
 
-// ── Per-week exercise row ─────────────────────────────────────────────────────
+// â”€â”€ Per-week exercise row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function WeekExRow({ ex, weekId, param, color }: {
   ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string
 }) {
@@ -929,7 +929,7 @@ function WeekExRow({ ex, weekId, param, color }: {
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>
-          <input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder="—"
+          <input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder="â€”"
             className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
         </div>
         <div className="flex flex-col items-center gap-0.5">
@@ -942,7 +942,7 @@ function WeekExRow({ ex, weekId, param, color }: {
   )
 }
 
-// ── Week tab ⋮ menu ───────────────────────────────────────────────────────────
+// â”€â”€ Week tab â‹® menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function WeekMenuBtn({ onRename, onDuplicate, onDelete }: {
   onRename: () => void; onDuplicate: () => void; onDelete: () => void
 }) {
@@ -991,8 +991,8 @@ function WeekMenuBtn({ onRename, onDuplicate, onDelete }: {
   )
 }
 
-// ── Scheda header menu ────────────────────────────────────────────────────────
-// CardMenu reduced to Duplica only — edit/delete handled by swipe
+// â”€â”€ Scheda header menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// CardMenu reduced to Duplica only â€” edit/delete handled by swipe
 function CardDuplicaBtn({ onDuplicate }: { onDuplicate: () => void }) {
   return (
     <button onClick={e => { e.stopPropagation(); onDuplicate() }}
@@ -1003,7 +1003,7 @@ function CardDuplicaBtn({ onDuplicate }: { onDuplicate: () => void }) {
   )
 }
 
-// ── Badge picker ─────────────────────────────────────────────────────────────
+// â”€â”€ Badge picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PICKER_COLORS = [...SCHEDA_PALETTE, '#e05c5c', '#e0a050', '#50c878', '#888888']
 
 function BadgePicker({ current, onSave, onClose }: {
@@ -1026,7 +1026,7 @@ function BadgePicker({ current, onSave, onClose }: {
           <WorkoutBadgeDisplay color={color} label={mode === 'text' ? label : null} icon={mode === 'icon' ? icon : null} size={48} />
           <div>
             <p className="text-xs text-gray-400 font-medium">Anteprima</p>
-            <p className="text-xs text-gray-300">{mode === 'icon' ? (icon ?? '—') : (label || '—')}</p>
+            <p className="text-xs text-gray-300">{mode === 'icon' ? (icon ?? 'â€”') : (label || 'â€”')}</p>
           </div>
         </div>
 
@@ -1042,7 +1042,7 @@ function BadgePicker({ current, onSave, onClose }: {
           </div>
         </div>
 
-        {/* Modalità testo / icona */}
+        {/* ModalitÃ  testo / icona */}
         <div className="flex gap-2">
           <button onClick={() => setMode('text')}
             className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors"
@@ -1104,7 +1104,7 @@ function BadgePicker({ current, onSave, onClose }: {
   )
 }
 
-// ── Scheda card with week tabs ─────────────────────────────────────────────────
+// â”€â”€ Scheda card with week tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   tmpl: Template; idx: number; userId: string; onRefresh: () => void
 }) {
@@ -1244,10 +1244,10 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
       {/* Swipeable header */}
       <div className="relative overflow-hidden">
-        {/* Swipe right → rename */}
+        {/* Swipe right â†’ rename */}
         {!editing && <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: color }}
           onClick={() => { hdrSnap(null); setEditing(true); setName(tmpl.name) }}><Pencil size={15} className="text-white" /></div>}
-        {/* Swipe left → delete */}
+        {/* Swipe left â†’ delete */}
         {!editing && <div className="absolute inset-y-0 right-0 flex items-center justify-center" style={{ width: H_SNAP, backgroundColor: '#ef4444' }}
           onClick={() => { hdrSnap(null); del() }}><Trash2 size={15} className="text-white" /></div>}
         <div ref={hdrRef} className="relative z-10 touch-pan-y bg-white dark:bg-gray-900"
@@ -1268,7 +1268,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
               <p className="text-sm font-bold truncate leading-tight" style={{ color: badge.color }}>{tmpl.name}</p>
               <p className="text-[10px]" style={{ color: badge.color + 'aa' }}>
                 {exCount} {exCount === 1 ? 'esercizio' : 'esercizi'}
-                {weeks.length > 0 && ` · ${weeks.length} ${weeks.length === 1 ? 'routine' : 'routine'}`}
+                {weeks.length > 0 && ` Â· ${weeks.length} ${weeks.length === 1 ? 'routine' : 'routine'}`}
               </p>
             </button>
           )}
@@ -1396,7 +1396,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   )
 }
 
-// ── Plan ⋮ menu ───────────────────────────────────────────────────────────────
+// â”€â”€ Plan â‹® menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PlanMenu({ isActive, onCorrente, onEdit, onDuplicate, onDelete }: {
   isActive: boolean; onCorrente: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void
 }) {
@@ -1437,7 +1437,7 @@ function PlanMenu({ isActive, onCorrente, onEdit, onDuplicate, onDelete }: {
   )
 }
 
-// ── Plan card (existing plans view) ──────────────────────────────────────────
+// â”€â”€ Plan card (existing plans view) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PlanCard({ plan, userId, onChanged }: {
   plan: Plan; userId: string; onChanged: () => void
 }) {
@@ -1542,7 +1542,7 @@ function PlanCard({ plan, userId, onChanged }: {
 
   return (
     <div className={cn('bg-white dark:bg-gray-900 border rounded-2xl transition-colors overflow-hidden relative', isActive ? 'border-[#7aafc8]' : 'border-gray-200 dark:border-gray-800')}>
-      {/* Swipe actions — hidden when card is expanded to prevent bleed-through */}
+      {/* Swipe actions â€” hidden when card is expanded to prevent bleed-through */}
       {!expanded && <>
         <div className="absolute inset-y-0 right-0 flex items-center justify-center rounded-r-2xl"
           style={{ width: SNAP, backgroundColor: '#ef4444' }}
@@ -1569,7 +1569,7 @@ function PlanCard({ plan, userId, onChanged }: {
               </span>
             )}
           </div>
-          {(sL || eL) && <p className="mt-1 text-xs text-gray-400">{sL ?? '–'} – {eL ?? '–'}</p>}
+          {(sL || eL) && <p className="mt-1 text-xs text-gray-400">{sL ?? 'â€“'} â€“ {eL ?? 'â€“'}</p>}
         </button>
         <div className="flex items-center gap-1 shrink-0">
           <PlanMenu isActive={isActive} onCorrente={setCorrente}
@@ -1607,7 +1607,7 @@ function PlanCard({ plan, userId, onChanged }: {
                 <div className="flex gap-2">
                   <input autoFocus value={schedaName} onChange={e => setSchedaName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && createScheda()}
-                    placeholder='Nome scheda — es. "Push A"'
+                    placeholder='Nome scheda â€” es. "Push A"'
                     className="flex-1 px-3 py-2 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none" />
                   <button onClick={createScheda} disabled={savingS || !schedaName.trim()} className="w-9 h-9 rounded-xl text-white flex items-center justify-center disabled:opacity-50" style={{ backgroundColor: CT }}>
                     {savingS ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
@@ -1630,7 +1630,7 @@ function PlanCard({ plan, userId, onChanged }: {
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function TrainingPlanPage() {
   const { userId, userProfile } = useAppStore()
   const [plans, setPlans]   = useState<Plan[]>([])

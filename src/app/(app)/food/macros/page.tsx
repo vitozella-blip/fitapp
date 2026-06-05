@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, Target, X, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
@@ -99,7 +99,7 @@ export default function MacrosPage() {
 
   const sm = macro ? MACROS.find(m => m.key === macro)! : null
 
-  // ── collapsed row shared style ────────────────────────────────────────────
+  // â”€â”€ collapsed row shared style â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const collapsedRow = (label: string, content: React.ReactNode, onReopen: () => void) => (
     <button onClick={onReopen}
       className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-5 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
@@ -113,7 +113,7 @@ export default function MacrosPage() {
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-full">
       <PageHeader title="Completa i Macro" icon={Target} accent="food" />
 
-      {/* ── Step 1: Macro ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Step 1: Macro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeStep === 1 ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
@@ -137,12 +137,12 @@ export default function MacrosPage() {
         () => setActiveStep(1)
       )}
 
-      {/* ── Step 2: Quantità ────────────────────────────────────────────────── */}
+      {/* â”€â”€ Step 2: QuantitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {macro && (
         activeStep === 2 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantità</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">QuantitÃ </p>
             </div>
             <div className="p-4 space-y-3">
             <div className="relative">
@@ -152,7 +152,7 @@ export default function MacrosPage() {
                 onChange={e => setAmount(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && confirmAmount()}
                 onBlur={onAmountBlur}
-                placeholder="–"
+                placeholder="â€“"
                 autoFocus
                 className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-gray-400 text-center"
               />
@@ -166,7 +166,7 @@ export default function MacrosPage() {
           </div>
           </div>
         ) : amount && collapsedRow(
-          'Quantità',
+          'QuantitÃ ',
           <span className="text-base font-bold text-gray-900 dark:text-gray-100">
             {amount}<span className="font-bold ml-0.5" style={{ color: sm!.hex }}>g</span>
           </span>,
@@ -174,7 +174,7 @@ export default function MacrosPage() {
         )
       )}
 
-      {/* ── Step 3: Fonte ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Step 3: Fonte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {macro && amount && Number(amount) > 0 && (
         activeStep === 3 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
@@ -204,11 +204,11 @@ export default function MacrosPage() {
                   <button key={f.id} onClick={() => selectFood(f)}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {f.name}{f.brand && <span className="text-gray-400 font-normal"> — {f.brand}</span>}
+                      {f.name}{f.brand && <span className="text-gray-400 font-normal"> â€” {f.brand}</span>}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      G <span style={{ color: '#5b9bd5' }} className="font-medium">{f.fat}g</span> ·
-                      C <span style={{ color: '#f0aa78' }} className="font-medium">{f.carbs}g</span> ·
+                      G <span style={{ color: '#5b9bd5' }} className="font-medium">{f.fat}g</span> Â·
+                      C <span style={{ color: '#f0aa78' }} className="font-medium">{f.carbs}g</span> Â·
                       P <span style={{ color: '#9d8fcc' }} className="font-medium">{f.protein}g</span>
                       <span className="text-gray-300"> / 100g</span>
                     </p>
@@ -221,7 +221,7 @@ export default function MacrosPage() {
               <div className={cn('px-4 py-3 rounded-xl border', sm!.bg)}>
                 <p className={cn('font-bold text-sm', sm!.color)}>{selected.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  G {selected.fat}g · C {selected.carbs}g · P {selected.protein}g / 100g
+                  G {selected.fat}g Â· C {selected.carbs}g Â· P {selected.protein}g / 100g
                 </p>
               </div>
             )}
@@ -234,7 +234,7 @@ export default function MacrosPage() {
         )
       )}
 
-      {/* ── Result ──────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Result â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {result && selected && amount && (
         <div className="flex-1 min-h-0 bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col"
           style={{ border: `2px solid ${KCAL_COLOR}66` }}>
@@ -276,7 +276,7 @@ export default function MacrosPage() {
         </div>
       )}
 
-      {/* ── No-macro-in-food warning ─────────────────────────────────────────── */}
+      {/* â”€â”€ No-macro-in-food warning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {selected && amount && Number(amount) > 0 && !result && sm && (
         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-center">
           <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
