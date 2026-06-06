@@ -82,8 +82,7 @@ function BarcodeScannerModal({ onClose, onFound }: {
 
   // Tap-to-focus: prova l'API focus, se non supportata riavvia il track per forzare il refocus
   async function refocus(e: React.MouseEvent<HTMLVideoElement>) {
-    const stream = streamRef.current
-    const track = stream?.getVideoTracks()[0]
+    const track = streamRef.current?.getVideoTracks()[0]
     if (!track || !scanning.current) return
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
