@@ -27,13 +27,16 @@ function BarcodeScannerModal({ onClose, onFound }: {
   onClose: () => void
   onFound: (form: FoodForm) => void
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef     = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef = useRef<MediaStream | null>(null)
-  const animRef   = useRef<number | null>(null)
-  const scanning  = useRef(true)
+  const streamRef    = useRef<MediaStream | null>(null)
+  const animRef      = useRef<number | null>(null)
+  const scanning     = useRef(true)
+  const camIdsRef    = useRef<string[]>([])
+  const camIdxRef    = useRef(0)
+  const detectorRef  = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
 
   useEffect(() => {
     initScanner()
@@ -46,36 +49,52 @@ function BarcodeScannerModal({ onClose, onFound }: {
     streamRef.current?.getTracks().forEach(t => t.stop())
   }
 
+  async function openCamera(deviceId?: string) {
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    const constraints: MediaStreamConstraints = deviceId
+      ? { video: { deviceId: { exact: deviceId } } }
+      : { video: { facingMode: { ideal: 'environment' } } }
+    const stream = await Promise.race([
+      navigator.mediaDevices.getUserMedia(constraints),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+    ])
+    streamRef.current = stream
+    if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+  }
+
   async function initScanner() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      // Apri la camera posteriore — nessun constraint avanzato: su Huawei interferiscono
-      // con l'autofocus nativo e possono selezionare la camera sbagliata
-      const stream = await Promise.race([
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
-      ])
-      streamRef.current = stream
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+      await openCamera()
       setStatus('scanning')
+      // Enumera tutte le camere posteriori per permettere switch manuale
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const backIds = devices
+          .filter(d => d.kind === 'videoinput' && d.deviceId)
+          .map(d => d.deviceId)
+        // Trova l'indice della camera attualmente aperta
+        const curId = streamRef.current?.getVideoTracks()[0].getSettings().deviceId ?? ''
+        const curIdx = backIds.indexOf(curId)
+        camIdsRef.current = backIds
+        camIdxRef.current = curIdx >= 0 ? curIdx : 0
+      } catch {}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
+      detectorRef.current = detector
       scanLoop(detector)
     } catch { setStatus('error') }
   }
 
-  // Tap: riavvia il track per forzare il refocus (unico metodo affidabile su Huawei)
-  async function refocus() {
-    if (!scanning.current) return
+  // Cicla alla camera successiva — utente preme finché trova quella giusta
+  async function switchCamera() {
+    const ids = camIdsRef.current
+    if (ids.length < 2) return
+    camIdxRef.current = (camIdxRef.current + 1) % ids.length
     try {
-      streamRef.current?.getTracks().forEach(t => t.stop())
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } }
-      })
-      streamRef.current = newStream
-      if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
+      await openCamera(ids[camIdxRef.current])
     } catch {}
   }
 
@@ -139,9 +158,9 @@ function BarcodeScannerModal({ onClose, onFound }: {
           {/* Camera viewfinder */}
           {(status === 'init' || status === 'scanning') && (
             <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
-              <video ref={videoRef} onClick={refocus} className="w-full h-full object-cover cursor-pointer" playsInline muted autoPlay />
+              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
               {/* Scanning frame overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="relative w-56 h-40">
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-lg" style={{ borderColor: C }} />
                   <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-lg" style={{ borderColor: C }} />
@@ -152,12 +171,15 @@ function BarcodeScannerModal({ onClose, onFound }: {
                   )}
                 </div>
               </div>
+              {/* Switch camera button */}
               {status === 'scanning' && (
-                <div className="absolute bottom-2 inset-x-0 flex justify-center pointer-events-none">
-                  <span className="text-[10px] font-medium text-white/80 bg-black/40 px-2 py-0.5 rounded-full">
-                    Tocca per mettere a fuoco
-                  </span>
-                </div>
+                <button
+                  onClick={switchCamera}
+                  className="absolute top-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-1 text-[11px] font-medium flex items-center gap-1"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4m0 0 4-4M4 7l4 4M4 17h16m0 0-4 4m4-4-4-4"/></svg>
+                  Cambia camera
+                </button>
               )}
               {status === 'init' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
