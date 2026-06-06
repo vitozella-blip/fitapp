@@ -53,22 +53,20 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      // Fallback chain: prova constraint sempre più semplici fino a video:true
-      // Alcuni device (Huawei EMUI) rifiutano silenziosamente constraint specifici
-      const gum = (constraints: MediaStreamConstraints) => Promise.race([
-        navigator.mediaDevices.getUserMedia(constraints),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-      ])
-      const stream = await gum({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } } })
-        .catch(() => gum({ video: { facingMode: 'environment' } }))
-        .catch(() => gum({ video: true }))
+      // video:true prima: su Huawei i constraint facingMode/size bloccano getUserMedia
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      // Resetta zoom a 1x dopo play(): su Huawei multi-camera può partire con zoom elevato
+      // Resetta zoom al minimo supportato dalla camera (non hardcoded 1, che può fallire)
       const track = stream.getVideoTracks()[0]
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (track) track.applyConstraints({ advanced: [{ zoom: 1 } as any] }).catch(() => {})
+      if (track) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const caps = (track.getCapabilities?.() ?? {}) as any
+        const minZoom = caps.zoom?.min ?? 1
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        track.applyConstraints({ advanced: [{ zoom: minZoom, focusMode: 'continuous' } as any] }).catch(() => {})
+      }
       applyContinuousFocus()
       setTimeout(applyContinuousFocus, 500)
       setTimeout(applyContinuousFocus, 1500)
