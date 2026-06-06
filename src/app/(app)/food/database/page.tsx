@@ -53,12 +53,18 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      // video:true prima: su Huawei i constraint facingMode/size bloccano getUserMedia
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const gum = (c: MediaStreamConstraints, ms = 8000) => Promise.race([
+        navigator.mediaDevices.getUserMedia(c),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+      ])
+      // Prima prova back camera senza size constraints (size causa hang su Huawei)
+      // Poi fallback a video:true (potrebbe aprire frontale, ma meglio che errore)
+      const stream = await gum({ video: { facingMode: { ideal: 'environment' } } })
+        .catch(() => gum({ video: true }, 5000))
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      // Resetta zoom al minimo supportato dalla camera (non hardcoded 1, che può fallire)
+      // Resetta zoom al minimo della camera (non hardcoded 1 che fallisce su telephoto)
       const track = stream.getVideoTracks()[0]
       if (track) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
