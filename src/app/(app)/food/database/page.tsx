@@ -51,14 +51,8 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      // zoom: { ideal: 1, max: 2 } a livello top-level (NON in advanced) forza la camera
-      // principale su dispositivi multi-camera come Huawei P30 Pro, impedendo la selezione
-      // della telephoto (3x–5x). Se non supportato, il constraint viene ignorato.
       const stream = await Promise.race([
-        navigator.mediaDevices.getUserMedia({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          video: { facingMode: { ideal: 'environment' }, zoom: { ideal: 1, max: 2 } } as any
-        }),
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }),
         new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
       ])
       streamRef.current = stream
