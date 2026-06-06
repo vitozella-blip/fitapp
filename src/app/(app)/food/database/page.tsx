@@ -97,6 +97,12 @@ function BarcodeScannerModal({ onClose, onFound }: {
   }
 
   const C = '#e8924a'
+  // Chrome su Android usa il driver virtuale multi-camera di EMUI che seleziona la telephoto.
+  // Firefox usa camera2 direttamente e sceglie la camera principale corretta.
+  const isAndroidChrome = typeof navigator !== 'undefined' &&
+    /android/i.test(navigator.userAgent) &&
+    /chrome/i.test(navigator.userAgent) &&
+    !/firefox/i.test(navigator.userAgent)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70">
@@ -114,6 +120,16 @@ function BarcodeScannerModal({ onClose, onFound }: {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+
+          {/* Banner Chrome Android: suggerisci Firefox per camera corretta */}
+          {isAndroidChrome && status === 'scanning' && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+              <span className="text-amber-600 dark:text-amber-400 text-[11px] leading-tight">
+                📷 Su questo dispositivo Chrome potrebbe usare la camera sbagliata.{' '}
+                <strong>Firefox</strong> scansiona correttamente.
+              </span>
+            </div>
+          )}
 
           {/* Camera viewfinder */}
           {(status === 'init' || status === 'scanning') && (
