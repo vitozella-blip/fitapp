@@ -27,16 +27,13 @@ function BarcodeScannerModal({ onClose, onFound }: {
   onClose: () => void
   onFound: (form: FoodForm) => void
 }) {
-  const videoRef     = useRef<HTMLVideoElement>(null)
+  const videoRef  = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef    = useRef<MediaStream | null>(null)
-  const animRef      = useRef<number | null>(null)
-  const scanning     = useRef(true)
-  const camIdsRef    = useRef<string[]>([])
-  const camIdxRef    = useRef(0)
-  const detectorRef  = useRef<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const streamRef = useRef<MediaStream | null>(null)
+  const animRef   = useRef<number | null>(null)
+  const scanning  = useRef(true)
 
   useEffect(() => {
     initScanner()
@@ -49,74 +46,28 @@ function BarcodeScannerModal({ onClose, onFound }: {
     streamRef.current?.getTracks().forEach(t => t.stop())
   }
 
-  async function openCamera(deviceId?: string) {
-    const constraints: MediaStreamConstraints = deviceId
-      ? { video: { deviceId: { exact: deviceId } } }
-      : { video: { facingMode: { ideal: 'environment' } } }
-    // Apri il nuovo stream PRIMA di fermare il vecchio: così il video non diventa nero se fallisce
-    const newStream = await Promise.race([
-      navigator.mediaDevices.getUserMedia(constraints),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
-    ])
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    streamRef.current = newStream
-    if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
-  }
-
   async function initScanner() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      await openCamera()
+      // zoom: { ideal: 1, max: 2 } a livello top-level (NON in advanced) forza la camera
+      // principale su dispositivi multi-camera come Huawei P30 Pro, impedendo la selezione
+      // della telephoto (3x–5x). Se non supportato, il constraint viene ignorato.
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          video: { facingMode: { ideal: 'environment' }, zoom: { ideal: 1, max: 2 } } as any
+        }),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+      ])
+      streamRef.current = stream
+      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      // Enumera tutte le camere posteriori per permettere switch manuale
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices()
-        const backIds = devices
-          .filter(d => d.kind === 'videoinput' && d.deviceId)
-          .map(d => d.deviceId)
-        // Trova l'indice della camera attualmente aperta
-        const curId = streamRef.current?.getVideoTracks()[0].getSettings().deviceId ?? ''
-        const curIdx = backIds.indexOf(curId)
-        camIdsRef.current = backIds
-        camIdxRef.current = curIdx >= 0 ? curIdx : 0
-      } catch {}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
-      detectorRef.current = detector
       scanLoop(detector)
     } catch { setStatus('error') }
-  }
-
-  // Cicla alla camera successiva saltando la frontale — utente preme finché trova quella giusta
-  async function switchCamera() {
-    const ids = camIdsRef.current
-    if (ids.length < 2) return
-    const startIdx = camIdxRef.current
-    let attempts = 0
-    while (attempts < ids.length - 1) {
-      const nextIdx = (camIdxRef.current + 1) % ids.length
-      camIdxRef.current = nextIdx
-      attempts++
-      try {
-        const newStream = await Promise.race([
-          navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ids[nextIdx] } } }),
-          new Promise<never>((_, rej) => setTimeout(() => rej(new Error('t')), 5000))
-        ])
-        // Salta la camera frontale
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const facingMode = (newStream.getVideoTracks()[0].getSettings() as any).facingMode
-        if (facingMode === 'user') { newStream.getTracks().forEach(t => t.stop()); continue }
-        // Buona camera: sostituisci senza schermo nero
-        streamRef.current?.getTracks().forEach(t => t.stop())
-        streamRef.current = newStream
-        if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
-        return
-      } catch { continue }
-    }
-    // Nessuna camera trovata: ripristina indice
-    camIdxRef.current = startIdx
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -192,16 +143,6 @@ function BarcodeScannerModal({ onClose, onFound }: {
                   )}
                 </div>
               </div>
-              {/* Switch camera button */}
-              {status === 'scanning' && (
-                <button
-                  onClick={switchCamera}
-                  className="absolute top-2 right-2 bg-black/50 text-white rounded-full px-2.5 py-1 text-[11px] font-medium flex items-center gap-1"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4m0 0 4-4M4 7l4 4M4 17h16m0 0-4 4m4-4-4-4"/></svg>
-                  Cambia camera
-                </button>
-              )}
               {status === 'init' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <Loader2 size={28} className="animate-spin text-white" />
