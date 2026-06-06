@@ -53,13 +53,15 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      // Timeout 8s: su Huawei/Android il permesso fotocamera negato blocca getUserMedia per sempre
-      const stream = await Promise.race([
-        navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
-        }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+      // Fallback chain: prova constraint sempre più semplici fino a video:true
+      // Alcuni device (Huawei EMUI) rifiutano silenziosamente constraint specifici
+      const gum = (constraints: MediaStreamConstraints) => Promise.race([
+        navigator.mediaDevices.getUserMedia(constraints),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
       ])
+      const stream = await gum({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } } })
+        .catch(() => gum({ video: { facingMode: 'environment' } }))
+        .catch(() => gum({ video: true }))
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
