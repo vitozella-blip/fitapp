@@ -53,9 +53,11 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
+      // Risoluzione bassa (640) per forzare la camera principale su dispositivi multi-camera
+      // come Huawei P30 Pro: risoluzioni alte selezionano il telephoto (fuoco minimo ~1-2m)
       const stream = await navigator.mediaDevices.getUserMedia({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' } as any] } as any
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, advanced: [{ focusMode: 'continuous', zoom: 1 } as any] } as any
       })
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
@@ -108,7 +110,7 @@ function BarcodeScannerModal({ onClose, onFound }: {
         track.stop()
         const newStream = await navigator.mediaDevices.getUserMedia({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' } as any] } as any
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, advanced: [{ focusMode: 'continuous', zoom: 1 } as any] } as any
         })
         streamRef.current = newStream
         if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
