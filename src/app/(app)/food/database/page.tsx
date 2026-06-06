@@ -29,13 +29,12 @@ function BarcodeScannerModal({ onClose, onFound }: {
   onClose: () => void
   onFound: (form: FoodForm) => void
 }) {
-  const videoRef   = useRef<HTMLVideoElement>(null)
+  const videoRef  = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef  = useRef<MediaStream | null>(null)
-  const animRef    = useRef<number | null>(null)
-  const scanning   = useRef(true)
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null)
+  const scanning  = useRef(true)
 
   useEffect(() => {
     initScanner()
@@ -44,60 +43,33 @@ function BarcodeScannerModal({ onClose, onFound }: {
 
   function cleanup() {
     scanning.current = false
-    if (animRef.current) clearTimeout(animRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
+    // Ferma lo stream aperto da ZXing
+    if (videoRef.current) {
+      const s = videoRef.current.srcObject as MediaStream | null
+      s?.getTracks().forEach(t => t.stop())
+      videoRef.current.srcObject = null
+    }
   }
 
   async function initScanner() {
+    if (!videoRef.current) return
     try {
-      const stream = await Promise.race([
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
-      ])
-      streamRef.current = stream
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+      // ZXing gestisce getUserMedia internamente con facingMode:'environment' (non ideal)
+      // Su Huawei Chrome questo seleziona la camera principale invece della telephoto
+      const reader = new BrowserMultiFormatReader()
+      readerRef.current = reader
       setStatus('scanning')
-
-      // Usa BarcodeDetector nativo se disponibile (Chrome), altrimenti ZXing (Firefox, altri)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const BD = (window as any).BarcodeDetector
-      if (BD) {
-        const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] })
-        scanLoopNative(detector)
-      } else {
-        scanLoopZxing()
-      }
+      await reader.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
+        if (!scanning.current) return
+        if (result) {
+          cleanup()
+          lookup(result.getText())
+        } else if (err && !(err instanceof NotFoundException)) {
+          cleanup()
+          setStatus('error')
+        }
+      })
     } catch { setStatus('error') }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function scanLoopNative(detector: any) {
-    if (!scanning.current) return
-    animRef.current = window.setTimeout(async () => {
-      if (!videoRef.current || !scanning.current) return
-      try {
-        const results = await detector.detect(videoRef.current)
-        if (results.length > 0) { cleanup(); await lookup(results[0].rawValue); return }
-      } catch {}
-      scanLoopNative(detector)
-    }, 150) as unknown as number
-  }
-
-  function scanLoopZxing() {
-    if (!videoRef.current || !scanning.current) return
-    const reader = new BrowserMultiFormatReader()
-    // decodeFromVideoElement richiama il callback ad ogni frame
-    reader.decodeFromVideoElement(videoRef.current, (result, err) => {
-      if (!scanning.current) return
-      if (result) {
-        cleanup()
-        lookup(result.getText())
-      } else if (err && !(err instanceof NotFoundException)) {
-        // Errore fatale (non "nessun barcode trovato")
-        cleanup()
-        setStatus('error')
-      }
-    }).catch(() => { if (scanning.current) setStatus('error') })
   }
 
   async function lookup(code: string) {
