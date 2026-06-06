@@ -65,6 +65,10 @@ function BarcodeScannerModal({ onClose, onFound }: {
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
+      // Resetta zoom a 1x dopo play(): su Huawei multi-camera può partire con zoom elevato
+      const track = stream.getVideoTracks()[0]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (track) track.applyConstraints({ advanced: [{ zoom: 1 } as any] }).catch(() => {})
       applyContinuousFocus()
       setTimeout(applyContinuousFocus, 500)
       setTimeout(applyContinuousFocus, 1500)
