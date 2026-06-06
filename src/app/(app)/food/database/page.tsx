@@ -31,10 +31,9 @@ function BarcodeScannerModal({ onClose, onFound }: {
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef  = useRef<MediaStream | null>(null)
-  const animRef    = useRef<number | null>(null)
-  const focusTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const scanning   = useRef(true)
+  const streamRef = useRef<MediaStream | null>(null)
+  const animRef   = useRef<number | null>(null)
+  const scanning  = useRef(true)
 
   useEffect(() => {
     initScanner()
@@ -44,7 +43,6 @@ function BarcodeScannerModal({ onClose, onFound }: {
   function cleanup() {
     scanning.current = false
     if (animRef.current) clearTimeout(animRef.current)
-    if (focusTimer.current) clearInterval(focusTimer.current)
     streamRef.current?.getTracks().forEach(t => t.stop())
   }
 
@@ -53,93 +51,31 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      const gum = (c: MediaStreamConstraints, ms = 8000) => Promise.race([
-        navigator.mediaDevices.getUserMedia(c),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+      // Apri la camera posteriore — nessun constraint avanzato: su Huawei interferiscono
+      // con l'autofocus nativo e possono selezionare la camera sbagliata
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
       ])
-      // Step 1: apri qualsiasi back camera per ottenere il permesso
-      let stream = await gum({ video: { facingMode: { ideal: 'environment' } } })
-
-      // Step 2: enumera le camere (le label sono disponibili solo dopo il permesso)
-      // Su Android/Huawei le camere posteriori sono ordinate per indice:
-      // indice più basso = camera principale wide-angle (quella che vogliamo)
-      // indici più alti = telephoto (che causa lo zoom)
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices()
-        const backCams = devices
-          .filter(d => d.kind === 'videoinput' && d.label.toLowerCase().includes('back'))
-          .sort((a, b) => {
-            // estrai numero indice da label tipo "camera2 1, facing back"
-            const idxA = parseInt(a.label.match(/\d+/g)?.[1] ?? '999')
-            const idxB = parseInt(b.label.match(/\d+/g)?.[1] ?? '999')
-            return idxA - idxB
-          })
-        if (backCams.length > 0) {
-          const mainCam = backCams[0]
-          const curDeviceId = stream.getVideoTracks()[0].getSettings().deviceId
-          if (mainCam.deviceId && mainCam.deviceId !== curDeviceId) {
-            // Switcha alla camera principale
-            const betterStream = await gum({ video: { deviceId: { exact: mainCam.deviceId } } }, 4000)
-            stream.getTracks().forEach(t => t.stop())
-            stream = betterStream
-          }
-        }
-      } catch {}
-
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      applyContinuousFocus()
-      setTimeout(applyContinuousFocus, 500)
-      setTimeout(applyContinuousFocus, 1500)
-      focusTimer.current = setInterval(applyContinuousFocus, 4000)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
       scanLoop(detector)
     } catch { setStatus('error') }
   }
 
-  async function applyContinuousFocus() {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track || !scanning.current) return
-    // Prova senza controllare caps: su Huawei/Android getCapabilities() spesso è {}
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
-  }
-
-  // Tap-to-focus: prova l'API focus, se non supportata riavvia il track per forzare il refocus
-  async function refocus(e: React.MouseEvent<HTMLVideoElement>) {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track || !scanning.current) return
+  // Tap: riavvia il track per forzare il refocus (unico metodo affidabile su Huawei)
+  async function refocus() {
+    if (!scanning.current) return
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const caps = (track.getCapabilities?.() ?? {}) as any
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const adv: any = {}
-      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
-        adv.focusMode = 'single-shot'
-      }
-      if (caps.focusPointOfInterest) {
-        const rect = (e.currentTarget as HTMLVideoElement).getBoundingClientRect()
-        adv.focusPointOfInterest = {
-          x: (e.clientX - rect.left) / rect.width,
-          y: (e.clientY - rect.top) / rect.height,
-        }
-      }
-      if (Object.keys(adv).length > 0) {
-        await track.applyConstraints({ advanced: [adv] })
-        setTimeout(applyContinuousFocus, 1200)
-      } else {
-        // Fallback per dispositivi (es. Huawei) che non espongono l'API focus:
-        // riavvia il track con nuovi constraints per forzare il refocus della camera
-        track.stop()
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
-        })
-        streamRef.current = newStream
-        if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
-        setTimeout(applyContinuousFocus, 400)
-      }
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } }
+      })
+      streamRef.current = newStream
+      if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
     } catch {}
   }
 
