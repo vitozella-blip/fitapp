@@ -53,20 +53,19 @@ function BarcodeScannerModal({ onClose, onFound }: {
     const BD = (window as any).BarcodeDetector
     if (!BD) { setStatus('unsupported'); return }
     try {
-      // Risoluzione bassa (640) per forzare la camera principale su dispositivi multi-camera
-      // come Huawei P30 Pro: risoluzioni alte selezionano il telephoto (fuoco minimo ~1-2m).
-      // Nessun advanced qui: alcuni device Android rifiutano/bloccano getUserMedia con advanced.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
-      })
+      // Timeout 8s: su Huawei/Android il permesso fotocamera negato blocca getUserMedia per sempre
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+      ])
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      // Retry focus dopo play() perché alcuni dispositivi lo ignorano nella getUserMedia
       applyContinuousFocus()
       setTimeout(applyContinuousFocus, 500)
       setTimeout(applyContinuousFocus, 1500)
-      // Ri-applica il focus ogni 4s per contrastare la perdita di fuoco durante lo scan
       focusTimer.current = setInterval(applyContinuousFocus, 4000)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
@@ -245,9 +244,14 @@ function BarcodeScannerModal({ onClose, onFound }: {
           {(status === 'error' || status === 'unsupported') && (
             <div className="p-4 space-y-2 text-center">
               <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                {status === 'unsupported' ? 'Scanner non supportato dal browser' : 'Errore accesso alla fotocamera'}
+                {status === 'unsupported' ? 'Scanner non supportato dal browser' : 'Fotocamera non accessibile'}
               </p>
-              <p className="text-xs text-gray-400">Inserisci il codice a mano:</p>
+              <p className="text-xs text-gray-400">
+                {status === 'error'
+                  ? 'Controlla che il browser abbia il permesso fotocamera (Impostazioni → App → Chrome → Permessi).'
+                  : 'Usa Chrome su Android per la scansione.'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Oppure inserisci il codice a mano:</p>
             </div>
           )}
 
