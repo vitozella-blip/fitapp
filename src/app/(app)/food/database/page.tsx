@@ -57,22 +57,38 @@ function BarcodeScannerModal({ onClose, onFound }: {
         navigator.mediaDevices.getUserMedia(c),
         new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
       ])
-      // Prima prova back camera senza size constraints (size causa hang su Huawei)
-      // Poi fallback a video:true (potrebbe aprire frontale, ma meglio che errore)
-      const stream = await gum({ video: { facingMode: { ideal: 'environment' } } })
-        .catch(() => gum({ video: true }, 5000))
+      // Step 1: apri qualsiasi back camera per ottenere il permesso
+      let stream = await gum({ video: { facingMode: { ideal: 'environment' } } })
+
+      // Step 2: enumera le camere (le label sono disponibili solo dopo il permesso)
+      // Su Android/Huawei le camere posteriori sono ordinate per indice:
+      // indice più basso = camera principale wide-angle (quella che vogliamo)
+      // indici più alti = telephoto (che causa lo zoom)
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const backCams = devices
+          .filter(d => d.kind === 'videoinput' && d.label.toLowerCase().includes('back'))
+          .sort((a, b) => {
+            // estrai numero indice da label tipo "camera2 1, facing back"
+            const idxA = parseInt(a.label.match(/\d+/g)?.[1] ?? '999')
+            const idxB = parseInt(b.label.match(/\d+/g)?.[1] ?? '999')
+            return idxA - idxB
+          })
+        if (backCams.length > 0) {
+          const mainCam = backCams[0]
+          const curDeviceId = stream.getVideoTracks()[0].getSettings().deviceId
+          if (mainCam.deviceId && mainCam.deviceId !== curDeviceId) {
+            // Switcha alla camera principale
+            const betterStream = await gum({ video: { deviceId: { exact: mainCam.deviceId } } }, 4000)
+            stream.getTracks().forEach(t => t.stop())
+            stream = betterStream
+          }
+        }
+      } catch {}
+
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      // Resetta zoom al minimo della camera (non hardcoded 1 che fallisce su telephoto)
-      const track = stream.getVideoTracks()[0]
-      if (track) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const caps = (track.getCapabilities?.() ?? {}) as any
-        const minZoom = caps.zoom?.min ?? 1
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        track.applyConstraints({ advanced: [{ zoom: minZoom, focusMode: 'continuous' } as any] }).catch(() => {})
-      }
       applyContinuousFocus()
       setTimeout(applyContinuousFocus, 500)
       setTimeout(applyContinuousFocus, 1500)
