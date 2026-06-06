@@ -75,45 +75,44 @@ function BarcodeScannerModal({ onClose, onFound }: {
   async function applyContinuousFocus() {
     const track = streamRef.current?.getVideoTracks()[0]
     if (!track || !scanning.current) return
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const caps = (track.getCapabilities?.() ?? {}) as any
-      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] })
-      }
-    } catch {}
+    // Prova senza controllare caps: su Huawei/Android getCapabilities() spesso è {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
   }
 
-  // Tap-to-focus: forza single-shot al punto toccato poi torna a continuo
-  async function refocus(e?: React.MouseEvent<HTMLVideoElement>) {
+  // Tap-to-focus: prova l'API focus, se non supportata riavvia il track per forzare il refocus
+  async function refocus(e: React.MouseEvent<HTMLVideoElement>) {
     const track = streamRef.current?.getVideoTracks()[0]
-    if (!track) return
+    if (!track || !scanning.current) return
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const caps = (track.getCapabilities?.() ?? {}) as any
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const constraints: any = { advanced: [{}] }
+      const adv: any = {}
       if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
-        constraints.advanced[0].focusMode = 'single-shot'
+        adv.focusMode = 'single-shot'
       }
-      // Imposta punto di interesse se supportato e il tap ha coordinate
-      if (e && caps.focusPointOfInterest) {
+      if (caps.focusPointOfInterest) {
         const rect = (e.currentTarget as HTMLVideoElement).getBoundingClientRect()
-        constraints.advanced[0].focusPointOfInterest = {
+        adv.focusPointOfInterest = {
           x: (e.clientX - rect.left) / rect.width,
           y: (e.clientY - rect.top) / rect.height,
         }
       }
-      if (Object.keys(constraints.advanced[0]).length > 0) {
-        await track.applyConstraints(constraints)
-      }
-      // Torna a continuo dopo 1.2s
-      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-        setTimeout(() => {
+      if (Object.keys(adv).length > 0) {
+        await track.applyConstraints({ advanced: [adv] })
+        setTimeout(applyContinuousFocus, 1200)
+      } else {
+        // Fallback per dispositivi (es. Huawei) che non espongono l'API focus:
+        // riavvia il track con nuovi constraints per forzare il refocus della camera
+        track.stop()
+        const newStream = await navigator.mediaDevices.getUserMedia({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
-        }, 1200)
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' } as any] } as any
+        })
+        streamRef.current = newStream
+        if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
+        setTimeout(applyContinuousFocus, 400)
       }
     } catch {}
   }
