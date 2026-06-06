@@ -31,9 +31,10 @@ function BarcodeScannerModal({ onClose, onFound }: {
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef = useRef<MediaStream | null>(null)
-  const animRef   = useRef<number | null>(null)
-  const scanning  = useRef(true)
+  const streamRef  = useRef<MediaStream | null>(null)
+  const animRef    = useRef<number | null>(null)
+  const focusTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const scanning   = useRef(true)
 
   useEffect(() => {
     initScanner()
@@ -43,6 +44,7 @@ function BarcodeScannerModal({ onClose, onFound }: {
   function cleanup() {
     scanning.current = false
     if (animRef.current) clearTimeout(animRef.current)
+    if (focusTimer.current) clearInterval(focusTimer.current)
     streamRef.current?.getTracks().forEach(t => t.stop())
   }
 
@@ -52,23 +54,24 @@ function BarcodeScannerModal({ onClose, onFound }: {
     if (!BD) { setStatus('unsupported'); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' } as any] } as any
       })
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
-      // Applica autofocus DOPO play() (prima viene ignorato) + retry, perché molti
-      // dispositivi accettano il vincolo solo a track avviato
+      // Retry focus dopo play() perché alcuni dispositivi lo ignorano nella getUserMedia
       applyContinuousFocus()
-      setTimeout(applyContinuousFocus, 600)
+      setTimeout(applyContinuousFocus, 500)
       setTimeout(applyContinuousFocus, 1500)
+      // Ri-applica il focus ogni 4s per contrastare la perdita di fuoco durante lo scan
+      focusTimer.current = setInterval(applyContinuousFocus, 4000)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
       scanLoop(detector)
     } catch { setStatus('error') }
   }
 
-  // Applica autofocus continuo se supportato
   async function applyContinuousFocus() {
     const track = streamRef.current?.getVideoTracks()[0]
     if (!track || !scanning.current) return
@@ -82,26 +85,35 @@ function BarcodeScannerModal({ onClose, onFound }: {
     } catch {}
   }
 
-  // Tap-to-focus: forza una rimessa a fuoco single-shot e torna a continuo
-  async function refocus() {
+  // Tap-to-focus: forza single-shot al punto toccato poi torna a continuo
+  async function refocus(e?: React.MouseEvent<HTMLVideoElement>) {
     const track = streamRef.current?.getVideoTracks()[0]
     if (!track) return
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const caps = (track.getCapabilities?.() ?? {}) as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const constraints: any = { advanced: [{}] }
       if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' } as any] })
-        if (caps.focusMode.includes('continuous')) {
-          setTimeout(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
-          }, 1200)
+        constraints.advanced[0].focusMode = 'single-shot'
+      }
+      // Imposta punto di interesse se supportato e il tap ha coordinate
+      if (e && caps.focusPointOfInterest) {
+        const rect = (e.currentTarget as HTMLVideoElement).getBoundingClientRect()
+        constraints.advanced[0].focusPointOfInterest = {
+          x: (e.clientX - rect.left) / rect.width,
+          y: (e.clientY - rect.top) / rect.height,
         }
-      } else if (Array.isArray(caps.focusMode) && caps.focusMode.includes('manual') && caps.focusDistance) {
-        // Manual sweep per forzare il refocus
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await track.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: caps.focusDistance.min } as any] })
+      }
+      if (Object.keys(constraints.advanced[0]).length > 0) {
+        await track.applyConstraints(constraints)
+      }
+      // Torna a continuo dopo 1.2s
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
+        }, 1200)
       }
     } catch {}
   }
