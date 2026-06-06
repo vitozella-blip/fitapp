@@ -50,16 +50,17 @@ function BarcodeScannerModal({ onClose, onFound }: {
   }
 
   async function openCamera(deviceId?: string) {
-    streamRef.current?.getTracks().forEach(t => t.stop())
     const constraints: MediaStreamConstraints = deviceId
       ? { video: { deviceId: { exact: deviceId } } }
       : { video: { facingMode: { ideal: 'environment' } } }
-    const stream = await Promise.race([
+    // Apri il nuovo stream PRIMA di fermare il vecchio: così il video non diventa nero se fallisce
+    const newStream = await Promise.race([
       navigator.mediaDevices.getUserMedia(constraints),
       new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
     ])
-    streamRef.current = stream
-    if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = newStream
+    if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
   }
 
   async function initScanner() {
@@ -88,14 +89,34 @@ function BarcodeScannerModal({ onClose, onFound }: {
     } catch { setStatus('error') }
   }
 
-  // Cicla alla camera successiva — utente preme finché trova quella giusta
+  // Cicla alla camera successiva saltando la frontale — utente preme finché trova quella giusta
   async function switchCamera() {
     const ids = camIdsRef.current
     if (ids.length < 2) return
-    camIdxRef.current = (camIdxRef.current + 1) % ids.length
-    try {
-      await openCamera(ids[camIdxRef.current])
-    } catch {}
+    const startIdx = camIdxRef.current
+    let attempts = 0
+    while (attempts < ids.length - 1) {
+      const nextIdx = (camIdxRef.current + 1) % ids.length
+      camIdxRef.current = nextIdx
+      attempts++
+      try {
+        const newStream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ids[nextIdx] } } }),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error('t')), 5000))
+        ])
+        // Salta la camera frontale
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const facingMode = (newStream.getVideoTracks()[0].getSettings() as any).facingMode
+        if (facingMode === 'user') { newStream.getTracks().forEach(t => t.stop()); continue }
+        // Buona camera: sostituisci senza schermo nero
+        streamRef.current?.getTracks().forEach(t => t.stop())
+        streamRef.current = newStream
+        if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
+        return
+      } catch { continue }
+    }
+    // Nessuna camera trovata: ripristina indice
+    camIdxRef.current = startIdx
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
