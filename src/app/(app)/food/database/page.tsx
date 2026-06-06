@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
+import { BrowserMultiFormatReader } from '@zxing/browser'
+import { NotFoundException } from '@zxing/library'
 import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter, ScanBarcode } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -27,13 +29,13 @@ function BarcodeScannerModal({ onClose, onFound }: {
   onClose: () => void
   onFound: (form: FoodForm) => void
 }) {
-  const videoRef  = useRef<HTMLVideoElement>(null)
+  const videoRef   = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef = useRef<MediaStream | null>(null)
-  const animRef   = useRef<number | null>(null)
-  const scanning  = useRef(true)
+  const streamRef  = useRef<MediaStream | null>(null)
+  const animRef    = useRef<number | null>(null)
+  const scanning   = useRef(true)
 
   useEffect(() => {
     initScanner()
@@ -47,9 +49,6 @@ function BarcodeScannerModal({ onClose, onFound }: {
   }
 
   async function initScanner() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const BD = (window as any).BarcodeDetector
-    if (!BD) { setStatus('unsupported'); return }
     try {
       const stream = await Promise.race([
         navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }),
@@ -58,24 +57,47 @@ function BarcodeScannerModal({ onClose, onFound }: {
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
       setStatus('scanning')
+
+      // Usa BarcodeDetector nativo se disponibile (Chrome), altrimenti ZXing (Firefox, altri)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
-      scanLoop(detector)
+      const BD = (window as any).BarcodeDetector
+      if (BD) {
+        const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] })
+        scanLoopNative(detector)
+      } else {
+        scanLoopZxing()
+      }
     } catch { setStatus('error') }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function scanLoop(detector: any) {
+  function scanLoopNative(detector: any) {
     if (!scanning.current) return
-    // Throttle a ~150ms: ridurre il carico aiuta la fotocamera a mantenere il fuoco
     animRef.current = window.setTimeout(async () => {
       if (!videoRef.current || !scanning.current) return
       try {
         const results = await detector.detect(videoRef.current)
         if (results.length > 0) { cleanup(); await lookup(results[0].rawValue); return }
       } catch {}
-      scanLoop(detector)
+      scanLoopNative(detector)
     }, 150) as unknown as number
+  }
+
+  function scanLoopZxing() {
+    if (!videoRef.current || !scanning.current) return
+    const reader = new BrowserMultiFormatReader()
+    // decodeFromVideoElement richiama il callback ad ogni frame
+    reader.decodeFromVideoElement(videoRef.current, (result, err) => {
+      if (!scanning.current) return
+      if (result) {
+        cleanup()
+        lookup(result.getText())
+      } else if (err && !(err instanceof NotFoundException)) {
+        // Errore fatale (non "nessun barcode trovato")
+        cleanup()
+        setStatus('error')
+      }
+    }).catch(() => { if (scanning.current) setStatus('error') })
   }
 
   async function lookup(code: string) {
