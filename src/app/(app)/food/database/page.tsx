@@ -54,10 +54,10 @@ function BarcodeScannerModal({ onClose, onFound }: {
     if (!BD) { setStatus('unsupported'); return }
     try {
       // Risoluzione bassa (640) per forzare la camera principale su dispositivi multi-camera
-      // come Huawei P30 Pro: risoluzioni alte selezionano il telephoto (fuoco minimo ~1-2m)
+      // come Huawei P30 Pro: risoluzioni alte selezionano il telephoto (fuoco minimo ~1-2m).
+      // Nessun advanced qui: alcuni device Android rifiutano/bloccano getUserMedia con advanced.
       const stream = await navigator.mediaDevices.getUserMedia({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, advanced: [{ focusMode: 'continuous', zoom: 1 } as any] } as any
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
       })
       streamRef.current = stream
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
@@ -109,8 +109,7 @@ function BarcodeScannerModal({ onClose, onFound }: {
         // riavvia il track con nuovi constraints per forzare il refocus della camera
         track.stop()
         const newStream = await navigator.mediaDevices.getUserMedia({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 }, advanced: [{ focusMode: 'continuous', zoom: 1 } as any] } as any
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
         })
         streamRef.current = newStream
         if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
