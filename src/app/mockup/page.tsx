@@ -4,6 +4,7 @@ import {
   ChevronLeft, ChevronRight, Calendar, Check, Minus, X,
   Apple, ShoppingCart, ChefHat, Target, CalendarDays, BookOpen, Dumbbell, TrendingUp, History, Scale,
   Plus, Timer, Link2, Flame,
+  Star, ScanBarcode, Search, ChevronDown, Pencil, Trash2,
 } from 'lucide-react'
 import { MealIcon, TennisBall } from '@/components/shared/icons'
 
@@ -111,24 +112,35 @@ function CardTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function MockupPage() {
-  const [view, setView] = useState<'dash' | 'food' | 'train' | 'fdiary' | 'diary'>('dash')
+  const [view, setView] = useState<'dash' | 'food' | 'train' | 'fdiary' | 'diary' | 'fdb' | 'fmacros' | 'fplan' | 'frecipes' | 'fshopping'>('fdiary')
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TXT, fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: BG, padding: '12px 16px',
         display: 'flex', gap: 6, borderBottom: '1px solid #ffffff10', overflowX: 'auto' }}>
-        {([['dash', 'Dashboard'], ['food', 'Aliment.'], ['train', 'Allen.'], ['fdiary', 'Diario P.'], ['diary', 'Diario WO']] as const).map(([k, lbl]) => (
+        {([
+          ['dash', 'Dashboard'], ['food', 'Aliment.'], ['train', 'Allen.'],
+          ['fdiary', 'Diario P.'], ['diary', 'Diario WO'],
+          ['fdb', 'DB Alim.'], ['fmacros', 'Macro'], ['fplan', 'Piano'],
+          ['frecipes', 'Ricette'], ['fshopping', 'Spesa'],
+        ] as const).map(([k, lbl]) => (
           <button key={k} onClick={() => setView(k)}
             style={{ flex: '1 0 auto', padding: '9px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
-              background: view === k ? (k === 'food' || k === 'fdiary' ? FOOD : (k === 'train' || k === 'diary') ? TRAIN : '#30363d') : CARD, color: view === k ? '#fff' : DIM }}>
+              background: view === k ? (k === 'train' || k === 'diary' ? TRAIN : k === 'dash' ? '#30363d' : FOOD) : CARD,
+              color: view === k ? '#fff' : DIM }}>
             {lbl}
           </button>
         ))}
       </div>
-      {view === 'dash' && <Dash />}
-      {view === 'food' && <Food />}
-      {view === 'train' && <Train />}
-      {view === 'fdiary' && <FoodDiary />}
-      {view === 'diary' && <Diary />}
+      {view === 'dash'      && <Dash />}
+      {view === 'food'      && <Food />}
+      {view === 'train'     && <Train />}
+      {view === 'fdiary'    && <FoodDiary />}
+      {view === 'diary'     && <Diary />}
+      {view === 'fdb'       && <FoodDatabase />}
+      {view === 'fmacros'   && <FoodMacros />}
+      {view === 'fplan'     && <FoodPlan />}
+      {view === 'frecipes'  && <FoodRecipes />}
+      {view === 'fshopping' && <FoodShopping />}
     </div>
   )
 }
@@ -798,6 +810,514 @@ function Diary() {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════ DATABASE ALIMENTI ═══════════════════════════
+function FoodDatabase() {
+  const [expandedId, setExpandedId] = useState<number | null>(2)
+  const [favOnly, setFavOnly] = useState(false)
+  const foods = [
+    { id: 1, name: 'Riso Parboiled',   brand: 'Lidl',    kcal: 350, fat: 1.0, carbs: 76, protein: 7,  cats: ['Carboidrati'], fav: false },
+    { id: 2, name: 'Petto di Pollo',   brand: 'Generico',kcal: 165, fat: 3.6, carbs: 0,  protein: 31, cats: ['Proteine'],    fav: true  },
+    { id: 3, name: 'Fiocchi di Avena', brand: 'Quaker',  kcal: 389, fat: 7,   carbs: 66, protein: 17, cats: ['Carboidrati'], fav: false },
+    { id: 4, name: 'Olio EVO',         brand: 'Monini',  kcal: 884, fat: 100, carbs: 0,  protein: 0,  cats: ['Grassi'],      fav: false },
+    { id: 5, name: 'Uova intere',      brand: 'Generico',kcal: 147, fat: 10,  carbs: 1,  protein: 13, cats: ['Proteine'],    fav: false },
+  ]
+  const P = { padding: 16, display: 'flex' as const, flexDirection: 'column' as const, gap: 12 }
+  return (
+    <div style={P}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Apple size={22} color={FOOD} />
+        <span style={{ fontSize: 20, fontWeight: 800 }}>Alimenti</span>
+        <div style={{ flex: 1 }} />
+        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 12, border: 'none', background: FOOD, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          <Plus size={14} /> Nuovo
+        </button>
+      </div>
+      {/* Search + barcode */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: CARD, borderRadius: 14, padding: '0 14px', height: 44 }}>
+          <Search size={15} color={DIM} /><span style={{ fontSize: 13, color: FAINT }}>Cerca per nome o marca...</span>
+        </div>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: CARD, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <ScanBarcode size={18} color={FOOD} />
+        </div>
+      </div>
+      {/* Filter row */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', height: 40, borderRadius: 12, background: CARD }}>
+          <span style={{ fontSize: 12, color: FAINT }}>Tutte le categorie</span>
+          <ChevronDown size={13} color={FAINT} />
+        </div>
+        <button onClick={() => setFavOnly(f => !f)}
+          style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: favOnly ? '#daa52025' : CARD, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
+          <Star size={15} color={favOnly ? '#daa520' : FAINT} fill={favOnly ? '#daa520' : 'none'} />
+        </button>
+      </div>
+      {/* Food list */}
+      <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+        {foods.map((food, i) => (
+          <div key={food.id} style={{ borderBottom: i < foods.length - 1 ? `1px solid ${CARD2}` : 'none' }}>
+            <div onClick={() => setExpandedId(expandedId === food.id ? null : food.id)}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', cursor: 'pointer' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: TXT }}>{food.name}</div>
+                {food.brand !== 'Generico' && <div style={{ fontSize: 11, color: DIM, marginTop: 1 }}>{food.brand}</div>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: M.kcal.c, fontWeight: 700 }}>{food.kcal} kcal</span>
+                  <span style={{ fontSize: 12, color: M.fat.c }}>G {food.fat}g</span>
+                  <span style={{ fontSize: 12, color: M.carbs.c }}>C {food.carbs}g</span>
+                  <span style={{ fontSize: 12, color: M.protein.c }}>P {food.protein}g</span>
+                </div>
+                {food.cats.map(cat => (
+                  <span key={cat} style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: FOOD + '22', color: FOOD }}>{cat}</span>
+                ))}
+              </div>
+              <Star size={15} color={food.fav ? '#daa520' : FAINT} fill={food.fav ? '#daa520' : 'none'} style={{ marginTop: 3, flexShrink: 0 }} />
+            </div>
+            {expandedId === food.id && (
+              <div style={{ background: CARD2, padding: '10px 16px 14px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: FAINT, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Valori per 100g</div>
+                {[
+                  { label: 'Energia',     val: `${food.kcal} kcal`, color: M.kcal.c },
+                  { label: 'Grassi',      val: `${food.fat}g`,      color: M.fat.c },
+                  { label: 'Carboidrati', val: `${food.carbs}g`,    color: M.carbs.c },
+                  { label: 'Proteine',    val: `${food.protein}g`,  color: M.protein.c },
+                ].map((r, ri) => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: ri < 3 ? `1px solid ${CARD}80` : 'none' }}>
+                    <span style={{ fontSize: 12, color: r.color, fontWeight: 600 }}>{r.label}</span>
+                    <span style={{ fontSize: 12, color: r.color, fontWeight: 700 }}>{r.val}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        <button style={{ width: '100%', padding: 12, border: 'none', borderTop: `1px solid ${CARD2}`, background: CARD, color: FOOD, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+          Carica altri
+        </button>
+      </div>
+      {/* Quick-add hint */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: CARD, borderRadius: 14, cursor: 'pointer' }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: FOOD + '25', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Plus size={14} color={FOOD} />
+        </div>
+        <span style={{ fontSize: 13, color: FOOD, fontWeight: 600 }}>Aggiungi &ldquo;Riso&rdquo; al database</span>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════ COMPLETA MACRO ═════════════════════════════
+function FoodMacros() {
+  const [openStep, setOpenStep] = useState<1 | 2 | 3 | null>(null)
+  const sm = { label: 'Carboidrati', color: M.carbs.c }
+  const amount = '50'
+  const foodName = 'Riso Parboiled'
+  const result = { grams: 66, kcal: 231, fat: 1, carbs: 50, protein: 5 }
+
+  const CollapsedRow = ({ label, content, onReopen }: { label: string; content: React.ReactNode; onReopen: () => void }) => (
+    <button onClick={onReopen}
+      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', background: CARD, borderRadius: 16, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, width: 72, flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1 }}>{content}</div>
+      <ChevronRight size={15} color={FAINT} />
+    </button>
+  )
+
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Target size={22} color={FOOD} />
+        <span style={{ fontSize: 20, fontWeight: 800 }}>Completa i Macro</span>
+      </div>
+
+      {/* Step 1 — Macro */}
+      {openStep === 1 ? (
+        <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '10px 16px 8px', borderBottom: `1px solid ${CARD2}` }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT }}>Macro</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: 16 }}>
+            {[{ key: 'fat', label: 'Grassi', color: M.fat.c }, { key: 'carbs', label: 'Carboidrati', color: M.carbs.c }, { key: 'protein', label: 'Proteine', color: M.protein.c }].map(m => (
+              <button key={m.key} onClick={() => setOpenStep(null)}
+                style={{ padding: '12px 0', borderRadius: 12, border: m.key === 'carbs' ? `2px solid ${m.color}` : `1px solid ${CARD2}`, background: m.key === 'carbs' ? m.color + '20' : 'transparent', color: m.key === 'carbs' ? m.color : FAINT, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <CollapsedRow label="Macro"
+          content={<span style={{ fontSize: 15, fontWeight: 700, color: sm.color }}>{sm.label}</span>}
+          onReopen={() => setOpenStep(1)} />
+      )}
+
+      {/* Step 2 — Quantità */}
+      {openStep === 2 ? (
+        <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '10px 16px 8px', borderBottom: `1px solid ${CARD2}` }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT }}>Quantità</span>
+          </div>
+          <div style={{ padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 14, border: `2px solid ${CARD2}`, background: CARD2, fontSize: 32, fontWeight: 900, color: TXT }}>
+              {amount}<span style={{ fontSize: 20, fontWeight: 700, color: sm.color }}> g</span>
+            </div>
+            <p style={{ fontSize: 12, color: DIM, textAlign: 'center', marginTop: 8 }}>
+              Circa <span style={{ fontWeight: 700, color: TXT }}>{Number(amount) * 4} kcal</span> da carboidrati
+            </p>
+          </div>
+        </div>
+      ) : (
+        <CollapsedRow label="Quantità"
+          content={<span style={{ fontSize: 15, fontWeight: 700, color: TXT }}>{amount}<span style={{ color: sm.color }}> g</span></span>}
+          onReopen={() => setOpenStep(2)} />
+      )}
+
+      {/* Step 3 — Fonte */}
+      {openStep === 3 ? (
+        <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '10px 16px 8px', borderBottom: `1px solid ${CARD2}` }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT }}>Fonte</span>
+          </div>
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: CARD2, borderRadius: 12, padding: '0 14px', height: 44 }}>
+              <Search size={15} color={DIM} /><span style={{ fontSize: 13, color: FAINT }}>Cerca alimento...</span>
+            </div>
+            <div style={{ background: sm.color + '15', border: `1px solid ${sm.color}40`, borderRadius: 12, padding: '10px 14px' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: sm.color }}>{foodName}</span>
+              <p style={{ fontSize: 12, color: DIM, marginTop: 3 }}>G 1g · C 76g · P 7g / 100g</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <CollapsedRow label="Fonte"
+          content={<span style={{ fontSize: 15, fontWeight: 600, color: TXT }}>{foodName}</span>}
+          onReopen={() => setOpenStep(3)} />
+      )}
+
+      {/* Result */}
+      <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden', border: `2px solid ${M.kcal.c}35` }}>
+        <div style={{ padding: '10px 20px', background: M.kcal.c + '18', borderBottom: `1px solid ${M.kcal.c}30` }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: M.kcal.c }}>Risultato</span>
+        </div>
+        <div style={{ padding: '20px 20px 8px', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, color: DIM, marginBottom: 6 }}>
+            Per ottenere <span style={{ fontWeight: 700, color: sm.color }}>{amount}g di {sm.label}</span>
+          </p>
+          <p style={{ fontSize: 58, fontWeight: 900, color: TXT, lineHeight: 1 }}>
+            {result.grams}<span style={{ fontSize: 24, fontWeight: 600, color: DIM }}> g</span>
+          </p>
+          <p style={{ fontSize: 18, fontWeight: 600, color: DIM, marginTop: 4 }}>{foodName}</p>
+        </div>
+        <div style={{ height: 1, background: CARD2, margin: '10px 20px' }} />
+        <div style={{ padding: '0 12px 16px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, textAlign: 'center', marginBottom: 10 }}>Apporto totale</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { label: 'Calorie',     val: result.kcal, unit: 'kcal', color: M.kcal.c },
+              { label: 'Grassi',      val: result.fat,  unit: 'g',    color: M.fat.c },
+              { label: 'Carboidrati', val: result.carbs,unit: 'g',    color: M.carbs.c },
+              { label: 'Proteine',    val: result.protein, unit: 'g', color: M.protein.c },
+            ].map(item => (
+              <div key={item.label} style={{ borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px 8px', background: item.color + '18' }}>
+                <span style={{ fontSize: 12, color: DIM, marginBottom: 4 }}>{item.label}</span>
+                <span style={{ fontSize: 28, fontWeight: 800, color: item.color, lineHeight: 1 }}>
+                  {item.val}<span style={{ fontSize: 13, fontWeight: 500 }}>{item.unit}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════ PIANO ALIMENTARE ═══════════════════════════
+function FoodPlan() {
+  const [expandedId, setExpandedId] = useState<number | null>(1)
+  const plans = [
+    {
+      id: 1, name: 'Massa + Cardio', isActive: true, start: '01/01/2026', end: '28/02/2026',
+      daily: { kcal: 2800, fat: 80, carbs: 330, protein: 190 },
+      meals: [
+        { meal: 'Colazione', fat: 15, carbs: 80, protein: 40, note: { text: 'Aumentare C +30g giorni di WO', color: M.carbs.c } },
+        { meal: 'Pranzo',    fat: 30, carbs: 110, protein: 65, note: null },
+        { meal: 'Spuntino',  fat: 10, carbs: 60,  protein: 30, note: null },
+        { meal: 'Cena',      fat: 25, carbs: 80,  protein: 55, note: null },
+      ],
+      note: { label: 'Ipertrofia', color: M.carbs.c, text: 'Nei giorni di allenamento pesante aumenta carboidrati di 30g.' },
+    },
+    {
+      id: 2, name: 'Cut Deficit', isActive: false, start: '01/03/2026', end: null,
+      daily: { kcal: 2100, fat: 60, carbs: 220, protein: 180 },
+      meals: [], note: null,
+    },
+  ]
+
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <CalendarDays size={22} color={FOOD} />
+        <span style={{ fontSize: 20, fontWeight: 800 }}>Piano Alimentare</span>
+        <div style={{ flex: 1 }} />
+        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 12, border: 'none', background: FOOD, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          <Plus size={14} /> Nuovo
+        </button>
+      </div>
+
+      {plans.map(plan => {
+        const isOpen = expandedId === plan.id
+        return (
+          <div key={plan.id} style={{ background: CARD, borderRadius: 16, overflow: 'hidden', border: plan.isActive ? `1.5px solid ${FOOD}50` : `1px solid ${CARD2}` }}>
+            <div onClick={() => setExpandedId(isOpen ? null : plan.id)}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: TXT }}>{plan.name}</span>
+                  {plan.isActive && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: FOOD, color: '#fff' }}>Corrente</span>}
+                </div>
+                {plan.start && <p style={{ fontSize: 11, color: DIM, marginTop: 2 }}>{plan.start}{plan.end ? ` – ${plan.end}` : ' – in corso'}</p>}
+                <p style={{ fontSize: 12, marginTop: 4 }}>
+                  <span style={{ color: M.fat.c }}>G {plan.daily.fat}</span>
+                  <span style={{ color: FAINT }}> · </span>
+                  <span style={{ color: M.carbs.c }}>C {plan.daily.carbs}</span>
+                  <span style={{ color: FAINT }}> · </span>
+                  <span style={{ color: M.protein.c }}>P {plan.daily.protein}</span>
+                  <span style={{ color: DIM }}> · {plan.daily.kcal} kcal</span>
+                </p>
+              </div>
+              <span style={{ fontSize: 20, color: DIM, lineHeight: 1, paddingTop: 2 }}>⋮</span>
+            </div>
+
+            {isOpen && (
+              <>
+                {/* Daily totals */}
+                <div style={{ padding: '14px 16px', background: FOOD + '12', borderTop: `1px solid ${FOOD}25` }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+                    {[
+                      { label: 'Kcal', val: plan.daily.kcal, color: M.kcal.c },
+                      { label: 'G',    val: plan.daily.fat,     color: M.fat.c },
+                      { label: 'C',    val: plan.daily.carbs,   color: M.carbs.c },
+                      { label: 'P',    val: plan.daily.protein, color: M.protein.c },
+                    ].map(f => (
+                      <div key={f.label}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: f.color, marginBottom: 4 }}>{f.label}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: f.color }}>{f.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Per-meal blocks */}
+                {plan.meals.map(m => (
+                  <div key={m.meal} style={{ padding: '10px 16px', borderTop: `1px solid ${CARD2}` }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: TXT, marginBottom: 8 }}>{m.meal}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                      {[{ l: 'G', v: m.fat, c: M.fat.c }, { l: 'C', v: m.carbs, c: M.carbs.c }, { l: 'P', v: m.protein, c: M.protein.c }].map(f => (
+                        <div key={f.l}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: f.c, marginBottom: 3 }}>{f.l}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: TXT }}>{f.v}g</div>
+                        </div>
+                      ))}
+                    </div>
+                    {m.note && (
+                      <div style={{ marginTop: 8, padding: '5px 10px', borderLeft: `3px solid ${m.note.color}`, background: m.note.color + '12', borderRadius: '0 8px 8px 0' }}>
+                        <span style={{ fontSize: 11, color: m.note.color }}>{m.note.text}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {/* Plan note */}
+                {plan.note && (
+                  <div style={{ padding: '10px 16px 14px', borderTop: `1px solid ${CARD2}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, marginBottom: 8 }}>Note piano</div>
+                    <div style={{ borderRadius: 10, border: `1px solid ${CARD2}`, borderLeft: `3px solid ${plan.note.color}`, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: CARD2 }}>
+                        <ChevronDown size={13} color={FAINT} />
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: plan.note.color }}>{plan.note.label}</span>
+                      </div>
+                      <div style={{ padding: '8px 14px' }}>
+                        <p style={{ fontSize: 13, color: DIM, lineHeight: 1.5 }}>{plan.note.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ════════════════════════════════════ RICETTE ════════════════════════════════════
+function FoodRecipes() {
+  const [expandedId, setExpandedId] = useState<number | null>(1)
+  const recipes = [
+    {
+      id: 1, name: 'Bowl Riso e Pollo', servings: 2, totalWeight: 400,
+      ingredients: [
+        { name: 'Riso Parboiled', qty: 200, unit: 'g' },
+        { name: 'Petto di Pollo', qty: 150, unit: 'g' },
+        { name: 'Olio EVO',       qty: 10,  unit: 'g' },
+        { name: 'Verdure miste',  qty: 40,  unit: 'g' },
+      ],
+      totale:   { kcal: 826, fat: 14, carbs: 155, protein: 54 },
+      porzione: { kcal: 413, fat: 7,  carbs: 78,  protein: 27 },
+      per100:   { kcal: 206, fat: 3.5, carbs: 38.8, protein: 13.5 },
+    },
+    {
+      id: 2, name: 'Pancake Proteici', servings: 1, totalWeight: 180,
+      ingredients: [
+        { name: 'Fiocchi di Avena', qty: 80,  unit: 'g'  },
+        { name: 'Uova',             qty: 2,   unit: 'pz' },
+        { name: 'Latte scremato',   qty: 100, unit: 'ml' },
+      ],
+      totale:   { kcal: 460, fat: 13, carbs: 62, protein: 26 },
+      porzione: { kcal: 460, fat: 13, carbs: 62, protein: 26 },
+      per100:   { kcal: 256, fat: 7.2, carbs: 34.4, protein: 14.4 },
+    },
+  ]
+  const MacroPills = ({ data, size = 'sm' }: { data: { kcal: number; fat: number; carbs: number; protein: number }; size?: 'sm' | 'lg' }) => (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
+      {[['Kcal', data.kcal, M.kcal.c], ['G', `${data.fat}`, M.fat.c], ['C', `${data.carbs}`, M.carbs.c], ['P', `${data.protein}`, M.protein.c]].map(([l, v, c]) => (
+        <span key={String(l)} style={{ fontSize: size === 'lg' ? 13 : 11, fontWeight: 700, padding: size === 'lg' ? '4px 10px' : '3px 8px', borderRadius: 8, background: String(c) + '20', color: String(c) }}>{l} {v}{String(l) !== 'Kcal' ? 'g' : ''}</span>
+      ))}
+    </div>
+  )
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <ChefHat size={22} color={FOOD} />
+        <span style={{ fontSize: 20, fontWeight: 800 }}>Ricette</span>
+        <div style={{ flex: 1 }} />
+        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 12, border: 'none', background: FOOD, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          <Plus size={14} /> Nuova Ricetta
+        </button>
+      </div>
+      {recipes.map(recipe => {
+        const isOpen = expandedId === recipe.id
+        return (
+          <div key={recipe.id} style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+            <div onClick={() => setExpandedId(isOpen ? null : recipe.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', cursor: 'pointer' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: TXT }}>{recipe.name}</div>
+                <p style={{ fontSize: 12, marginTop: 3, color: DIM }}>
+                  {recipe.totalWeight}g ·{' '}
+                  <span style={{ color: M.kcal.c }}>{recipe.per100.kcal} kcal</span> ·{' '}
+                  <span style={{ color: M.fat.c }}>G {recipe.per100.fat}g</span> ·{' '}
+                  <span style={{ color: M.carbs.c }}>C {recipe.per100.carbs}g</span> ·{' '}
+                  <span style={{ color: M.protein.c }}>P {recipe.per100.protein}g</span>
+                  <span style={{ color: FAINT }}> /100g</span>
+                </p>
+              </div>
+              <ChevronDown size={14} color={DIM} style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+            </div>
+            {isOpen && (
+              <div style={{ borderTop: `1px solid ${CARD2}` }}>
+                <div style={{ padding: '10px 16px 6px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, marginBottom: 8 }}>Ingredienti</div>
+                  {recipe.ingredients.map((ing, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < recipe.ingredients.length - 1 ? `1px solid ${CARD2}` : 'none' }}>
+                      <span style={{ fontSize: 11, color: FAINT, width: 20, flexShrink: 0 }}>{i + 1}.</span>
+                      <span style={{ flex: 1, fontSize: 13, color: TXT, fontWeight: 600 }}>{ing.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: DIM }}>{ing.qty} {ing.unit}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Totals box */}
+                <div style={{ margin: '8px 12px 14px', borderRadius: 12, background: FOOD + '10', overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 14px', textAlign: 'center', borderBottom: `1px solid ${FOOD}20` }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, marginBottom: 6 }}>Totale</div>
+                    <MacroPills data={recipe.totale} />
+                  </div>
+                  <div style={{ padding: '10px 14px', textAlign: 'center', borderBottom: `1px solid ${FOOD}20` }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, marginBottom: 6 }}>Per porzione ({recipe.servings > 1 ? `${Math.round(recipe.totalWeight / recipe.servings)}g` : `${recipe.totalWeight}g`})</div>
+                    <MacroPills data={recipe.porzione} />
+                  </div>
+                  <div style={{ padding: '10px 14px', textAlign: 'center', background: FOOD + '18' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FOOD, marginBottom: 6 }}>Per 100g</div>
+                    <MacroPills data={{ kcal: recipe.per100.kcal, fat: recipe.per100.fat, carbs: recipe.per100.carbs, protein: recipe.per100.protein }} size="lg" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ════════════════════════════════════ LISTA SPESA ════════════════════════════════
+function FoodShopping() {
+  const [items, setItems] = useState([
+    { id: 1, name: 'Riso Parboiled',   qty: '1 kg',  checked: false },
+    { id: 2, name: 'Petto di Pollo',   qty: '500 g', checked: false },
+    { id: 3, name: 'Fiocchi di Avena', qty: null,    checked: false },
+    { id: 4, name: 'Uova',             qty: '6 pz',  checked: true  },
+    { id: 5, name: 'Olio EVO',         qty: '1 L',   checked: true  },
+  ])
+  const toggle = (id: number) => setItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i))
+  const unchecked = items.filter(i => !i.checked)
+  const checked   = items.filter(i =>  i.checked)
+  const Row = ({ item, i, total, dim }: { item: typeof items[0]; i: number; total: number; dim?: boolean }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < total - 1 ? `1px solid ${CARD2}` : 'none', opacity: dim ? 0.6 : 1 }}>
+      <button onClick={() => toggle(item.id)}
+        style={{ width: 20, height: 20, borderRadius: 6, border: item.checked ? 'none' : `2px solid ${FAINT}`, background: item.checked ? FOOD : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+        {item.checked && <Check size={11} color="#fff" />}
+      </button>
+      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: item.checked ? DIM : TXT, textDecoration: item.checked ? 'line-through' : 'none' }}>{item.name}</span>
+      {item.qty && (
+        <span style={{ fontSize: 12, color: item.checked ? FAINT : DIM, ...(item.checked ? {} : { padding: '2px 8px', background: CARD2, borderRadius: 8 }) }}>{item.qty}</span>
+      )}
+      <Trash2 size={14} color={FAINT} style={{ cursor: 'pointer', flexShrink: 0 }} />
+    </div>
+  )
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <ShoppingCart size={22} color={FOOD} />
+        <span style={{ fontSize: 20, fontWeight: 800 }}>Lista della Spesa</span>
+      </div>
+      {/* Add form */}
+      <div style={{ background: CARD, borderRadius: 16, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: CARD2, borderRadius: 12, padding: '0 14px', height: 44 }}>
+          <Search size={15} color={DIM} /><span style={{ fontSize: 13, color: FAINT }}>Cerca o scrivi un alimento...</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ flex: 1, height: 40, background: CARD2, borderRadius: 12, display: 'flex', alignItems: 'center', padding: '0 14px' }}>
+            <span style={{ fontSize: 13, color: FAINT }}>Qtà (es. 1 kg)</span>
+          </div>
+          <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 18px', height: 40, borderRadius: 12, border: 'none', background: FOOD, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+            <Plus size={14} /> Aggiungi
+          </button>
+        </div>
+      </div>
+      {/* Unchecked */}
+      {unchecked.length > 0 && (
+        <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+          {unchecked.map((item, i) => <Row key={item.id} item={item} i={i} total={unchecked.length} />)}
+        </div>
+      )}
+      {/* Acquistati */}
+      {checked.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', marginBottom: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT }}>Acquistati</span>
+            <button style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>Svuota</button>
+          </div>
+          <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden' }}>
+            {checked.map((item, i) => <Row key={item.id} item={item} i={i} total={checked.length} dim />)}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
