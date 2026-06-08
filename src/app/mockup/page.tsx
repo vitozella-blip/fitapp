@@ -111,15 +111,15 @@ function CardTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function MockupPage() {
-  const [view, setView] = useState<'dash' | 'food' | 'train' | 'diary'>('dash')
+  const [view, setView] = useState<'dash' | 'food' | 'train' | 'fdiary' | 'diary'>('dash')
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TXT, fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: BG, padding: '12px 16px',
         display: 'flex', gap: 6, borderBottom: '1px solid #ffffff10', overflowX: 'auto' }}>
-        {([['dash', 'Dashboard'], ['food', 'Aliment.'], ['train', 'Allen.'], ['diary', 'Diario WO']] as const).map(([k, lbl]) => (
+        {([['dash', 'Dashboard'], ['food', 'Aliment.'], ['train', 'Allen.'], ['fdiary', 'Diario P.'], ['diary', 'Diario WO']] as const).map(([k, lbl]) => (
           <button key={k} onClick={() => setView(k)}
             style={{ flex: '1 0 auto', padding: '9px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
-              background: view === k ? (k === 'food' ? FOOD : (k === 'train' || k === 'diary') ? TRAIN : '#30363d') : CARD, color: view === k ? '#fff' : DIM }}>
+              background: view === k ? (k === 'food' || k === 'fdiary' ? FOOD : (k === 'train' || k === 'diary') ? TRAIN : '#30363d') : CARD, color: view === k ? '#fff' : DIM }}>
             {lbl}
           </button>
         ))}
@@ -127,6 +127,7 @@ export default function MockupPage() {
       {view === 'dash' && <Dash />}
       {view === 'food' && <Food />}
       {view === 'train' && <Train />}
+      {view === 'fdiary' && <FoodDiary />}
       {view === 'diary' && <Diary />}
     </div>
   )
@@ -454,121 +455,340 @@ function Train() {
   )
 }
 
+// ════════════════════════════════════ DIARIO PASTI ════════════════════════
+function FoodDiary() {
+  const [date, setDate] = useState(new Date())
+  const [expandedMeal, setExpandedMeal] = useState<number | null>(0)
+  const [freeMeals, setFreeMeals] = useState<Set<number>>(new Set())
+
+  type FoodItem = { name: string; qty: string; kcal: number; protein: number; carbs: number; fat: number }
+  const MEALS: { name: string; kcal: number; protein: number; carbs: number; fat: number; items: FoodItem[] }[] = [
+    { name: 'Colazione', kcal: 420, protein: 30, carbs: 55, fat: 12, items: [
+      { name: 'Latte intero',    qty: '250ml', kcal: 155, protein:  8, carbs: 12, fat:  9 },
+      { name: "Fiocchi d'avena", qty: '80g',   kcal: 296, protein: 10, carbs: 55, fat:  6 },
+      { name: 'Mirtilli',        qty: '100g',  kcal:  57, protein:  1, carbs: 14, fat:  0 },
+    ]},
+    { name: 'Spuntino mattina', kcal: 180, protein: 22, carbs: 5, fat: 7, items: [
+      { name: 'Yogurt greco', qty: '150g', kcal:  95, protein: 17, carbs: 4, fat:  1 },
+      { name: 'Mandorle',     qty: '20g',  kcal: 122, protein:  4, carbs: 2, fat: 11 },
+    ]},
+    { name: 'Pranzo', kcal: 680, protein: 45, carbs: 75, fat: 18, items: [
+      { name: 'Riso integrale', qty: '100g', kcal: 370, protein:  8, carbs: 77, fat:  3 },
+      { name: 'Pollo arrosto',  qty: '200g', kcal: 294, protein: 56, carbs:  0, fat:  8 },
+      { name: 'Olio EVO',       qty: '10g',  kcal:  88, protein:  0, carbs:  0, fat: 10 },
+    ]},
+    { name: 'Spuntino pomeriggio', kcal: 0, protein: 0, carbs: 0, fat: 0, items: [] },
+    { name: 'Cena',                kcal: 0, protein: 0, carbs: 0, fat: 0, items: [] },
+  ]
+
+  const total = MEALS.reduce(
+    (a, m) => ({ kcal: a.kcal + m.kcal, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+  )
+  const targets = { kcal: 2460, protein: 150, carbs: 330, fat: 60 }
+
+  return (
+    <div style={{ padding: '16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <DayNav date={date} setDate={setDate} accent={FOOD} />
+
+      {/* Macro card */}
+      <div style={{ background: CARD, borderRadius: 20, padding: 16, boxShadow: SHADOW, borderTop: `3px solid ${FOOD}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: 36, fontWeight: 800, lineHeight: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Dot c={M.kcal.c} />
+            <span>{total.kcal} <span style={{ fontSize: 14, fontWeight: 500, color: FAINT }}>/ {targets.kcal} kcal</span></span>
+          </p>
+          <span style={{ fontSize: 18, fontWeight: 800, color: M.kcal.c }}>{Math.round(total.kcal / targets.kcal * 100)}%</span>
+        </div>
+        <Bar value={total.kcal} max={targets.kcal} color={M.kcal.c} />
+        {/* Macro bars */}
+        <div style={{ marginTop: 14 }}>
+          <MacroRows data={[
+            { k: 'fat',     v: total.fat,     m: targets.fat },
+            { k: 'carbs',   v: total.carbs,   m: targets.carbs },
+            { k: 'protein', v: total.protein, m: targets.protein },
+          ]} />
+        </div>
+        {/* Ti restano */}
+        <div style={{ marginTop: 12, padding: '9px 12px', borderRadius: 11, background: M.kcal.c + '1a',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: DIM }}>Ti restano</span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: M.kcal.c }}>
+              {targets.kcal - total.kcal}<span style={{ fontSize: 10, fontWeight: 500, color: FAINT }}> kcal</span>
+            </span>
+            <span style={{ color: FAINT }}>·</span>
+            <span style={{ fontSize: 12, color: M.fat.c }}>{targets.fat - total.fat}<span style={{ fontSize: 10, color: FAINT }}>g</span></span>
+            <span style={{ color: FAINT }}>/</span>
+            <span style={{ fontSize: 12, color: M.carbs.c }}>{targets.carbs - total.carbs}<span style={{ fontSize: 10, color: FAINT }}>g</span></span>
+            <span style={{ color: FAINT }}>/</span>
+            <span style={{ fontSize: 12, color: M.protein.c }}>{targets.protein - total.protein}<span style={{ fontSize: 10, color: FAINT }}>g</span></span>
+          </span>
+        </div>
+      </div>
+
+      {/* Sezioni pasto */}
+      {MEALS.map((meal, i) => {
+        const isOpen = expandedMeal === i
+        const hasMacros = meal.kcal > 0
+        const isFree = freeMeals.has(i)
+        return (
+          <div key={i} style={{ background: CARD, borderRadius: 16, overflow: 'hidden', boxShadow: SHADOW,
+            borderLeft: `3px solid ${hasMacros ? FOOD : '#ffffff14'}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}
+              onClick={() => setExpandedMeal(isOpen ? null : i)}>
+              <MealIcon name={meal.name} size={18} color={hasMacros ? FOOD : FAINT} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{meal.name}</p>
+                {hasMacros && (
+                  <p style={{ margin: '2px 0 0', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: M.kcal.c, fontWeight: 700 }}>{meal.kcal}</span>
+                    <span style={{ color: FAINT }}>·</span>
+                    <span style={{ color: M.fat.c }}>{meal.fat}</span>
+                    <span style={{ color: FAINT }}>·</span>
+                    <span style={{ color: M.carbs.c }}>{meal.carbs}</span>
+                    <span style={{ color: FAINT }}>·</span>
+                    <span style={{ color: M.protein.c }}>{meal.protein}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            {isOpen && (
+              <div style={{ borderTop: '1px solid #ffffff0a' }}>
+                {/* Pasto libero + Copia ieri per questo pasto */}
+                <div style={{ display: 'flex', gap: 8, padding: '10px 14px' }}>
+                  <button onClick={(e) => { e.stopPropagation(); setFreeMeals(s => { const n = new Set(s); isFree ? n.delete(i) : n.add(i); return n }) }}
+                    style={{ flex: 1, padding: '8px', borderRadius: 12,
+                      border: `1.5px solid ${isFree ? FOOD : FOOD + '40'}`,
+                      background: isFree ? FOOD + '20' : 'transparent',
+                      color: FOOD, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                    {isFree ? '✓ ' : ''}Pasto libero
+                  </button>
+                  <button style={{ flex: 1, padding: '8px', borderRadius: 12,
+                    border: '1px solid #ffffff14', background: CARD2, color: DIM,
+                    fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    <History size={13} /> Copia ieri
+                  </button>
+                </div>
+                {meal.items.map((item, j) => (
+                  <div key={j} style={{ display: 'flex', alignItems: 'center', padding: '9px 14px',
+                    borderBottom: '1px solid #ffffff08' }}>
+                    <div style={{ width: 3, height: 24, borderRadius: 2, background: M.carbs.c + '80', marginRight: 10, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 13, color: TXT }}>{item.name}</span>
+                      <span style={{ fontSize: 12, color: FAINT }}> {item.qty}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                      <span style={{ color: FAINT, fontSize: 11 }}>·</span>
+                      <span style={{ fontSize: 12, color: M.kcal.c,    fontWeight: 600 }}>{item.kcal}</span>
+                      <span style={{ fontSize: 12, color: M.fat.c     }}>{item.fat}</span>
+                      <span style={{ fontSize: 12, color: M.carbs.c   }}>{item.carbs}</span>
+                      <span style={{ fontSize: 12, color: M.protein.c }}>{item.protein}</span>
+                    </div>
+                    <div style={{ width: 3, height: 24, borderRadius: 2, background: '#e05555' + '80', marginLeft: 10, flexShrink: 0 }} />
+                  </div>
+                ))}
+                <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Plus size={14} color={FOOD} />
+                  <span style={{ fontSize: 13, color: FOOD, fontWeight: 600 }}>Aggiungi alimento</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ════════════════════════════════════ DIARIO ALLENAMENTI ══════════════════
 function Diary() {
   const [date, setDate] = useState(new Date())
   const [open, setOpen] = useState<number | null>(0)
   const [tag, setTag] = useState('')
-  const TAGS = ['SS', 'JS', 'MR', 'WD', 'D', 'S']
-  // esercizi della scheda con riscaldamento (warm) + set di lavoro (sets)
+  const [timerOn, setTimerOn] = useState(false)
+  const TAGS = ['SS', 'JS', 'MR', 'WD', 'D', 'S', 'TS', 'BO']
+
   const ex = [
-    { name: 'Panca piana', target: '4×8 · rec 90s', st: 'done',
+    { name: 'Panca piana',         nSets: 4, reps: '8',  rec: '90s', st: 'done',
       warm: [{ l: 'R1', v: '20×12' }, { l: 'R2', v: '40×10' }],
-      sets: [{ l: 'S1', v: '60×8' }, { l: 'S2', v: '60×8' }, { l: 'S3', v: '62×6' }, { l: 'S4', v: '62×6' }], pair: null },
-    { name: 'Spinte manubri', target: '3×10 · rec 75s', st: 'done',
+      sets: [{ l: 'S1', v: '60×8' }, { l: 'S2', v: '60×8' }, { l: 'S3', v: '62×6' }, { l: 'S4', v: '62×6' }],
+      pair: null, noteS: true, noteP: false },
+    { name: 'Spinte manubri',      nSets: 3, reps: '10', rec: '75s', st: 'done',
       warm: [{ l: 'R1', v: '12×12' }],
-      sets: [{ l: 'S1', v: '24×10' }, { l: 'S2', v: '24×9' }, { l: 'S3', v: '24×8' }], pair: 'SS' },
-    { name: 'Croci ai cavi', target: '3×12 · rec 60s', st: 'partial',
+      sets: [{ l: 'S1', v: '24×10' }, { l: 'S2', v: '24×9' }, { l: 'S3', v: '24×8' }],
+      pair: 'SS', noteS: false, noteP: true },
+    { name: 'Croci ai cavi',       nSets: 3, reps: '12', rec: '60s', st: 'partial',
       warm: [],
-      sets: [{ l: 'S1', v: '15×12' }, { l: 'S2', v: '15×10' }], pair: 'SS' },
-    { name: 'Lat machine', target: '4×10 · rec 90s', st: null, warm: [], sets: [], pair: null },
-    { name: 'Rematore bilanciere', target: '4×8 · rec 90s', st: null, warm: [], sets: [], pair: null },
+      sets: [{ l: 'S1', v: '15×12' }, { l: 'S2', v: '15×10' }],
+      pair: 'SS', noteS: false, noteP: false },
+    { name: 'Lat machine',         nSets: 4, reps: '10', rec: '90s', st: null, warm: [], sets: [], pair: null, noteS: false, noteP: false },
+    { name: 'Rematore bilanciere', nSets: 4, reps: '8',  rec: '90s', st: null, warm: [], sets: [], pair: null, noteS: false, noteP: false },
   ]
+
   const statusStyle = (st: string | null) =>
-    st === 'done' ? { bg: '#7dbf7d', icon: <Check size={13} color="#fff" /> }
-    : st === 'partial' ? { bg: '#f0aa78', icon: <Minus size={13} color="#fff" /> }
+    st === 'done'    ? { bg: '#7dbf7d', icon: <Check  size={13} color="#fff" /> }
+    : st === 'partial' ? { bg: '#f0aa78', icon: <Minus  size={13} color="#fff" /> }
     : { bg: 'transparent', icon: null }
 
   return (
-    <div style={{ padding: '16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Navigazione giorni (controlli bianchi come dashboard) */}
+    <div style={{ padding: '16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <DayNav date={date} setDate={setDate} accent="#ffffff" />
 
-      {/* Tennis svolto */}
-      <div style={{ background: CARD, borderRadius: 16, padding: '10px 14px', boxShadow: SHADOW, display: 'flex', alignItems: 'center', gap: 10, borderTop: `3px solid ${TENNIS}` }}>
-        <span style={{ width: 30, height: 30, borderRadius: '50%', background: TENNIS, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TennisBall size={16} color="#fff" strokeWidth={2} /></span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Tennis</span>
-        <span style={{ fontSize: 12, color: DIM }}>· allenamento · 1h</span>
+      {/* Recovery timer chip */}
+      {timerOn && (
+        <div style={{ background: TRAIN + '20', border: `1px solid ${TRAIN}50`, borderRadius: 14,
+          padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Timer size={16} color={TRAIN} />
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: TRAIN }}>Recupero · 01:22</span>
+          <span style={{ fontSize: 11, color: DIM }}>S3 Panca piana</span>
+          <button onClick={() => setTimerOn(false)}
+            style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: '#ffffff14',
+              color: DIM, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={11} />
+          </button>
+        </div>
+      )}
+
+      {/* Tennis card */}
+      <div style={{ background: CARD, borderRadius: 16, padding: '10px 14px', boxShadow: SHADOW,
+        display: 'flex', alignItems: 'center', gap: 10, borderLeft: `3px solid ${TENNIS}` }}>
+        <span style={{ width: 30, height: 30, borderRadius: '50%', background: TENNIS,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <TennisBall size={16} color="#fff" strokeWidth={2} />
+        </span>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>Tennis</p>
+          <p style={{ margin: '1px 0 0', fontSize: 11, color: DIM }}>allenamento · 1.5h</p>
+        </div>
       </div>
 
-      {/* Scheda — un'unica card con bordo che contiene l'elenco esercizi */}
-      <div style={{ background: CARD, borderRadius: 20, boxShadow: SHADOW, border: '1px solid #ffffff14', borderTop: `3px solid ${TRAIN}`, overflow: 'hidden' }}>
+      {/* Scheda card */}
+      <div style={{ background: CARD, borderRadius: 20, boxShadow: SHADOW,
+        border: '1px solid #ffffff14', borderTop: `3px solid ${TRAIN}`, overflow: 'hidden' }}>
         {/* Header scheda */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #ffffff10' }}>
-          <span style={{ width: 16, height: 16, borderRadius: '50%', background: TRAIN, display: 'inline-block' }} />
+          <span style={{ width: 32, height: 32, borderRadius: '50%', background: TRAIN, color: '#fff',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 800, flexShrink: 0 }}>CB</span>
           <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: TRAIN }}>WORKOUT 1 — CHEST + BACK</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: DIM }}>W-6</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: DIM, flexShrink: 0 }}>W-6</span>
         </div>
 
-        {/* Esercizi (righe dell'elenco) */}
+        {/* Exercises */}
         {ex.map((e, i) => {
-          const ss = statusStyle(e.st)
+          const s = statusStyle(e.st)
           const isOpen = open === i
+          const hasData = e.warm.length > 0 || e.sets.length > 0
           return (
-            <div key={i} style={{ borderBottom: i < ex.length - 1 ? '1px solid #ffffff0a' : 'none', background: isOpen ? '#ffffff08' : 'transparent' }}>
-              {/* Pairing badge */}
+            <div key={i} style={{ borderBottom: i < ex.length - 1 ? '1px solid #ffffff0a' : 'none',
+              background: isOpen ? '#ffffff08' : 'transparent' }}>
               {e.pair && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 16px 0' }}>
                   <Link2 size={10} color={TRAIN} />
                   <span style={{ fontSize: 10, fontWeight: 700, color: TRAIN }}>{e.pair}</span>
                 </div>
               )}
-              {/* Riga esercizio */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}
                 onClick={() => setOpen(isOpen ? null : i)}>
-                <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: ss.bg, border: e.st ? 'none' : '1.5px solid #ffffff30' }}>{ss.icon}</span>
+                <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: s.bg, border: e.st ? 'none' : '1.5px solid #ffffff30' }}>{s.icon}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{e.name}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: FAINT }}>{e.target}</p>
+                  {hasData
+                    ? <p style={{ margin: '1px 0 0', fontSize: 10, color: TRAIN }}>{e.sets.length + e.warm.length} eseguiti</p>
+                    : <p style={{ margin: '1px 0 0', fontSize: 11, color: FAINT }}>{e.nSets}×{e.reps} · rec {e.rec}</p>}
                 </div>
-                <span style={{ width: 28, height: 28, borderRadius: 9, background: TRAIN + '1e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ width: 28, height: 28, borderRadius: 9, background: TRAIN + '1e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Plus size={15} color={TRAIN} />
                 </span>
               </div>
-              {/* Set loggati + dettaglio (solo aperto) */}
+
               {isOpen && (
-                <div style={{ padding: '0 16px 14px 50px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {(e.warm.length > 0 || e.sets.length > 0) && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {/* riscaldamento — R1, R2 (niente fiammella, niente rettangolo) */}
-                      {e.warm.map((s, j) => (
-                        <span key={'w'+j} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 8, background: CARD2 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: C_WARM }}>{s.l}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600 }}>{s.v}</span>
-                        </span>
-                      ))}
-                      {/* serie di lavoro */}
-                      {e.sets.map((s, j) => (
-                        <span key={'s'+j} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 8, background: CARD2 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: TRAIN }}>{s.l}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600 }}>{s.v}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {/* selettore tag */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: FAINT, marginRight: 2 }}>Tag:</span>
-                    {TAGS.map(t => (
-                      <button key={t} onClick={() => setTag(tag === t ? '' : t)}
-                        style={{ padding: '3px 9px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                          background: tag === t ? TRAIN : CARD2, color: tag === t ? '#fff' : DIM }}>{t}</button>
+                <div style={{ borderTop: '1px solid #ffffff0a' }}>
+                  {/* Stats row: SET · REP · REC */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '10px 16px 8px' }}>
+                    {([['Set', String(e.nSets)], ['Rep', e.reps], ['Rec', e.rec]] as const).map(([label, val], li) => (
+                      <div key={li} style={{ textAlign: 'center',
+                        borderLeft: li > 0 ? '1px solid #ffffff10' : 'none' }}>
+                        <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: FAINT, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</p>
+                        <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: TRAIN }}>{val}</p>
+                      </div>
                     ))}
                   </div>
-                  {/* form: reps × kg, fiammella (riscaldamento), Set, timer */}
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input placeholder="reps" style={{ width: 50, padding: '7px', borderRadius: 9, border: '1px solid #ffffff14', background: CARD2, color: TXT, fontSize: 13, textAlign: 'center' }} />
-                    <span style={{ color: FAINT }}>×</span>
-                    <input placeholder="kg" style={{ width: 50, padding: '7px', borderRadius: 9, border: '1px solid #ffffff14', background: CARD2, color: TXT, fontSize: 13, textAlign: 'center' }} />
-                    <button title="Riscaldamento" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C_WARM}50`, background: C_WARM + '1e', color: C_WARM, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Flame size={15} /></button>
-                    <button style={{ flex: 1, padding: '8px', borderRadius: 9, border: 'none', background: TRAIN, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Set</button>
-                    <button title="Timer recupero" style={{ width: 36, height: 36, borderRadius: 9, border: 'none', background: CARD2, color: DIM, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Timer size={16} /></button>
+                  {/* Action icons: note scheda | note personali | timer | storico */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                    borderTop: '1px solid #ffffff0a', borderBottom: '1px solid #ffffff0a' }}>
+                    {([
+                      { icon: <BookOpen size={15} />, active: e.noteS,  color: '#f0aa78' },
+                      { icon: <BookOpen size={15} />, active: e.noteP,  color: '#9d8fcc' },
+                      { icon: <Timer    size={15} />, active: timerOn,  color: TRAIN,     action: () => setTimerOn(t => !t) },
+                      { icon: <History  size={15} />, active: false,    color: TRAIN },
+                    ] as { icon: React.ReactNode; active: boolean; color: string; action?: () => void }[]).map((btn, bi) => (
+                      <button key={bi} onClick={btn.action}
+                        style={{ padding: '10px', border: 'none', background: 'transparent', cursor: 'pointer',
+                          borderLeft: bi > 0 ? '1px solid #ffffff0a' : 'none',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: btn.active ? btn.color : FAINT }}>
+                        {btn.icon}
+                      </button>
+                    ))}
                   </div>
-                  {/* confronto sessioni precedenti */}
-                  <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '9px', borderRadius: 10, border: `1px solid ${TRAIN}40`, background: TRAIN + '14', color: TRAIN, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                    <History size={15} /> Confronta con sessioni precedenti
-                  </button>
+                  <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Set chips */}
+                    {hasData && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {e.warm.map((ws, j) => (
+                          <span key={'w'+j} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 8, background: CARD2 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C_WARM }}>{ws.l}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600 }}>{ws.v}</span>
+                          </span>
+                        ))}
+                        {e.sets.map((ws, j) => (
+                          <span key={'s'+j} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 8, background: CARD2 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: TRAIN }}>{ws.l}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600 }}>{ws.v}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Tag selector */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: FAINT }}>Tag:</span>
+                      {TAGS.map(t => (
+                        <button key={t} onClick={() => setTag(tag === t ? '' : t)}
+                          style={{ padding: '3px 9px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                            background: tag === t ? TRAIN : CARD2, color: tag === t ? '#fff' : DIM }}>{t}</button>
+                      ))}
+                    </div>
+                    {/* Add set form */}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input placeholder="reps" style={{ width: 52, padding: '8px 4px', borderRadius: 9,
+                        border: '1px solid #ffffff14', background: CARD2, color: TXT, fontSize: 13, textAlign: 'center', outline: 'none' }} />
+                      <span style={{ color: FAINT }}>×</span>
+                      <input placeholder="kg" style={{ width: 52, padding: '8px 4px', borderRadius: 9,
+                        border: '1px solid #ffffff14', background: CARD2, color: TXT, fontSize: 13, textAlign: 'center', outline: 'none' }} />
+                      <button style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C_WARM}50`,
+                        background: C_WARM + '1e', color: C_WARM, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Flame size={15} />
+                      </button>
+                      <button onClick={() => setTimerOn(true)}
+                        style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+                          background: TRAIN, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        + Serie
+                      </button>
+                    </div>
+                    {/* History comparison */}
+                    <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, padding: '9px', borderRadius: 10, border: `1px solid ${TRAIN}40`,
+                      background: TRAIN + '14', color: TRAIN, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                      <History size={15} /> Confronta con sessioni precedenti
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
