@@ -1000,9 +1000,9 @@ function FoodMacros() {
       )}
 
       {/* Result */}
-      <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden', border: `2px solid ${M.kcal.c}35` }}>
-        <div style={{ padding: '10px 20px', background: M.kcal.c + '18', borderBottom: `1px solid ${M.kcal.c}30` }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: M.kcal.c }}>Risultato</span>
+      <div style={{ background: CARD, borderRadius: 16, overflow: 'hidden', border: `2px solid ${FOOD}35` }}>
+        <div style={{ padding: '10px 20px', background: FOOD + '18', borderBottom: `1px solid ${FOOD}30` }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FOOD }}>Risultato</span>
         </div>
         <div style={{ padding: '20px 20px 8px', textAlign: 'center' }}>
           <p style={{ fontSize: 13, color: DIM, marginBottom: 6 }}>
@@ -1014,19 +1014,23 @@ function FoodMacros() {
           <p style={{ fontSize: 18, fontWeight: 600, color: DIM, marginTop: 4 }}>{foodName}</p>
         </div>
         <div style={{ height: 1, background: CARD2, margin: '10px 20px' }} />
-        <div style={{ padding: '0 12px 16px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: FAINT, textAlign: 'center', marginBottom: 10 }}>Apporto totale</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div style={{ padding: '0 12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Kcal — riga intera */}
+          <div style={{ borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', background: M.kcal.c + '18' }}>
+            <span style={{ fontSize: 30, fontWeight: 800, color: M.kcal.c, lineHeight: 1 }}>
+              {result.kcal}<span style={{ fontSize: 14, fontWeight: 500 }}>kcal</span>
+            </span>
+          </div>
+          {/* 3 macro — riga unica */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {[
-              { label: 'Calorie',     val: result.kcal, unit: 'kcal', color: M.kcal.c },
-              { label: 'Grassi',      val: result.fat,  unit: 'g',    color: M.fat.c },
-              { label: 'Carboidrati', val: result.carbs,unit: 'g',    color: M.carbs.c },
-              { label: 'Proteine',    val: result.protein, unit: 'g', color: M.protein.c },
-            ].map(item => (
-              <div key={item.label} style={{ borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px 8px', background: item.color + '18' }}>
-                <span style={{ fontSize: 12, color: DIM, marginBottom: 4 }}>{item.label}</span>
-                <span style={{ fontSize: 28, fontWeight: 800, color: item.color, lineHeight: 1 }}>
-                  {item.val}<span style={{ fontSize: 13, fontWeight: 500 }}>{item.unit}</span>
+              { val: result.fat,     unit: 'g', color: M.fat.c },
+              { val: result.carbs,   unit: 'g', color: M.carbs.c },
+              { val: result.protein, unit: 'g', color: M.protein.c },
+            ].map((item, i) => (
+              <div key={i} style={{ borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 8px', background: item.color + '18' }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: item.color, lineHeight: 1 }}>
+                  {item.val}<span style={{ fontSize: 12, fontWeight: 500 }}>{item.unit}</span>
                 </span>
               </div>
             ))}
