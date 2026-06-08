@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, BookOpen, Copy, Pencil, Trash2 } from 'lucide-react'
+import { MealIcon } from '@/components/shared/icons'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
@@ -197,6 +198,8 @@ export default function FoodDiaryPage() {
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const [freeMeals, setFreeMeals] = useState<Set<string>>(new Set())
   const abortRef = useRef<AbortController | null>(null)
+  const [expandedMeal, setExpandedMeal] = useState<string | null>(null)
+  useEffect(() => { setExpandedMeal(null) }, [selectedDate])
 
   const fetchEntries = useCallback(async () => {
     abortRef.current?.abort()
@@ -297,7 +300,8 @@ export default function FoodDiaryPage() {
       </div>
 
       {/* Macro — identica alla dashboard */}
-      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" {...swipe}>
+      <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden"
+        style={{ borderTopColor: C.carbs, borderTopWidth: 3 }} {...swipe}>
         <div className="flex flex-col gap-2.5 px-4 py-3">
 
           {/* Titolo + legenda */}
@@ -368,79 +372,110 @@ export default function FoodDiaryPage() {
         </div>
       </div>
 
-      {/* Meals */}
-      <div className="grid grid-cols-1 gap-3 md:flex-1 md:min-h-0 md:grid-cols-5">
+      {/* Pasti */}
+      <div className="flex flex-col gap-2.5 md:grid md:grid-cols-5 md:gap-3 md:flex-1 md:min-h-0">
         {MEALS.map(meal => {
           const mealEntries = entries.filter(e => e.meal === meal)
-          const isFree = freeMeals.has(meal)
-          const mealCal = mealEntries.reduce((s, e) => s + calc(e.food.calories, e.quantity), 0)
+          const isFree  = freeMeals.has(meal)
+          const mealCal  = mealEntries.reduce((s, e) => s + calc(e.food.calories, e.quantity), 0)
+          const mealFat  = mealEntries.reduce((s, e) => s + calc(e.food.fat,      e.quantity), 0)
+          const mealCarb = mealEntries.reduce((s, e) => s + calc(e.food.carbs,    e.quantity), 0)
+          const mealProt = mealEntries.reduce((s, e) => s + calc(e.food.protein,  e.quantity), 0)
+          const isOpen  = expandedMeal === meal
+          const hasData = mealCal > 0 || isFree
 
           return (
-            <div key={meal} className={cn(
-              'flex flex-col bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden md:min-h-0',
-              isFree ? 'border-amber-100 dark:border-amber-900/50' : 'border-gray-100 dark:border-gray-800'
-            )}>
+            <div key={meal}
+              className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm md:flex md:flex-col md:min-h-0"
+              style={{ borderLeft: `3px solid ${hasData ? C.carbs : 'rgba(209,213,219,0.5)'}` }}>
+
               {/* Header */}
-              <div className="flex justify-between items-center px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0"
-                style={{ backgroundColor: C.carbs + '18' }}>
-                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: C.carbs }} />
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm uppercase leading-tight" style={{ color: C.carbs }}>{meal}</p>
-                    {(isFree || mealCal > 0) && (
-                      <p className="text-xs leading-none mt-0.5" style={{ color: C.carbs + 'bb' }}>
-                        {isFree ? 'Libero' : `${mealCal} kcal`}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0 self-center">
-                  <button onClick={() => copyFromYesterday(meal)} title="Copia da ieri"
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    style={{ backgroundColor: C.carbs + '22' }}>
-                    <Copy size={12} />
-                  </button>
-                  <button onClick={() => setModal(meal)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-white"
-                    style={{ backgroundColor: C.carbs + 'cc' }}>
-                    <Plus size={14} />
-                  </button>
+              <div className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+                onClick={() => setExpandedMeal(isOpen ? null : meal)}>
+                <MealIcon name={meal} size={18} color={hasData ? C.carbs : '#9ca3af'} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">{meal}</p>
+                  {hasData && (
+                    <p className="text-[11px] mt-0.5 flex items-center gap-1">
+                      {isFree ? (
+                        <span style={{ color: C.carbs }}>Libero 🍟</span>
+                      ) : (
+                        <>
+                          <span style={{ color: C.kcal, fontWeight: 700 }}>{mealCal}</span>
+                          <span className="text-gray-300 dark:text-gray-600">·</span>
+                          <span style={{ color: C.fat }}>{mealFat}</span>
+                          <span className="text-gray-300 dark:text-gray-600">·</span>
+                          <span style={{ color: C.carbs }}>{mealCarb}</span>
+                          <span className="text-gray-300 dark:text-gray-600">·</span>
+                          <span style={{ color: C.protein }}>{mealProt}</span>
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="md:flex-1 md:overflow-y-auto">
-                {isFree ? (
-                  <div className="px-3 py-3 flex items-center gap-2">
-                    <p className="text-sm font-medium" style={{ color: C.carbs }}>Cheat meal</p>
-                    <span className="text-base">🍟</span>
-                  </div>
-                ) : mealEntries.length === 0 ? (
-                  <p className="text-sm text-gray-400 px-3 py-3">Nessun alimento</p>
-                ) : (
+              {/* Body — hidden on mobile until open, always visible on desktop */}
+              <div className={cn(
+                'border-t border-gray-50 dark:border-gray-800 md:flex-1 md:overflow-y-auto md:flex md:flex-col',
+                isOpen ? 'block' : 'hidden md:block'
+              )}>
+                {/* Pasto libero + Copia ieri */}
+                <div className="flex gap-2 px-4 py-2.5">
+                  <button onClick={() => toggleFreeMeal(meal)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold"
+                    style={{
+                      border: `1.5px solid ${isFree ? C.carbs : C.carbs + '40'}`,
+                      background: isFree ? C.carbs + '1a' : 'transparent',
+                      color: C.carbs,
+                    }}>
+                    {isFree ? '✓ Pasto libero' : 'Pasto libero'}
+                  </button>
+                  <button onClick={() => copyFromYesterday(meal)}
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <Copy size={12} /> Copia ieri
+                  </button>
+                </div>
+
+                {/* Alimenti */}
+                {!isFree && mealEntries.length > 0 && (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                    {mealEntries.map(e => (
-                      <SwipeableRow
-                        key={e.id}
-                        onDelete={() => deleteEntry(e.id)}
-                        onEdit={() => setEditEntry(e)}
-                      >
-                        <div className="px-3 py-2.5">
-                          <div className="flex items-baseline gap-1.5 min-w-0">
-                            <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{e.food.name}</p>
-                            <span className="text-xs text-gray-400 shrink-0">{e.quantity}g</span>
+                    {mealEntries.map(e => {
+                      const eKcal  = calc(e.food.calories, e.quantity)
+                      const eFat   = calc(e.food.fat,      e.quantity)
+                      const eCarbs = calc(e.food.carbs,    e.quantity)
+                      const eProt  = calc(e.food.protein,  e.quantity)
+                      return (
+                        <SwipeableRow key={e.id} onDelete={() => deleteEntry(e.id)} onEdit={() => setEditEntry(e)}>
+                          <div className="flex items-center px-4 py-2.5 gap-2">
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{e.food.name}</span>
+                              <span className="text-xs text-gray-400 ml-1.5">{e.quantity}g</span>
+                            </div>
+                            <div className="grid shrink-0 items-center text-[11px]"
+                              style={{ gridTemplateColumns: '28px 5px 14px 5px 18px 5px 18px' }}>
+                              <span style={{ color: C.kcal, fontWeight: 600, textAlign: 'right' }}>{eKcal}</span>
+                              <span className="text-center text-gray-300 dark:text-gray-600">·</span>
+                              <span style={{ color: C.fat, textAlign: 'right' }}>{eFat}</span>
+                              <span className="text-center text-gray-300 dark:text-gray-600">·</span>
+                              <span style={{ color: C.carbs, textAlign: 'right' }}>{eCarbs}</span>
+                              <span className="text-center text-gray-300 dark:text-gray-600">·</span>
+                              <span style={{ color: C.protein, textAlign: 'right' }}>{eProt}</span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            <span style={{ color: C.kcal }}>{calc(e.food.calories, e.quantity)} kcal</span> ·{' '}
-                            <span style={{ color: C.fat }}>{calc(e.food.fat, e.quantity)}g</span> ·{' '}
-                            <span style={{ color: C.carbs }}>{calc(e.food.carbs, e.quantity)}g</span> ·{' '}
-                            <span style={{ color: C.protein }}>{calc(e.food.protein, e.quantity)}g</span>
-                          </p>
-                        </div>
-                      </SwipeableRow>
-                    ))}
+                        </SwipeableRow>
+                      )
+                    })}
                   </div>
                 )}
+
+                {/* Aggiungi alimento */}
+                <button onClick={() => setModal(meal)}
+                  className="flex items-center gap-2 px-4 py-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  style={{ borderTop: mealEntries.length > 0 ? '1px solid rgba(243,244,246,1)' : 'none' }}>
+                  <Plus size={13} style={{ color: C.carbs }} />
+                  <span className="text-sm font-semibold" style={{ color: C.carbs }}>Aggiungi alimento</span>
+                </button>
               </div>
             </div>
           )
