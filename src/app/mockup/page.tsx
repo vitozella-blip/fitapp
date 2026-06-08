@@ -1030,7 +1030,7 @@ function FoodMacros() {
             ].map((item, i) => (
               <div key={i} style={{ borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 8px', background: item.color + '18' }}>
                 <span style={{ fontSize: 24, fontWeight: 800, color: item.color, lineHeight: 1 }}>
-                  {item.val}<span style={{ fontSize: 12, fontWeight: 500 }}>{item.unit}</span>
+                  {item.val}<span style={{ fontSize: 12, fontWeight: 500 }}>g</span>
                 </span>
               </div>
             ))}
@@ -1191,13 +1191,13 @@ function FoodRecipes() {
     const fs = size === 'lg' ? 14 : 12
     return (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' as const }}>
-        <span style={{ fontSize: fs, fontWeight: 700, color: M.kcal.c }}>{data.kcal}kcal</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.kcal.c }}>{data.kcal}</span>
         <span style={{ color: FAINT }}>·</span>
-        <span style={{ fontSize: fs, fontWeight: 700, color: M.fat.c }}>{data.fat}g</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.fat.c }}>{data.fat}</span>
         <span style={{ color: FAINT }}>·</span>
-        <span style={{ fontSize: fs, fontWeight: 700, color: M.carbs.c }}>{data.carbs}g</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.carbs.c }}>{data.carbs}</span>
         <span style={{ color: FAINT }}>·</span>
-        <span style={{ fontSize: fs, fontWeight: 700, color: M.protein.c }}>{data.protein}g</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.protein.c }}>{data.protein}</span>
       </div>
     )
   }
@@ -1223,17 +1223,17 @@ function FoodRecipes() {
                   <span style={{ color: FAINT }}> · </span>
                   <span style={{ color: DIM, fontWeight: 500 }}>{recipe.totalWeight}g</span>
                   <span style={{ color: FAINT, fontSize: 11, fontWeight: 400 }}>
-                    {' '}({recipe.servings > 1 ? `${recipe.servings} por. da ${Math.round(recipe.totalWeight / recipe.servings)}g` : '1 por.'})
+                    {' '}({recipe.servings > 1 ? `${recipe.servings} porzioni da ${Math.round(recipe.totalWeight / recipe.servings)}g` : '1 porzione'})
                   </span>
                 </div>
                 <p style={{ fontSize: 12, marginTop: 3 }}>
-                  <span style={{ color: M.kcal.c }}>{recipe.per100.kcal}kcal</span>
+                  <span style={{ color: M.kcal.c }}>{recipe.per100.kcal}</span>
                   <span style={{ color: FAINT }}> · </span>
-                  <span style={{ color: M.fat.c }}>{recipe.per100.fat}g</span>
+                  <span style={{ color: M.fat.c }}>{recipe.per100.fat}</span>
                   <span style={{ color: FAINT }}> · </span>
-                  <span style={{ color: M.carbs.c }}>{recipe.per100.carbs}g</span>
+                  <span style={{ color: M.carbs.c }}>{recipe.per100.carbs}</span>
                   <span style={{ color: FAINT }}> · </span>
-                  <span style={{ color: M.protein.c }}>{recipe.per100.protein}g</span>
+                  <span style={{ color: M.protein.c }}>{recipe.per100.protein}</span>
                   <span style={{ color: FAINT }}> per 100g</span>
                 </p>
               </div>
