@@ -1187,13 +1187,20 @@ function FoodRecipes() {
       per100:   { kcal: 256, fat: 7.2, carbs: 34.4, protein: 14.4 },
     },
   ]
-  const MacroPills = ({ data, size = 'sm' }: { data: { kcal: number; fat: number; carbs: number; protein: number }; size?: 'sm' | 'lg' }) => (
-    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
-      {[['Kcal', data.kcal, M.kcal.c], ['G', `${data.fat}`, M.fat.c], ['C', `${data.carbs}`, M.carbs.c], ['P', `${data.protein}`, M.protein.c]].map(([l, v, c]) => (
-        <span key={String(l)} style={{ fontSize: size === 'lg' ? 13 : 11, fontWeight: 700, padding: size === 'lg' ? '4px 10px' : '3px 8px', borderRadius: 8, background: String(c) + '20', color: String(c) }}>{l} {v}{String(l) !== 'Kcal' ? 'g' : ''}</span>
-      ))}
-    </div>
-  )
+  const MacroPills = ({ data, size = 'sm' }: { data: { kcal: number; fat: number; carbs: number; protein: number }; size?: 'sm' | 'lg' }) => {
+    const fs = size === 'lg' ? 14 : 12
+    return (
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' as const }}>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.kcal.c }}>{data.kcal}kcal</span>
+        <span style={{ color: FAINT }}>·</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.fat.c }}>{data.fat}g</span>
+        <span style={{ color: FAINT }}>·</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.carbs.c }}>{data.carbs}g</span>
+        <span style={{ color: FAINT }}>·</span>
+        <span style={{ fontSize: fs, fontWeight: 700, color: M.protein.c }}>{data.protein}g</span>
+      </div>
+    )
+  }
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1211,14 +1218,23 @@ function FoodRecipes() {
             <div onClick={() => setExpandedId(isOpen ? null : recipe.id)}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', cursor: 'pointer' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: TXT }}>{recipe.name}</div>
-                <p style={{ fontSize: 12, marginTop: 3, color: DIM }}>
-                  {recipe.totalWeight}g ·{' '}
-                  <span style={{ color: M.kcal.c }}>{recipe.per100.kcal} kcal</span> ·{' '}
-                  <span style={{ color: M.fat.c }}>G {recipe.per100.fat}g</span> ·{' '}
-                  <span style={{ color: M.carbs.c }}>C {recipe.per100.carbs}g</span> ·{' '}
-                  <span style={{ color: M.protein.c }}>P {recipe.per100.protein}g</span>
-                  <span style={{ color: FAINT }}> /100g</span>
+                <div style={{ fontSize: 14, fontWeight: 700, color: TXT }}>
+                  {recipe.name}
+                  <span style={{ color: FAINT }}> · </span>
+                  <span style={{ color: DIM, fontWeight: 500 }}>{recipe.totalWeight}g</span>
+                  <span style={{ color: FAINT, fontSize: 11, fontWeight: 400 }}>
+                    {' '}({recipe.servings > 1 ? `${recipe.servings} por. da ${Math.round(recipe.totalWeight / recipe.servings)}g` : '1 por.'})
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, marginTop: 3 }}>
+                  <span style={{ color: M.kcal.c }}>{recipe.per100.kcal}kcal</span>
+                  <span style={{ color: FAINT }}> · </span>
+                  <span style={{ color: M.fat.c }}>{recipe.per100.fat}g</span>
+                  <span style={{ color: FAINT }}> · </span>
+                  <span style={{ color: M.carbs.c }}>{recipe.per100.carbs}g</span>
+                  <span style={{ color: FAINT }}> · </span>
+                  <span style={{ color: M.protein.c }}>{recipe.per100.protein}g</span>
+                  <span style={{ color: FAINT }}> per 100g</span>
                 </p>
               </div>
               <ChevronDown size={14} color={DIM} style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }} />
