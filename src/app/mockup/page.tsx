@@ -579,12 +579,15 @@ function FoodDiary() {
                       <span style={{ fontSize: 13, color: TXT }}>{item.name}</span>
                       <span style={{ fontSize: 12, color: FAINT }}> {item.qty}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                      <span style={{ color: FAINT, fontSize: 11 }}>·</span>
-                      <span style={{ fontSize: 12, color: M.kcal.c,    fontWeight: 600 }}>{item.kcal}</span>
-                      <span style={{ fontSize: 12, color: M.fat.c     }}>{item.fat}</span>
-                      <span style={{ fontSize: 12, color: M.carbs.c   }}>{item.carbs}</span>
-                      <span style={{ fontSize: 12, color: M.protein.c }}>{item.protein}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '28px 8px 14px 8px 18px 8px 18px',
+                      alignItems: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, color: M.kcal.c, fontWeight: 600, textAlign: 'right' }}>{item.kcal}</span>
+                      <span style={{ color: FAINT, fontSize: 10, textAlign: 'center' }}>·</span>
+                      <span style={{ fontSize: 12, color: M.fat.c, textAlign: 'right' }}>{item.fat}</span>
+                      <span style={{ color: FAINT, fontSize: 10, textAlign: 'center' }}>·</span>
+                      <span style={{ fontSize: 12, color: M.carbs.c, textAlign: 'right' }}>{item.carbs}</span>
+                      <span style={{ color: FAINT, fontSize: 10, textAlign: 'center' }}>·</span>
+                      <span style={{ fontSize: 12, color: M.protein.c, textAlign: 'right' }}>{item.protein}</span>
                     </div>
                     <div style={{ width: 3, height: 24, borderRadius: 2, background: '#e05555' + '80', marginLeft: 10, flexShrink: 0 }} />
                   </div>
