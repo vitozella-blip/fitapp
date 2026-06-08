@@ -56,20 +56,17 @@ function calcTotalsFromSaved(ingredients: SavedIngredient[]): Totals {
 function MacroPills({ calories, protein, carbs, fat, size = 'sm' }: {
   calories: number; protein: number; carbs: number; fat: number; size?: 'sm' | 'lg'
 }) {
+  const fs = size === 'lg' ? 'text-sm' : 'text-[11px]'
+  const dot = <span className="text-[10px]" style={{ color: '#5c6672' }}>·</span>
   return (
-    <div className="flex gap-1.5 flex-wrap justify-center">
-      {[
-        { l: 'Kcal', v: String(calories), c: '#6abf6a' },
-        { l: 'G',    v: `${fat}g`,        c: '#5b9bd5' },
-        { l: 'C',    v: `${carbs}g`,      c: '#f0aa78' },
-        { l: 'P',    v: `${protein}g`,    c: '#9d8fcc' },
-      ].map(m => (
-        <span key={m.l}
-          className={cn('font-bold rounded-lg', size === 'lg' ? 'text-sm px-2.5 py-1' : 'text-[11px] px-2 py-0.5')}
-          style={{ backgroundColor: m.c + '18', color: m.c }}>
-          {m.l} {m.v}
-        </span>
-      ))}
+    <div className="flex gap-2 flex-wrap justify-center items-center">
+      <span className={cn('font-bold', fs)} style={{ color: '#6abf6a' }}>{calories}</span>
+      {dot}
+      <span className={cn('font-bold', fs)} style={{ color: '#5b9bd5' }}>{fat}</span>
+      {dot}
+      <span className={cn('font-bold', fs)} style={{ color: '#f0aa78' }}>{carbs}</span>
+      {dot}
+      <span className={cn('font-bold', fs)} style={{ color: '#9d8fcc' }}>{protein}</span>
     </div>
   )
 }
@@ -469,15 +466,28 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
       <div className="flex items-start gap-3 px-4 py-3 cursor-pointer"
         onClick={() => { if (snapped.current) { snapTo(null); return }; if (!editing) setOpen(o => !o) }}>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{recipe.name}</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+            {recipe.name}
+            {totals.totalWeight > 0 && <>
+              <span className="text-gray-400"> · </span>
+              <span className="text-gray-500 font-medium">{totals.totalWeight}g</span>
+              <span className="text-gray-400 text-[11px] font-normal">
+                {' '}({recipe.servings > 1
+                  ? `${recipe.servings} porzioni da ${Math.round(totals.totalWeight / recipe.servings)}g`
+                  : '1 porzione'})
+              </span>
+            </>}
+          </p>
           {totals.p100 && (
-            <p className="text-xs text-gray-400 mt-0.5">
-              {totals.totalWeight}g ·{' '}
-              <span style={{ color: '#6abf6a' }}>{totals.p100.calories} kcal</span>{' · '}
-              <span style={{ color: '#5b9bd5' }}>G {totals.p100.fat}g</span>{' · '}
-              <span style={{ color: '#f0aa78' }}>C {totals.p100.carbs}g</span>{' · '}
-              <span style={{ color: '#9d8fcc' }}>P {totals.p100.protein}g</span>
-              <span className="text-gray-300"> /100g</span>
+            <p className="text-xs mt-0.5">
+              <span style={{ color: '#6abf6a' }}>{totals.p100.calories}</span>
+              <span className="text-gray-300"> · </span>
+              <span style={{ color: '#5b9bd5' }}>{totals.p100.fat}</span>
+              <span className="text-gray-300"> · </span>
+              <span style={{ color: '#f0aa78' }}>{totals.p100.carbs}</span>
+              <span className="text-gray-300"> · </span>
+              <span style={{ color: '#9d8fcc' }}>{totals.p100.protein}</span>
+              <span className="text-gray-300"> per 100g</span>
             </p>
           )}
         </div>
