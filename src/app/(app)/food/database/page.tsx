@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
+import { BrowserMultiFormatReader } from '@zxing/browser'
+import { NotFoundException } from '@zxing/library'
 import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter, ScanBarcode } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -27,14 +29,12 @@ function BarcodeScannerModal({ onClose, onFound }: {
   onClose: () => void
   onFound: (form: FoodForm) => void
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef  = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<ScanStatus>('init')
   const [product, setProduct] = useState<FoodForm | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const streamRef  = useRef<MediaStream | null>(null)
-  const animRef    = useRef<number | null>(null)
-  const focusTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const scanning   = useRef(true)
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null)
+  const scanning  = useRef(true)
 
   useEffect(() => {
     initScanner()
@@ -43,92 +43,33 @@ function BarcodeScannerModal({ onClose, onFound }: {
 
   function cleanup() {
     scanning.current = false
-    if (animRef.current) clearTimeout(animRef.current)
-    if (focusTimer.current) clearInterval(focusTimer.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
+    // Ferma lo stream aperto da ZXing
+    if (videoRef.current) {
+      const s = videoRef.current.srcObject as MediaStream | null
+      s?.getTracks().forEach(t => t.stop())
+      videoRef.current.srcObject = null
+    }
   }
 
   async function initScanner() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const BD = (window as any).BarcodeDetector
-    if (!BD) { setStatus('unsupported'); return }
+    if (!videoRef.current) return
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' } as any] } as any
-      })
-      streamRef.current = stream
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
+      // ZXing gestisce getUserMedia internamente con facingMode:'environment' (non ideal)
+      // Su Huawei Chrome questo seleziona la camera principale invece della telephoto
+      const reader = new BrowserMultiFormatReader()
+      readerRef.current = reader
       setStatus('scanning')
-      // Retry focus dopo play() perché alcuni dispositivi lo ignorano nella getUserMedia
-      applyContinuousFocus()
-      setTimeout(applyContinuousFocus, 500)
-      setTimeout(applyContinuousFocus, 1500)
-      // Ri-applica il focus ogni 4s per contrastare la perdita di fuoco durante lo scan
-      focusTimer.current = setInterval(applyContinuousFocus, 4000)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] }) as any
-      scanLoop(detector)
-    } catch { setStatus('error') }
-  }
-
-  async function applyContinuousFocus() {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track || !scanning.current) return
-    // Prova senza controllare caps: su Huawei/Android getCapabilities() spesso è {}
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {})
-  }
-
-  // Tap-to-focus: prova l'API focus, se non supportata riavvia il track per forzare il refocus
-  async function refocus(e: React.MouseEvent<HTMLVideoElement>) {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track || !scanning.current) return
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const caps = (track.getCapabilities?.() ?? {}) as any
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const adv: any = {}
-      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('single-shot')) {
-        adv.focusMode = 'single-shot'
-      }
-      if (caps.focusPointOfInterest) {
-        const rect = (e.currentTarget as HTMLVideoElement).getBoundingClientRect()
-        adv.focusPointOfInterest = {
-          x: (e.clientX - rect.left) / rect.width,
-          y: (e.clientY - rect.top) / rect.height,
+      await reader.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
+        if (!scanning.current) return
+        if (result) {
+          cleanup()
+          lookup(result.getText())
+        } else if (err && !(err instanceof NotFoundException)) {
+          cleanup()
+          setStatus('error')
         }
-      }
-      if (Object.keys(adv).length > 0) {
-        await track.applyConstraints({ advanced: [adv] })
-        setTimeout(applyContinuousFocus, 1200)
-      } else {
-        // Fallback per dispositivi (es. Huawei) che non espongono l'API focus:
-        // riavvia il track con nuovi constraints per forzare il refocus della camera
-        track.stop()
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' } as any] } as any
-        })
-        streamRef.current = newStream
-        if (videoRef.current) { videoRef.current.srcObject = newStream; await videoRef.current.play() }
-        setTimeout(applyContinuousFocus, 400)
-      }
-    } catch {}
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function scanLoop(detector: any) {
-    if (!scanning.current) return
-    // Throttle a ~150ms: ridurre il carico aiuta la fotocamera a mantenere il fuoco
-    animRef.current = window.setTimeout(async () => {
-      if (!videoRef.current || !scanning.current) return
-      try {
-        const results = await detector.detect(videoRef.current)
-        if (results.length > 0) { cleanup(); await lookup(results[0].rawValue); return }
-      } catch {}
-      scanLoop(detector)
-    }, 150) as unknown as number
+      })
+    } catch { setStatus('error') }
   }
 
   async function lookup(code: string) {
@@ -156,6 +97,12 @@ function BarcodeScannerModal({ onClose, onFound }: {
   }
 
   const C = '#e8924a'
+  // Chrome su Android usa il driver virtuale multi-camera di EMUI che seleziona la telephoto.
+  // Firefox usa camera2 direttamente e sceglie la camera principale corretta.
+  const isAndroidChrome = typeof navigator !== 'undefined' &&
+    /android/i.test(navigator.userAgent) &&
+    /chrome/i.test(navigator.userAgent) &&
+    !/firefox/i.test(navigator.userAgent)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70">
@@ -174,12 +121,22 @@ function BarcodeScannerModal({ onClose, onFound }: {
 
         <div className="flex-1 overflow-y-auto">
 
+          {/* Banner Chrome Android: suggerisci Firefox per camera corretta */}
+          {isAndroidChrome && status === 'scanning' && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+              <span className="text-amber-600 dark:text-amber-400 text-[11px] leading-tight">
+                📷 Su questo dispositivo Chrome potrebbe usare la camera sbagliata.{' '}
+                <strong>Firefox</strong> scansiona correttamente.
+              </span>
+            </div>
+          )}
+
           {/* Camera viewfinder */}
           {(status === 'init' || status === 'scanning') && (
             <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
-              <video ref={videoRef} onClick={refocus} className="w-full h-full object-cover cursor-pointer" playsInline muted autoPlay />
+              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
               {/* Scanning frame overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="relative w-56 h-40">
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 rounded-tl-lg" style={{ borderColor: C }} />
                   <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 rounded-tr-lg" style={{ borderColor: C }} />
@@ -190,13 +147,6 @@ function BarcodeScannerModal({ onClose, onFound }: {
                   )}
                 </div>
               </div>
-              {status === 'scanning' && (
-                <div className="absolute bottom-2 inset-x-0 flex justify-center pointer-events-none">
-                  <span className="text-[10px] font-medium text-white/80 bg-black/40 px-2 py-0.5 rounded-full">
-                    Tocca per mettere a fuoco
-                  </span>
-                </div>
-              )}
               {status === 'init' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <Loader2 size={28} className="animate-spin text-white" />
@@ -244,9 +194,14 @@ function BarcodeScannerModal({ onClose, onFound }: {
           {(status === 'error' || status === 'unsupported') && (
             <div className="p-4 space-y-2 text-center">
               <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
-                {status === 'unsupported' ? 'Scanner non supportato dal browser' : 'Errore accesso alla fotocamera'}
+                {status === 'unsupported' ? 'Scanner non supportato dal browser' : 'Fotocamera non accessibile'}
               </p>
-              <p className="text-xs text-gray-400">Inserisci il codice a mano:</p>
+              <p className="text-xs text-gray-400">
+                {status === 'error'
+                  ? 'Controlla che il browser abbia il permesso fotocamera (Impostazioni → App → Chrome → Permessi).'
+                  : 'Usa Chrome su Android per la scansione.'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Oppure inserisci il codice a mano:</p>
             </div>
           )}
 
