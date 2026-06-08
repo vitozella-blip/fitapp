@@ -237,9 +237,9 @@ export default function MacrosPage() {
       {/* ── Result ──────────────────────────────────────────────────────────── */}
       {result && selected && amount && (
         <div className="flex-1 min-h-0 bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col"
-          style={{ border: `2px solid ${KCAL_COLOR}66` }}>
-          <div className="px-5 py-3 border-b shrink-0" style={{ backgroundColor: KCAL_COLOR + '18', borderColor: KCAL_COLOR + '40' }}>
-            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: KCAL_COLOR }}>Risultato</p>
+          style={{ border: '2px solid #f0aa7835' }}>
+          <div className="px-5 py-3 border-b shrink-0" style={{ backgroundColor: '#f0aa7818', borderColor: '#f0aa7830' }}>
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#f0aa78' }}>Risultato</p>
           </div>
           <div className="flex-1 min-h-0 flex flex-col p-5 gap-4">
             <div className="text-center shrink-0">
@@ -256,17 +256,22 @@ export default function MacrosPage() {
 
             <div className="flex-1 min-h-0 flex flex-col gap-2">
               <p className="text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0">Apporto totale</p>
-              <div className="grid grid-cols-2 gap-3 flex-1">
+              {/* Kcal — riga intera */}
+              <div className="rounded-xl flex items-center justify-center p-3" style={{ backgroundColor: KCAL_COLOR + '18' }}>
+                <p className="text-3xl font-bold" style={{ color: KCAL_COLOR }}>
+                  {result.calories}<span className="text-base font-normal ml-0.5">kcal</span>
+                </p>
+              </div>
+              {/* 3 macro — riga unica */}
+              <div className="grid grid-cols-3 gap-2 flex-1">
                 {[
-                  { label: 'Calorie',     value: result.calories, unit: 'kcal', color: KCAL_COLOR,  bg: KCAL_COLOR + '18' },
-                  { label: 'Grassi',      value: result.fat,      unit: 'g',    color: '#5b9bd5',   bg: '#5b9bd518' },
-                  { label: 'Carboidrati', value: result.carbs,    unit: 'g',    color: '#f0aa78',   bg: '#f0aa7818' },
-                  { label: 'Proteine',    value: result.protein,  unit: 'g',    color: '#9d8fcc',   bg: '#9d8fcc18' },
-                ].map(item => (
-                  <div key={item.label} className="rounded-xl flex flex-col items-center justify-center" style={{ backgroundColor: item.bg }}>
-                    <p className="text-sm text-gray-400 mb-1">{item.label}</p>
-                    <p className="text-3xl font-bold" style={{ color: item.color }}>
-                      {item.value}<span className="text-base font-normal ml-0.5">{item.unit}</span>
+                  { value: result.fat,     unit: 'g', color: '#5b9bd5', bg: '#5b9bd518' },
+                  { value: result.carbs,   unit: 'g', color: '#f0aa78', bg: '#f0aa7818' },
+                  { value: result.protein, unit: 'g', color: '#9d8fcc', bg: '#9d8fcc18' },
+                ].map((item, i) => (
+                  <div key={i} className="rounded-xl flex items-center justify-center p-3" style={{ backgroundColor: item.bg }}>
+                    <p className="text-2xl font-bold" style={{ color: item.color }}>
+                      {item.value}<span className="text-sm font-normal ml-0.5">{item.unit}</span>
                     </p>
                   </div>
                 ))}
