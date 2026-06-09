@@ -10,7 +10,7 @@ import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 import { SchedaBadge, TennisBadge, WorkoutBadgeDisplay } from '@/components/shared/icons'
 
-const CT            = '#7aafc8'
+const CT            = '#5b9ec9'
 const C_WARM        = '#f0aa78'
 const C_TENNIS      = '#c8a800'
 const TENNIS_NAME   = 'Tennis'
@@ -1281,13 +1281,10 @@ export default function TrainingDiaryPage() {
         })()
 
         return (
-          <div key={te.id}
+          <div
             className={cn('transition-colors',
               nextUpExId === exId ? 'bg-blue-50/40 dark:bg-blue-950/20' :
-              (isOpen || addOpen) ? 'bg-[#7aafc8]/[0.07] dark:bg-[#7aafc8]/[0.08]' :
-              exSt === 'done'    ? 'bg-green-50/30 dark:bg-green-950/10' :
-              exSt === 'partial' ? 'bg-amber-50/30 dark:bg-amber-950/10' :
-              exSt === 'skipped' ? 'bg-gray-100/60 dark:bg-gray-800/60' : '')}>
+              (isOpen || addOpen) ? 'bg-[#7aafc8]/[0.07] dark:bg-[#7aafc8]/[0.08]' : '')}>
 
             {/* Next-up banner (superset/jumpset) */}
             {nextUpExId === exId && (
@@ -1298,58 +1295,60 @@ export default function TrainingDiaryPage() {
               </div>
             )}
 
-            {/* Pairing badge */}
-            {pairs[exId] && (
-              <div className="flex items-center gap-1.5 px-4 py-1 border-b border-gray-50 dark:border-gray-800">
-                <Link2 size={9} style={{ color: CT }} />
-                <span className="text-[10px] font-bold" style={{ color: CT }}>{pairs[exId].type}</span>
-                <span className="text-[10px] text-gray-400 flex-1 truncate">↔ {pairs[exId].partnerName}</span>
-                <button onClick={() => removePair(exId)} className="text-gray-300 hover:text-red-400"><X size={10} /></button>
-              </div>
-            )}
-
             {/* Header row */}
             <div className="flex items-center gap-2 px-4 py-3">
-              <button
-                onClick={() => cycleStatus(exId)}
-                className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all border"
-                style={
-                  exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
-                  exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
-                  exSt === 'skipped' ? { backgroundColor: '#94a3b8', borderColor: 'transparent', color: '#fff' } :
-                  { borderColor: '#d1d5db' }
-                }>
-                {exSt === 'done'    && <Check  size={12} />}
-                {exSt === 'partial' && <Minus  size={12} />}
-                {exSt === 'skipped' && <X      size={12} />}
-              </button>
+              {isOpen && (
+                <button
+                  onClick={() => cycleStatus(exId)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all border"
+                  style={
+                    exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
+                    exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
+                    exSt === 'skipped' ? { backgroundColor: '#ef4444', borderColor: 'transparent', color: '#fff' } :
+                    { borderColor: '#d1d5db' }
+                  }>
+                  {exSt === 'done'    && <Check  size={12} />}
+                  {exSt === 'partial' && <Minus  size={12} />}
+                  {exSt === 'skipped' && <X      size={12} />}
+                </button>
+              )}
 
-              <button className="flex-1 min-w-0 text-left"
+              <div className="flex-1 min-w-0 cursor-pointer"
                 onClick={() => { setExpandedExId(id => id === exId ? null : exId); setAddExId(null) }}>
                 <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">
                   {te.exercise.name}
                 </p>
+                {pairs[exId] && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[10px] font-bold" style={{ color: pairs[exId].type === 'JS' ? '#9d8fcc' : CT }}>{pairs[exId].type}</span>
+                    <span className="text-[10px] text-gray-400 truncate">↔ {pairs[exId].partnerName}</span>
+                  </div>
+                )}
                 {exSets.length > 0 && (
                   <p className="text-[10px] mt-0.5" style={{ color: CT }}>{exSets.length} eseguiti</p>
                 )}
-              </button>
+              </div>
 
-              {exSets.length > 0 && (
+              {isOpen && exSets.length > 0 && (
                 <button onClick={() => deleteExerciseSets(exId, exSets)}
                   className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50">
                   <Trash2 size={15} />
                 </button>
               )}
-              <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#9ca3af' }}>
-                <Link2 size={14} />
-              </button>
-              <button onClick={() => openAdd(exId, te.reps)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-white"
-                style={{ backgroundColor: addOpen ? CT : CT + '99' }}>
-                <Plus size={15} />
-              </button>
+              {isOpen && (
+                <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                  style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#9ca3af' }}>
+                  <Link2 size={14} />
+                </button>
+              )}
+              {isOpen && (
+                <button onClick={() => openAdd(exId, te.reps)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-white"
+                  style={{ backgroundColor: addOpen ? CT : CT + '99' }}>
+                  <Plus size={15} />
+                </button>
+              )}
             </div>
 
             {/* Pair picker panel */}
@@ -1396,7 +1395,7 @@ export default function TrainingDiaryPage() {
                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
                       <p className="text-xs font-bold" style={{ color: CT }}>{te.sets}</p>
                     </div>
-                    <div className="flex flex-col items-center gap-0.5 border-x border-gray-100 dark:border-gray-800">
+                    <div className="flex flex-col items-center gap-0.5">
                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
                       <p className="text-xs font-bold" style={{ color: CT }}>{te.reps || '—'}</p>
                     </div>
@@ -1419,19 +1418,19 @@ export default function TrainingDiaryPage() {
                     <StickyNote size={16} style={{ color: te.noteScheda ? (noteEdit?.exId === te.id && noteEdit.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
                   </button>
                   <button
-                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800"
+                    className="flex items-center justify-center py-3"
                     onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, teId: te.id, type: 'personali', text: te.notePersonali ?? '' })}
                     title="Note personali">
                     <StickyNote size={16} style={{ color: te.notePersonali ? (noteEdit?.exId === te.id && noteEdit.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
                   </button>
                   <button
-                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800"
+                    className="flex items-center justify-center py-3"
                     onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
                     title="Cronometro / Timer">
                     <Clock size={16} style={{ color: timerSheet?.teId === te.id || recTimer ? CT : '#d1d5db' }} />
                   </button>
                   <button
-                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800 transition-colors"
+                    className="flex items-center justify-center py-3 transition-colors"
                     onClick={() => toggleHistory(te.id, exId)}
                     title="Carichi sessione precedente">
                     <History size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
@@ -1680,25 +1679,15 @@ export default function TrainingDiaryPage() {
         )
         }
         // ── Scheda exercise groups ────────────────────────────────────────
-        const seen1 = new Set<string>()
-        const schedaCards = filteredExes.flatMap(te => {
-          const exId = te.exercise.id
-          if (seen1.has(exId)) return []
-          const pair = pairs[exId]
-          const partnerTe = pair ? filteredExes.find(x => x.exercise.id === pair.partnerId) : null
-          if (partnerTe) {
-            seen1.add(exId); seen1.add(pair!.partnerId)
-            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
-            return [(
-              <div key={te.id + '_pg'} className="border-l-4 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
-                {renderCard(te)}
-                {renderCard(partnerTe)}
-              </div>
-            )]
-          }
-          seen1.add(exId)
-          return [renderCard(te)]
-        })
+        function statusBorder(exerciseId: string) {
+          const st = exStatus[`${selectedDate}_${exerciseId}`]
+          return st === 'done' ? '#7dbf7d' : st === 'partial' ? '#f0aa78' : st === 'skipped' ? '#ef4444' : 'rgba(209,213,219,0.4)'
+        }
+        const schedaCards = filteredExes.map(te => (
+          <div key={te.id} className="rounded-xl overflow-hidden bg-gray-50 dark:bg-black/20" style={{ borderLeft: `3px solid ${statusBorder(te.exercise.id)}` }}>
+            {renderCard(te)}
+          </div>
+        ))
 
         // ── ABS exercise groups ───────────────────────────────────────────
         const absTes: TemplateEx[] = absExIds
@@ -1709,29 +1698,15 @@ export default function TrainingDiaryPage() {
             exercise: { id: o.id, name: o.name, muscleGroup: '' },
             sets: 0, reps: null, restSeconds: null, noteScheda: null, notePersonali: null, isAbs: true,
           }))
-        const seen2 = new Set<string>()
-        const absCards = absTes.flatMap(te => {
-          const exId = te.exercise.id
-          if (seen2.has(exId)) return []
-          const pair = pairs[exId]
-          const partnerTe = pair ? absTes.find(x => x.exercise.id === pair.partnerId) : null
-          if (partnerTe) {
-            seen2.add(exId); seen2.add(pair!.partnerId)
-            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
-            return [(
-              <div key={te.id + '_pg'} className="border-l-4 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
-                {renderCard(te)}
-                {renderCard(partnerTe)}
-              </div>
-            )]
-          }
-          seen2.add(exId)
-          return [renderCard(te)]
-        })
+        const absCards = absTes.map(te => (
+          <div key={te.id} className="rounded-xl overflow-hidden bg-gray-50 dark:bg-black/20" style={{ borderLeft: `3px solid ${statusBorder(te.exercise.id)}` }}>
+            {renderCard(te)}
+          </div>
+        ))
 
         return (
           <>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm" style={{ borderTopColor: CT, borderTopWidth: 3 }}>
             {/* Scheda header */}
             <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
@@ -1750,7 +1725,7 @@ export default function TrainingDiaryPage() {
 
             {/* Exercise rows (hidden when collapsed) */}
             {!schedaCollapsed && (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1 border-t border-gray-100 dark:border-gray-800" style={{ backgroundColor: CT + '09' }}>
                 {schedaCards}
                 {absCards}
               </div>
@@ -2054,7 +2029,7 @@ export default function TrainingDiaryPage() {
                 style={
                   exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
                   exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
-                  exSt === 'skipped' ? { backgroundColor: '#94a3b8', borderColor: 'transparent', color: '#fff' } :
+                  exSt === 'skipped' ? { backgroundColor: '#ef4444', borderColor: 'transparent', color: '#fff' } :
                   { borderColor: '#d1d5db' }
                 }>
                 {exSt === 'done'    && <Check  size={12} />}

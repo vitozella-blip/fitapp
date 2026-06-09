@@ -302,20 +302,22 @@ export default function FoodDiaryPage() {
       {/* Macro — identica alla dashboard */}
       <div className="shrink-0 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden"
         style={{ borderTopColor: C.carbs, borderTopWidth: 3 }} {...swipe}>
-        <div className="flex flex-col gap-2.5 px-4 py-3">
 
-          {/* Titolo + legenda */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Macro</p>
-            <div className="flex items-center gap-2.5 flex-wrap justify-end">
-              {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
-                <span key={lbl} className="flex items-center gap-1">
-                  <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
-                  <span className="text-[10px] text-gray-400">{lbl}</span>
-                </span>
-              ))}
-            </div>
+        {/* Header */}
+        <div className="px-4 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between"
+          style={{ backgroundColor: C.carbs + '14' }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: C.carbs }}>Macro</p>
+          <div className="flex items-center gap-2.5 flex-wrap justify-end">
+            {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
+              <span key={lbl} className="flex items-center gap-1">
+                <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
+                <span className="text-[10px] text-gray-400">{lbl}</span>
+              </span>
+            ))}
           </div>
+        </div>
+
+        <div className="flex flex-col gap-2.5 px-4 py-3">
 
           {/* Kcal */}
           <div className="flex items-baseline justify-between">

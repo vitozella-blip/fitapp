@@ -205,21 +205,20 @@ export default function DashboardPage() {
         {/* MACRO — al posto dei pasti, con ordine: kcal → 3 macro → Ti restano */}
         <button onClick={() => router.push('/food/diary')}
           className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform"
-          style={{ borderTopWidth: 3, borderTopColor: '#9ca3af' }}>
-          <div className="flex-1 min-h-0 flex flex-col justify-center gap-2.5 px-4 py-3">
-
-            {/* Titolo + legenda */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Macro</p>
-              <div className="flex items-center gap-2.5 flex-wrap justify-end">
-                {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
-                  <span key={lbl} className="flex items-center gap-1">
-                    <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
-                    <span className="text-[10px] text-gray-400">{lbl}</span>
-                  </span>
-                ))}
-              </div>
+          style={{ borderTopWidth: 3, borderTopColor: SECTION.food }}>
+          <div className="px-4 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between"
+            style={{ backgroundColor: SECTION.food + '14' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: SECTION.food }}>Macro</p>
+            <div className="flex items-center gap-2.5 flex-wrap justify-end">
+              {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
+                <span key={lbl} className="flex items-center gap-1">
+                  <span style={{ width: 7, height: 7, borderRadius: 9999, backgroundColor: col, display: 'inline-block' }} />
+                  <span className="text-[10px] text-gray-400">{lbl}</span>
+                </span>
+              ))}
             </div>
+          </div>
+          <div className="flex-1 min-h-0 flex flex-col justify-center gap-2.5 px-4 py-3">
 
             {/* Kcal */}
             <div className="flex items-baseline justify-between">
@@ -279,9 +278,10 @@ export default function DashboardPage() {
         <button onClick={() => router.push('/food/diary')}
           className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform"
           style={{ borderTopWidth: 3, borderTopColor: SECTION.food }}>
-          <div className="px-3 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Pasti</p>
-            <ChevronRight size={16} className="text-gray-400 shrink-0" />
+          <div className="px-4 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between"
+            style={{ backgroundColor: SECTION.food + '14' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: SECTION.food }}>Pasti</p>
+            <ChevronRight size={14} className="text-gray-400 shrink-0" />
           </div>
           <div className="flex-1 min-h-0 px-1 py-2 grid grid-cols-5 gap-1">
             {MEALS.map(({ name, short }) => {
@@ -326,9 +326,10 @@ export default function DashboardPage() {
           className="surface flex-1 md:flex-none bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform"
           style={{ borderTopWidth: 3, borderTopColor: C.training }}>
 
-          <div className="px-3 py-1.5 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Allenamento</p>
-            <ChevronRight size={16} className="text-gray-400 shrink-0" />
+          <div className="px-4 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between"
+            style={{ backgroundColor: C.training + '14' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: C.training }}>Allenamento</p>
+            <ChevronRight size={14} className="text-gray-400 shrink-0" />
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
