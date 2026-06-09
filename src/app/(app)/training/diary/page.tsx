@@ -391,14 +391,14 @@ const templateCache = new Map<string, Template>()
 
 // ── Drum picker ───────────────────────────────────────────────────────────────
 function DrumPicker({
-  values, value, onChange, accent = '#5b9ec9', w = 52, itemH = 36,
+  values, value, onChange, accent = '#5b9ec9', w = 80, itemH = 40,
   fmt = (v: string | number) => String(v),
 }: {
   values: (string | number)[]
   value: string | number
   onChange: (v: string | number) => void
   accent?: string
-  w?: number
+  w?: number | string
   itemH?: number
   fmt?: (v: string | number) => string
 }) {
@@ -426,7 +426,7 @@ function DrumPicker({
 
   return (
     <div style={{ position: 'relative', width: w, height: itemH * 3, borderRadius: 10, overflow: 'hidden',
-                  flexShrink: 0, background: 'rgba(128,128,128,0.07)' }}>
+                  flexShrink: 0, background: 'rgba(128,128,128,0.07)', boxSizing: 'border-box' }}>
       {/* Center selection band */}
       <div style={{ position: 'absolute', top: itemH, left: 0, right: 0, height: itemH,
                     borderTop: `1.5px solid ${accent}55`, borderBottom: `1.5px solid ${accent}55`,
@@ -468,6 +468,7 @@ export default function TrainingDiaryPage() {
   const [exStatus,   setExStatus]   = useState<Record<string, ExStatus>>({})
   const [tennisLoading, setTennisLoading] = useState(false)
   const [opponentDraft, setOpponentDraft] = useState('')
+  const [openDrum, setOpenDrum] = useState<string | null>(null)
   const [scoreSets, setScoreSets] = useState<{ me: number; opp: number }[]>([])
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
@@ -1255,7 +1256,7 @@ export default function TrainingDiaryPage() {
             <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
               <div className="px-4 py-2.5 flex items-center gap-2 cursor-pointer"
                 style={{ backgroundColor: C_TENNIS + '14' }}
-                onClick={() => setTennisCollapsed(c => !c)}>
+                onClick={() => { if (!tennisCollapsed) setOpenDrum(null); setTennisCollapsed(c => !c) }}>
                 <TennisBadge size={18} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold uppercase tracking-wide" style={{ color: C_TENNIS }}>
@@ -1277,13 +1278,14 @@ export default function TrainingDiaryPage() {
               function setDuration(h: number, m: number) {
                 setTennisMeta({ hours: (h === 0 && m === 0) ? '' : String(h + m / 60) })
               }
+              const GAME_VALS = [0,1,2,3,4,5,6,7,8,9,10]
               return (
               <div className="px-4 pb-4 space-y-4 border-t border-gray-100 dark:border-gray-800 pt-3" style={{ backgroundColor: C_TENNIS + '09' }}>
 
                 {/* Tipo sessione */}
                 <div className="flex gap-2">
                   {(['allenamento', 'amichevole', 'torneo'] as const).map(t => (
-                    <button key={t} onClick={() => setTennisMeta({ type: t })}
+                    <button key={t} onClick={() => { setTennisMeta({ type: t }); setOpenDrum(null) }}
                       className="flex-1 py-2 rounded-xl text-xs font-bold border transition-colors capitalize"
                       style={tennisMeta.type === t
                         ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
@@ -1293,24 +1295,50 @@ export default function TrainingDiaryPage() {
                   ))}
                 </div>
 
-                {/* Durata */}
+                {/* Durata — tap to open drum */}
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Durata</p>
-                  {/* Drum pickers */}
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <DrumPicker values={[0,1,2,3,4,5]} value={hVal}
-                      onChange={v => setDuration(Number(v), mVal)} accent={C_TENNIS} w={56} itemH={36} />
-                    <span className="text-xs font-bold text-gray-400">h</span>
-                    <DrumPicker values={MINS} value={mVal}
-                      onChange={v => setDuration(hVal, Number(v))} accent={C_TENNIS} w={56} itemH={36}
-                      fmt={v => String(v).padStart(2, '0')} />
-                    <span className="text-xs font-bold text-gray-400">min</span>
+                  {/* Value buttons */}
+                  <div className="flex gap-2 mb-2">
+                    {/* Hours toggle */}
+                    <button onClick={() => setOpenDrum(d => d === 'dur-h' ? null : 'dur-h')}
+                      className="flex-1 py-3 rounded-xl border-2 font-bold text-center transition-colors"
+                      style={openDrum === 'dur-h'
+                        ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                        : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                      <span className="text-2xl">{hVal}</span>
+                      <span className="text-sm ml-0.5 font-semibold opacity-70">h</span>
+                    </button>
+                    {/* Minutes toggle */}
+                    <button onClick={() => setOpenDrum(d => d === 'dur-m' ? null : 'dur-m')}
+                      className="flex-1 py-3 rounded-xl border-2 font-bold text-center transition-colors"
+                      style={openDrum === 'dur-m'
+                        ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                        : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                      <span className="text-2xl">{String(mVal).padStart(2,'0')}</span>
+                      <span className="text-sm ml-0.5 font-semibold opacity-70">min</span>
+                    </button>
                   </div>
+                  {/* Inline drum */}
+                  {(openDrum === 'dur-h' || openDrum === 'dur-m') && (
+                    <div className="mb-2">
+                      <DrumPicker
+                        values={openDrum === 'dur-h' ? [0,1,2,3,4,5] : MINS}
+                        value={openDrum === 'dur-h' ? hVal : mVal}
+                        onChange={v => {
+                          if (openDrum === 'dur-h') setDuration(Number(v), mVal)
+                          else setDuration(hVal, Number(v))
+                          setOpenDrum(null)
+                        }}
+                        fmt={openDrum === 'dur-m' ? (v => String(v).padStart(2,'0')) : undefined}
+                        accent={C_TENNIS} w="100%" itemH={44} />
+                    </div>
+                  )}
                   {/* Quick presets */}
                   <div className="flex gap-1.5">
                     {[1, 2, 3].map(h => (
-                      <button key={h} onClick={() => setDuration(h, 0)}
-                        className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
+                      <button key={h} onClick={() => { setDuration(h, 0); setOpenDrum(null) }}
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold border transition-colors"
                         style={hVal === h && mVal === 0
                           ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
                           : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
@@ -1333,52 +1361,68 @@ export default function TrainingDiaryPage() {
                         className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
                     </div>
 
-                    {/* Risultato */}
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Risultato</p>
-                      <div className="flex gap-2">
-                        {(['vinto', 'perso'] as const).map(r => (
-                          <button key={r}
-                            onClick={() => setTennisMeta({ result: tennisMeta.result === r ? null : r })}
-                            className="flex-1 py-2 rounded-xl text-xs font-bold border transition-colors uppercase tracking-wide"
-                            style={tennisMeta.result === r
-                              ? { backgroundColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', borderColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', color: '#fff' }
-                              : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
-                            {r === 'vinto' ? '✓ Vinto' : '✗ Perso'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Punteggio — set builder con drum */}
+                    {/* Punteggio — tap a number to open drum */}
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Punteggio</p>
                       {scoreSets.length > 0 && (
-                        <div className="mb-2 space-y-2">
-                          {/* Column labels (only once, above first set) */}
-                          <div className="flex items-center gap-2">
+                        <div className="mb-2 space-y-1">
+                          {/* Column labels */}
+                          <div className="flex items-center gap-2 mb-1 px-1">
                             <span className="w-9 shrink-0" />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center" style={{ width: 56 }}>Tu</span>
-                            <span className="w-4 shrink-0" />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center" style={{ width: 56 }}>Avv.</span>
+                            <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tu</span>
+                            <span className="w-6 shrink-0" />
+                            <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Avv.</span>
                             <span className="w-6 shrink-0" />
                           </div>
-                          {scoreSets.map((set, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <span className="w-9 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
-                              <DrumPicker values={[0,1,2,3,4,5,6,7]} value={set.me}
-                                onChange={v => saveTennisSets(scoreSets.map((s, j) => j === i ? { ...s, me: Number(v) } : s))}
-                                accent={C_TENNIS} w={56} itemH={32} />
-                              <span className="w-4 text-center text-xs font-bold text-gray-300 shrink-0">–</span>
-                              <DrumPicker values={[0,1,2,3,4,5,6,7]} value={set.opp}
-                                onChange={v => saveTennisSets(scoreSets.map((s, j) => j === i ? { ...s, opp: Number(v) } : s))}
-                                accent={C_TENNIS} w={56} itemH={32} />
-                              <button onClick={() => saveTennisSets(scoreSets.filter((_, j) => j !== i))}
-                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-300 shrink-0">
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ))}
+                          {scoreSets.map((set, i) => {
+                            const dKey = `s${i}`
+                            const meOpen = openDrum === `${dKey}me`
+                            const oppOpen = openDrum === `${dKey}opp`
+                            return (
+                              <div key={i}>
+                                {/* Score display row */}
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="w-9 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
+                                  <button onClick={() => setOpenDrum(d => d === `${dKey}me` ? null : `${dKey}me`)}
+                                    className="flex-1 py-2.5 rounded-xl border-2 text-xl font-bold text-center transition-colors"
+                                    style={meOpen
+                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                                      : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                                    {set.me}
+                                  </button>
+                                  <span className="w-6 text-center text-sm font-bold text-gray-300 shrink-0">–</span>
+                                  <button onClick={() => setOpenDrum(d => d === `${dKey}opp` ? null : `${dKey}opp`)}
+                                    className="flex-1 py-2.5 rounded-xl border-2 text-xl font-bold text-center transition-colors"
+                                    style={oppOpen
+                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                                      : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                                    {set.opp}
+                                  </button>
+                                  <button onClick={() => { saveTennisSets(scoreSets.filter((_, j) => j !== i)); setOpenDrum(null) }}
+                                    className="w-6 h-6 flex items-center justify-center text-gray-300 shrink-0">
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                                {/* Inline drum for this set */}
+                                {(meOpen || oppOpen) && (
+                                  <div className="mb-2">
+                                    <p className="text-[10px] text-gray-400 text-center mb-1.5">
+                                      {meOpen ? 'I tuoi game' : 'Game avversario'}
+                                    </p>
+                                    <DrumPicker
+                                      values={GAME_VALS}
+                                      value={meOpen ? set.me : set.opp}
+                                      onChange={v => {
+                                        const field = meOpen ? 'me' : 'opp'
+                                        saveTennisSets(scoreSets.map((s, j) => j === i ? { ...s, [field]: Number(v) } : s))
+                                        setOpenDrum(null)
+                                      }}
+                                      accent={C_TENNIS} w="100%" itemH={44} />
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                       {scoreSets.length < 5 && (
@@ -1388,6 +1432,27 @@ export default function TrainingDiaryPage() {
                           <Plus size={12} /> Set
                         </button>
                       )}
+                    </div>
+
+                    {/* Risultato — chiude la card */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Risultato</p>
+                      <div className="flex gap-2">
+                        {(['vinto', 'perso'] as const).map(r => (
+                          <button key={r}
+                            onClick={() => {
+                              setTennisMeta({ result: tennisMeta.result === r ? null : r })
+                              setOpenDrum(null)
+                              setTennisCollapsed(true)
+                            }}
+                            className="flex-1 py-3 rounded-xl font-bold border-2 transition-colors uppercase tracking-wide text-sm"
+                            style={tennisMeta.result === r
+                              ? { backgroundColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', borderColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', color: '#fff' }
+                              : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                            {r === 'vinto' ? '✓ Vinto' : '✗ Perso'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}
