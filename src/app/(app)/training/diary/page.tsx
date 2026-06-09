@@ -91,6 +91,20 @@ function fmtTennisHours(h: number | string): string {
   if (mPart === 0) return `${hPart}h`
   return `${hPart}h${mPart}'`
 }
+function parseScore(raw: string | undefined | null): { me: number; opp: number }[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed
+  } catch {}
+  // Legacy plain-text format: "6-3 6-2"
+  return raw.trim().split(/\s+/).flatMap(s => {
+    const parts = s.split('-').map(Number)
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]))
+      return [{ me: parts[0], opp: parts[1] }]
+    return []
+  })
+}
 
 // ── Set grouping helpers ──────────────────────────────────────────────────────
 type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
@@ -394,7 +408,7 @@ export default function TrainingDiaryPage() {
   const [tennisHoursDraft, setTennisHoursDraft] = useState('')
   const [showCustomHours, setShowCustomHours] = useState(false)
   const [opponentDraft, setOpponentDraft] = useState('')
-  const [scoreDraft, setScoreDraft] = useState('')
+  const [scoreSets, setScoreSets] = useState<{ me: number; opp: number }[]>([])
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -693,6 +707,10 @@ export default function TrainingDiaryPage() {
       return next
     })
   }
+  function saveTennisSets(newSets: { me: number; opp: number }[]) {
+    setScoreSets(newSets)
+    setTennisMeta({ score: JSON.stringify(newSets) })
+  }
 
   // Load tennis meta when date changes — DB authoritative, localStorage fallback
   useEffect(() => {
@@ -704,7 +722,7 @@ export default function TrainingDiaryPage() {
         if (dbMeta) {
           setTennisMetaRaw(dbMeta)
           setOpponentDraft(dbMeta.opponent ?? '')
-          setScoreDraft(dbMeta.score ?? '')
+          setScoreSets(parseScore(dbMeta.score))
           try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(dbMeta)) } catch {}
         } else {
           try {
@@ -712,11 +730,11 @@ export default function TrainingDiaryPage() {
             const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
             setTennisMetaRaw(parsed)
             setOpponentDraft(parsed.opponent ?? '')
-            setScoreDraft(parsed.score ?? '')
+            setScoreSets(parseScore(parsed.score))
           } catch {
             setTennisMetaRaw({ type: 'allenamento', hours: '' })
             setOpponentDraft('')
-            setScoreDraft('')
+            setScoreSets([])
           }
         }
       })
@@ -726,11 +744,11 @@ export default function TrainingDiaryPage() {
           const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
           setTennisMetaRaw(parsed)
           setOpponentDraft(parsed.opponent ?? '')
-          setScoreDraft(parsed.score ?? '')
+          setScoreSets(parseScore(parsed.score))
         } catch {
           setTennisMetaRaw({ type: 'allenamento', hours: '' })
           setOpponentDraft('')
-          setScoreDraft('')
+          setScoreSets([])
         }
       })
   }, [selectedDate, userId])
@@ -1167,11 +1185,12 @@ export default function TrainingDiaryPage() {
         const typeLabel = tennisMeta.type === 'torneo' ? 'TORNEO' : tennisMeta.type === 'partita' ? 'PARTITA' : 'ALLENAMENTO'
         const isMatch = tennisMeta.type === 'partita' || tennisMeta.type === 'torneo'
         const durationStr = fmtTennisHours(tennisMeta.hours)
+        const scoreStr = scoreSets.length > 0 ? scoreSets.map(s => `${s.me}-${s.opp}`).join(' ') : null
         const subtitleParts = [
           durationStr || null,
           isMatch && tennisMeta.opponent ? `vs ${tennisMeta.opponent}` : null,
           isMatch && tennisMeta.result ? tennisMeta.result.toUpperCase() : null,
-          isMatch && tennisMeta.score ? tennisMeta.score : null,
+          isMatch && scoreStr ? scoreStr : null,
         ].filter(Boolean)
         const DURATION_PRESETS = [0.5, 1, 1.5, 2, 2.5, 3]
         return (
@@ -1286,16 +1305,61 @@ export default function TrainingDiaryPage() {
                       </div>
                     </div>
 
-                    {/* Punteggio */}
+                    {/* Punteggio — set builder */}
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Punteggio</p>
-                      <input
-                        type="text"
-                        value={scoreDraft}
-                        onChange={e => setScoreDraft(e.target.value)}
-                        onBlur={() => setTennisMeta({ score: scoreDraft })}
-                        placeholder="es. 6-3 6-2"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Punteggio</p>
+                      {scoreSets.length > 0 && (
+                        <div className="mb-2 space-y-1.5">
+                          {/* Column headers */}
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="w-10" />
+                            <span className="flex-1 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Tu</span>
+                            <span className="w-4" />
+                            <span className="flex-1 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Avv.</span>
+                            <span className="w-6" />
+                          </div>
+                          {scoreSets.map((set, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="w-10 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
+                              {/* My games */}
+                              <div className="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-2 py-1.5">
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, me: Math.max(0, s.me - 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">−</button>
+                                <span className="w-5 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.me}</span>
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, me: Math.min(7, s.me + 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">+</button>
+                              </div>
+                              <span className="w-4 text-center text-xs font-bold text-gray-300 shrink-0">–</span>
+                              {/* Opp games */}
+                              <div className="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-2 py-1.5">
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, opp: Math.max(0, s.opp - 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">−</button>
+                                <span className="w-5 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.opp}</span>
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, opp: Math.min(7, s.opp + 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">+</button>
+                              </div>
+                              {/* Remove set */}
+                              <button
+                                onClick={() => saveTennisSets(scoreSets.filter((_, idx) => idx !== i))}
+                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 shrink-0">
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {scoreSets.length < 5 && (
+                        <button
+                          onClick={() => saveTennisSets([...scoreSets, { me: 0, opp: 0 }])}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed text-xs font-bold transition-colors"
+                          style={{ borderColor: C_TENNIS + '80', color: C_TENNIS }}>
+                          <Plus size={12} /> Set
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
