@@ -41,6 +41,13 @@ type Week       = { id: string; name: string; order: number }
 type WeekParamRow = { weekId: string; templateExId: string; sets: number; reps: string | null; restSeconds: number | null }
 type ExPair  = { partnerId: string; partnerName: string; type: 'SS' | 'JS' }
 type AbsSel  = { id: string; type: 'SS' | 'JS' }
+type TennisMeta = {
+  type: 'allenamento' | 'partita' | 'torneo'
+  hours: string
+  opponent?: string
+  result?: 'vinto' | 'perso' | null
+  score?: string
+}
 
 function loadSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -74,6 +81,15 @@ function fmtRest(s: number | null): string | null {
   if (m > 0 && sec > 0) return `${m}'${sec}''`
   if (m > 0) return `${m}'`
   return `${s}''`
+}
+function fmtTennisHours(h: number | string): string {
+  const n = Number(h)
+  if (!n || isNaN(n) || n <= 0) return ''
+  const hPart = Math.floor(n)
+  const mPart = Math.round((n - hPart) * 60)
+  if (hPart === 0) return `${mPart}'`
+  if (mPart === 0) return `${hPart}h`
+  return `${hPart}h${mPart}'`
 }
 
 // ── Set grouping helpers ──────────────────────────────────────────────────────
@@ -371,11 +387,14 @@ export default function TrainingDiaryPage() {
   const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
   const [schedaCollapsed, setSchedaCollapsed] = useState(false)
   const [tennisCollapsed, setTennisCollapsed] = useState(true)
-  const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'allenamento', hours: '' })
+  const [tennisMeta, setTennisMetaRaw] = useState<TennisMeta>({ type: 'allenamento', hours: '' })
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
   const [exStatus,   setExStatus]   = useState<Record<string, ExStatus>>({})
   const [tennisLoading, setTennisLoading] = useState(false)
   const [tennisHoursDraft, setTennisHoursDraft] = useState('')
+  const [showCustomHours, setShowCustomHours] = useState(false)
+  const [opponentDraft, setOpponentDraft] = useState('')
+  const [scoreDraft, setScoreDraft] = useState('')
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -663,13 +682,13 @@ export default function TrainingDiaryPage() {
     setTimerSheet(null)
   }
 
-  function setTennisMeta(update: Partial<{ type: 'allenamento' | 'partita'; hours: string }>) {
+  function setTennisMeta(update: Partial<TennisMeta>) {
     setTennisMetaRaw(prev => {
       const next = { ...prev, ...update }
       try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(next)) } catch {}
       fetch('/api/tennis-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours }),
+        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours, opponent: next.opponent ?? null, result: next.result ?? null, score: next.score ?? null }),
       }).catch(() => {})
       return next
     })
@@ -678,24 +697,41 @@ export default function TrainingDiaryPage() {
   // Load tennis meta when date changes — DB authoritative, localStorage fallback
   useEffect(() => {
     setTennisCollapsed(true)
+    setShowCustomHours(false)
     fetch(`/api/tennis-session?userId=${userId}&date=${selectedDate}`)
       .then(r => r.json())
       .then(dbMeta => {
         if (dbMeta) {
           setTennisMetaRaw(dbMeta)
+          setOpponentDraft(dbMeta.opponent ?? '')
+          setScoreDraft(dbMeta.score ?? '')
           try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(dbMeta)) } catch {}
         } else {
           try {
             const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-            setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' })
-          } catch { setTennisMetaRaw({ type: 'allenamento', hours: '' }) }
+            const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
+            setTennisMetaRaw(parsed)
+            setOpponentDraft(parsed.opponent ?? '')
+            setScoreDraft(parsed.score ?? '')
+          } catch {
+            setTennisMetaRaw({ type: 'allenamento', hours: '' })
+            setOpponentDraft('')
+            setScoreDraft('')
+          }
         }
       })
       .catch(() => {
         try {
           const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-          setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' })
-        } catch { setTennisMetaRaw({ type: 'allenamento', hours: '' }) }
+          const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
+          setTennisMetaRaw(parsed)
+          setOpponentDraft(parsed.opponent ?? '')
+          setScoreDraft(parsed.score ?? '')
+        } catch {
+          setTennisMetaRaw({ type: 'allenamento', hours: '' })
+          setOpponentDraft('')
+          setScoreDraft('')
+        }
       })
   }, [selectedDate, userId])
 
@@ -1126,51 +1162,149 @@ export default function TrainingDiaryPage() {
         </div>
       )}
 
-      {/* Tennis pill (collapsible) */}
-      {tennisActive && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-          <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
-          <div className="px-4 py-2.5 flex items-center gap-2">
-            <TennisBadge size={18} />
-            <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
-              onClick={() => setTennisCollapsed(c => !c)}>
-              Tennis{tennisMeta.type ? ` — ${tennisMeta.type}` : ''}{tennisMeta.hours ? <span className="normal-case font-semibold"> {tennisMeta.hours}h</span> : ''}
-            </button>
+      {/* Tennis card */}
+      {tennisActive && (() => {
+        const typeLabel = tennisMeta.type === 'torneo' ? 'TORNEO' : tennisMeta.type === 'partita' ? 'PARTITA' : 'ALLENAMENTO'
+        const isMatch = tennisMeta.type === 'partita' || tennisMeta.type === 'torneo'
+        const durationStr = fmtTennisHours(tennisMeta.hours)
+        const subtitleParts = [
+          durationStr || null,
+          isMatch && tennisMeta.opponent ? `vs ${tennisMeta.opponent}` : null,
+          isMatch && tennisMeta.result ? tennisMeta.result.toUpperCase() : null,
+          isMatch && tennisMeta.score ? tennisMeta.score : null,
+        ].filter(Boolean)
+        const DURATION_PRESETS = [0.5, 1, 1.5, 2, 2.5, 3]
+        return (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm" style={{ borderTopColor: C_TENNIS, borderTopWidth: 3 }}>
+            <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
+              <div className="px-4 py-2.5 flex items-center gap-2 cursor-pointer"
+                style={{ backgroundColor: C_TENNIS + '14' }}
+                onClick={() => setTennisCollapsed(c => !c)}>
+                <TennisBadge size={18} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold uppercase tracking-wide" style={{ color: C_TENNIS }}>
+                    Tennis — {typeLabel}
+                  </p>
+                  {subtitleParts.length > 0 && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{subtitleParts.join(' · ')}</p>
+                  )}
+                </div>
+                <ChevronDown size={15} className={cn('text-gray-400 transition-transform shrink-0', !tennisCollapsed && 'rotate-180')} />
+              </div>
+            </SwipeableDeleteRow>
+
+            {!tennisCollapsed && (
+              <div className="px-4 pb-4 space-y-3.5 border-t border-gray-100 dark:border-gray-800 pt-3" style={{ backgroundColor: C_TENNIS + '09' }}>
+
+                {/* Tipo sessione */}
+                <div className="flex gap-2">
+                  {(['allenamento', 'partita', 'torneo'] as const).map(t => (
+                    <button key={t} onClick={() => setTennisMeta({ type: t })}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold border transition-colors capitalize"
+                      style={tennisMeta.type === t
+                        ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                        : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Durata */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Durata</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DURATION_PRESETS.map(h => {
+                      const label = fmtTennisHours(h)
+                      const active = Number(tennisMeta.hours) === h
+                      return (
+                        <button key={h}
+                          onClick={() => { setTennisMeta({ hours: String(h) }); setShowCustomHours(false) }}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
+                          style={active
+                            ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                            : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                    {/* Custom */}
+                    <button
+                      onClick={() => setShowCustomHours(c => !c)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
+                      style={showCustomHours || (tennisMeta.hours && !DURATION_PRESETS.includes(Number(tennisMeta.hours)))
+                        ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                        : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                      {tennisMeta.hours && !DURATION_PRESETS.includes(Number(tennisMeta.hours)) ? fmtTennisHours(tennisMeta.hours) : '+'}
+                    </button>
+                  </div>
+                  {showCustomHours && (
+                    <div className="flex gap-2 mt-2">
+                      <input type="number" min="0" max="24" step="0.25"
+                        value={tennisHoursDraft}
+                        onChange={e => setTennisHoursDraft(e.target.value)}
+                        placeholder="es. 1.75"
+                        className="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-center outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                      <button
+                        onClick={() => { if (tennisHoursDraft && Number(tennisHoursDraft) > 0) { setTennisMeta({ hours: tennisHoursDraft }); setShowCustomHours(false) } }}
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold"
+                        style={{ backgroundColor: C_TENNIS, color: '#fff' }}>
+                        OK
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dettagli partita/torneo */}
+                {isMatch && (
+                  <>
+                    {/* Avversario */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Avversario</p>
+                      <input
+                        type="text"
+                        value={opponentDraft}
+                        onChange={e => setOpponentDraft(e.target.value)}
+                        onBlur={() => setTennisMeta({ opponent: opponentDraft })}
+                        placeholder="Nome avversario"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                    </div>
+
+                    {/* Risultato */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Risultato</p>
+                      <div className="flex gap-2">
+                        {(['vinto', 'perso'] as const).map(r => (
+                          <button key={r}
+                            onClick={() => setTennisMeta({ result: tennisMeta.result === r ? null : r })}
+                            className="flex-1 py-2 rounded-xl text-xs font-bold border transition-colors uppercase tracking-wide"
+                            style={tennisMeta.result === r
+                              ? { backgroundColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', borderColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', color: '#fff' }
+                              : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                            {r === 'vinto' ? '✓ Vinto' : '✗ Perso'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Punteggio */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Punteggio</p>
+                      <input
+                        type="text"
+                        value={scoreDraft}
+                        onChange={e => setScoreDraft(e.target.value)}
+                        onBlur={() => setTennisMeta({ score: scoreDraft })}
+                        placeholder="es. 6-3 6-2"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                    </div>
+                  </>
+                )}
+
+              </div>
+            )}
           </div>
-          </SwipeableDeleteRow>
-          {!tennisCollapsed && (
-            <div className="px-4 pb-3 space-y-2 border-t border-gray-100 dark:border-gray-700">
-              <div className="flex gap-2 pt-2">
-                {(['allenamento', 'partita'] as const).map(t => (
-                  <button key={t} onClick={() => setTennisMeta({ type: t })}
-                    className="flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors capitalize"
-                    style={tennisMeta.type === t
-                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                      : { borderColor: '#e5e7eb', color: '#6b7280' }}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 shrink-0">Ore</span>
-                <input type="number" min="0" max="24" step="0.5"
-                  value={tennisHoursDraft}
-                  onChange={e => setTennisHoursDraft(e.target.value)}
-                  placeholder=""
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-center outline-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
-              </div>
-              {tennisHoursDraft && Number(tennisHoursDraft) > 0 && (
-                <button
-                  onClick={() => { setTennisMeta({ hours: tennisHoursDraft }); setTennisCollapsed(true) }}
-                  className="w-full py-2 rounded-xl text-sm font-semibold transition-colors"
-                  style={{ backgroundColor: C_TENNIS, color: '#fff' }}>
-                  Conferma
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        )
+      })()}
 
       {/* Scheda exercises */}
       {schedaInfo && (() => {
