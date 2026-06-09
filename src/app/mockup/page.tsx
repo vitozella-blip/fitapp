@@ -112,20 +112,20 @@ function CardTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function MockupPage() {
-  const [view, setView] = useState<'dash' | 'food' | 'train' | 'fdiary' | 'diary' | 'fdb' | 'fmacros' | 'fplan' | 'frecipes' | 'fshopping'>('fdiary')
+  const [view, setView] = useState<'dash' | 'food' | 'train' | 'fdiary' | 'diary' | 'dtraining' | 'fdb' | 'fmacros' | 'fplan' | 'frecipes' | 'fshopping'>('dtraining')
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TXT, fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: BG, padding: '12px 16px',
         display: 'flex', gap: 6, borderBottom: '1px solid #ffffff10', overflowX: 'auto' }}>
         {([
           ['dash', 'Dashboard'], ['food', 'Aliment.'], ['train', 'Allen.'],
-          ['fdiary', 'Diario P.'], ['diary', 'Diario WO'],
+          ['fdiary', 'Diario P.'], ['diary', 'Diario WO'], ['dtraining', 'Diario A.'],
           ['fdb', 'DB Alim.'], ['fmacros', 'Macro'], ['fplan', 'Piano'],
           ['frecipes', 'Ricette'], ['fshopping', 'Spesa'],
         ] as const).map(([k, lbl]) => (
           <button key={k} onClick={() => setView(k)}
             style={{ flex: '1 0 auto', padding: '9px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
-              background: view === k ? (k === 'train' || k === 'diary' ? TRAIN : k === 'dash' ? '#30363d' : FOOD) : CARD,
+              background: view === k ? (k === 'train' || k === 'diary' || k === 'dtraining' ? TRAIN : k === 'dash' ? '#30363d' : FOOD) : CARD,
               color: view === k ? '#fff' : DIM }}>
             {lbl}
           </button>
@@ -136,6 +136,7 @@ export default function MockupPage() {
       {view === 'train'     && <Train />}
       {view === 'fdiary'    && <FoodDiary />}
       {view === 'diary'     && <Diary />}
+      {view === 'dtraining' && <TrainingDiary />}
       {view === 'fdb'       && <FoodDatabase />}
       {view === 'fmacros'   && <FoodMacros />}
       {view === 'fplan'     && <FoodPlan />}
@@ -810,6 +811,327 @@ function Diary() {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════ DIARIO ALLENAMENTI ═════════════════════════
+function TrainingDiary() {
+  const [date, setDate] = useState(new Date())
+  const [addOpen, setAddOpen]       = useState(false)
+  const [woOpen, setWoOpen]         = useState(true)
+  const [tenAlOpen, setTenAlOpen]   = useState(false)
+  const [openEx, setOpenEx]         = useState<number|null>(0)
+  const [timerOn, setTimerOn]       = useState(false)
+  const [tag, setTag]               = useState('')
+  const TAGS = ['SS', 'JS', 'MR', 'WD', 'D', 'S']
+
+  const exWo = [
+    { name: 'Panca piana',    nSets: 4, reps: '8',  rec: '90s', st: 'done' as const,
+      warm: [{ l: 'R1', v: '20×12' }, { l: 'R2', v: '40×10' }],
+      sets: [{ l: 'S1', v: '60×8' }, { l: 'S2', v: '60×8' }, { l: 'S3', v: '62×6' }, { l: 'S4', v: '62×6' }], pair: null },
+    { name: 'Spinte manubri', nSets: 3, reps: '10', rec: '75s', st: 'done' as const,
+      warm: [{ l: 'R1', v: '12×12' }],
+      sets: [{ l: 'S1', v: '24×10' }, { l: 'S2', v: '24×9' }, { l: 'S3', v: '24×8' }], pair: 'SS' },
+    { name: 'Croci ai cavi',  nSets: 3, reps: '12', rec: '60s', st: 'partial' as const,
+      warm: [], sets: [{ l: 'S1', v: '15×12' }, { l: 'S2', v: '15×10' }], pair: 'SS' },
+    { name: 'Lat machine',    nSets: 4, reps: '10', rec: '90s', st: null,
+      warm: [], sets: [], pair: null },
+  ]
+
+  const statusStyle = (st: string | null) =>
+    st === 'done'    ? { bg: '#7dbf7d', icon: <Check size={13} color="#fff" /> }
+    : st === 'partial' ? { bg: '#f0aa78', icon: <Minus size={13} color="#fff" /> }
+    : { bg: 'transparent', icon: null }
+
+  return (
+    <div style={{ padding: '16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <DayNav date={date} setDate={setDate} accent={TRAIN} />
+
+      {/* ── TENNIS PARTITA ─────────────────────────────────────────────── */}
+      <div style={{ background: CARD, borderRadius: 18, overflow: 'hidden', boxShadow: SHADOW, borderLeft: `3px solid ${TENNIS}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+          <span style={{ width: 32, height: 32, borderRadius: '50%', background: TENNIS,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <TennisBall size={17} color="#fff" strokeWidth={2} />
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 800 }}>Tennis</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                background: '#e8924a22', color: '#e8924a' }}>PARTITA</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                background: '#7dbf7d22', color: '#7dbf7d', marginLeft: 'auto' }}>VITTORIA</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: DIM }}>vs Marco R. · terra · 1h 45m</p>
+          </div>
+          {/* swipe hint */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
+            <div style={{ width: 3, height: 14, borderRadius: 2, background: '#f0aa78' + '60' }} />
+            <div style={{ width: 3, height: 14, borderRadius: 2, background: '#ef444460' }} />
+          </div>
+        </div>
+        {/* Score table */}
+        <div style={{ margin: '0 14px 14px', background: CARD2, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 38px 38px', padding: '6px 12px',
+            borderBottom: '1px solid #ffffff10' }}>
+            {['Giocatore', 'S1', 'S2'].map((h, i) => (
+              <span key={i} style={{ fontSize: 9, fontWeight: 700, color: FAINT,
+                textTransform: 'uppercase', letterSpacing: 1, textAlign: i > 0 ? 'center' : 'left' }}>{h}</span>
+            ))}
+          </div>
+          {[
+            { name: 'Tu',       scores: [6, 7], win: true },
+            { name: 'Marco R.', scores: [4, 5], win: false },
+          ].map((row, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 38px 38px',
+              padding: '9px 12px', background: row.win ? TENNIS + '12' : 'transparent',
+              borderBottom: i === 0 ? '1px solid #ffffff0a' : 'none', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: row.win ? 700 : 400, color: row.win ? TXT : DIM }}>
+                {row.name}{row.win && <span style={{ marginLeft: 4 }}>🏆</span>}
+              </span>
+              {row.scores.map((s, j) => (
+                <span key={j} style={{ fontSize: 15, fontWeight: 800, textAlign: 'center',
+                  color: row.win ? TENNIS : FAINT }}>{s}</span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── TENNIS ALLENAMENTO (collassabile) ──────────────────────────── */}
+      <div style={{ background: CARD, borderRadius: 18, overflow: 'hidden', boxShadow: SHADOW, borderLeft: `3px solid ${TENNIS}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}
+          onClick={() => setTenAlOpen(o => !o)}>
+          <span style={{ width: 32, height: 32, borderRadius: '50%', background: TENNIS + '28',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <TennisBall size={17} color={TENNIS} strokeWidth={2} />
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 800 }}>Tennis</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                background: TENNIS + '22', color: TENNIS }}>ALLENAMENTO</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: DIM }}>sintetica · 1h 30m · 3 drills</p>
+          </div>
+          <ChevronDown size={14} color={DIM}
+            style={{ transform: tenAlOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }} />
+        </div>
+        {tenAlOpen && (
+          <div style={{ borderTop: '1px solid #ffffff10', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Chips */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {[['Superficie', 'Sintetica'], ['Durata', '1h 30m'], ['Intensità', '7/10']].map(([lbl, val]) => (
+                <div key={lbl} style={{ background: CARD2, borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: FAINT, textTransform: 'uppercase', letterSpacing: 1 }}>{lbl}</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: TENNIS }}>{val}</p>
+                </div>
+              ))}
+            </div>
+            {/* Drills */}
+            <div>
+              <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, color: FAINT, textTransform: 'uppercase', letterSpacing: 1 }}>Drills</p>
+              {['Servizio (15m)', 'Rovescio lungolinea (20m)', 'Gioco libero (55m)'].map((drill, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
+                  borderBottom: i < 2 ? '1px solid #ffffff08' : 'none' }}>
+                  <Check size={12} color={TENNIS} />
+                  <span style={{ fontSize: 12, color: DIM }}>{drill}</span>
+                </div>
+              ))}
+            </div>
+            {/* Note */}
+            <div style={{ background: CARD2, borderRadius: 10, padding: '8px 12px' }}>
+              <p style={{ margin: 0, fontSize: 11, color: DIM, fontStyle: 'italic' }}>
+                &ldquo;Servizio molto migliorato rispetto alla settimana scorsa&rdquo;
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── TIMER recupero ─────────────────────────────────────────────── */}
+      {timerOn && (
+        <div style={{ background: TRAIN + '20', border: `1px solid ${TRAIN}50`, borderRadius: 14,
+          padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Timer size={16} color={TRAIN} />
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: TRAIN }}>Recupero · 01:22</span>
+          <span style={{ fontSize: 11, color: DIM }}>S3 Panca piana</span>
+          <button onClick={() => setTimerOn(false)}
+            style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: '#ffffff14',
+              color: DIM, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={11} />
+          </button>
+        </div>
+      )}
+
+      {/* ── WO PALESTRA ────────────────────────────────────────────────── */}
+      <div style={{ background: CARD, borderRadius: 20, boxShadow: SHADOW,
+        border: '1px solid #ffffff14', borderTop: `3px solid ${TRAIN}`, overflow: 'hidden' }}>
+        {/* Scheda header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
+          cursor: 'pointer', borderBottom: woOpen ? '1px solid #ffffff10' : 'none' }}
+          onClick={() => setWoOpen(o => !o)}>
+          <span style={{ width: 32, height: 32, borderRadius: '50%', background: TRAIN, color: '#fff',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 800, flexShrink: 0 }}>CB</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: TRAIN }}>WORKOUT 1 — CHEST + BACK</span>
+            <p style={{ margin: '1px 0 0', fontSize: 11, color: DIM }}>3/4 esercizi · W-6</p>
+          </div>
+          <ChevronDown size={14} color={DIM}
+            style={{ transform: woOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }} />
+        </div>
+
+        {woOpen && exWo.map((e, i) => {
+          const s = statusStyle(e.st)
+          const isOpen = openEx === i
+          const hasData = e.warm.length > 0 || e.sets.length > 0
+          return (
+            <div key={i} style={{ borderBottom: i < exWo.length - 1 ? '1px solid #ffffff0a' : 'none',
+              background: isOpen ? '#ffffff08' : 'transparent' }}>
+              {e.pair && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 16px 0' }}>
+                  <Link2 size={10} color={TRAIN} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: TRAIN }}>{e.pair}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}
+                onClick={() => setOpenEx(isOpen ? null : i)}>
+                <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: s.bg, border: e.st ? 'none' : '1.5px solid #ffffff30' }}>{s.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{e.name}</p>
+                  {hasData
+                    ? <p style={{ margin: '1px 0 0', fontSize: 10, color: TRAIN }}>{e.sets.length + e.warm.length} eseguiti</p>
+                    : <p style={{ margin: '1px 0 0', fontSize: 11, color: FAINT }}>{e.nSets}×{e.reps} · rec {e.rec}</p>}
+                </div>
+                <span style={{ width: 28, height: 28, borderRadius: 9, background: TRAIN + '1e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Plus size={15} color={TRAIN} />
+                </span>
+              </div>
+              {isOpen && (
+                <div style={{ borderTop: '1px solid #ffffff0a' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '10px 16px 8px' }}>
+                    {([['Set', String(e.nSets)], ['Rep', e.reps], ['Rec', e.rec]] as const).map(([label, val], li) => (
+                      <div key={li} style={{ textAlign: 'center', borderLeft: li > 0 ? '1px solid #ffffff10' : 'none' }}>
+                        <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: FAINT, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</p>
+                        <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: TRAIN }}>{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                    borderTop: '1px solid #ffffff0a', borderBottom: '1px solid #ffffff0a' }}>
+                    {([
+                      { icon: <BookOpen size={15} />, active: i === 0,  color: '#f0aa78' },
+                      { icon: <BookOpen size={15} />, active: false,    color: '#9d8fcc' },
+                      { icon: <Timer    size={15} />, active: timerOn,  color: TRAIN, action: () => setTimerOn(t => !t) },
+                      { icon: <History  size={15} />, active: false,    color: TRAIN },
+                    ] as { icon: React.ReactNode; active: boolean; color: string; action?: () => void }[]).map((btn, bi) => (
+                      <button key={bi} onClick={btn.action}
+                        style={{ padding: '10px', border: 'none', background: 'transparent', cursor: 'pointer',
+                          borderLeft: bi > 0 ? '1px solid #ffffff0a' : 'none',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: btn.active ? btn.color : FAINT }}>
+                        {btn.icon}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {hasData && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {e.warm.map((ws, j) => (
+                          <span key={'w'+j} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 8, background: CARD2 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C_WARM }}>{ws.l}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600 }}>{ws.v}</span>
+                          </span>
+                        ))}
+                        {e.sets.map((ws, j) => (
+                          <span key={'s'+j} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 8, background: CARD2 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: TRAIN }}>{ws.l}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600 }}>{ws.v}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: FAINT }}>Tag:</span>
+                      {TAGS.map(t => (
+                        <button key={t} onClick={() => setTag(tag === t ? '' : t)}
+                          style={{ padding: '3px 9px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                            background: tag === t ? TRAIN : CARD2, color: tag === t ? '#fff' : DIM }}>{t}</button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input placeholder="reps" style={{ width: 52, padding: '8px 4px', borderRadius: 9,
+                        border: '1px solid #ffffff14', background: CARD2, color: TXT, fontSize: 13, textAlign: 'center', outline: 'none' }} />
+                      <span style={{ color: FAINT }}>×</span>
+                      <input placeholder="kg" style={{ width: 52, padding: '8px 4px', borderRadius: 9,
+                        border: '1px solid #ffffff14', background: CARD2, color: TXT, fontSize: 13, textAlign: 'center', outline: 'none' }} />
+                      <button style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C_WARM}50`,
+                        background: C_WARM + '1e', color: C_WARM, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Flame size={15} />
+                      </button>
+                      <button onClick={() => setTimerOn(true)}
+                        style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none',
+                          background: TRAIN, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        + Serie
+                      </button>
+                    </div>
+                    <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, padding: '9px', borderRadius: 10, border: `1px solid ${TRAIN}40`,
+                      background: TRAIN + '14', color: TRAIN, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                      <History size={15} /> Confronta con sessioni precedenti
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Aggiungi sessione ──────────────────────────────────────────── */}
+      {addOpen ? (
+        <div style={{ background: CARD, borderRadius: 16, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: FAINT, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Aggiungi sessione
+          </p>
+          {([
+            { icon: <Dumbbell size={18} color={TRAIN} />,                   label: 'WO Palestra',          sub: 'Seleziona scheda',         color: TRAIN },
+            { icon: <TennisBall size={18} color={TENNIS} strokeWidth={2} />, label: 'Tennis · Allenamento', sub: 'Superficie, drills, note',  color: TENNIS },
+            { icon: <TennisBall size={18} color="#e8924a" strokeWidth={2} />, label: 'Tennis · Partita',    sub: 'Inserisci il punteggio',   color: '#e8924a' },
+          ] as { icon: React.ReactNode; label: string; sub: string; color: string }[]).map((opt, i) => (
+            <button key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+              borderRadius: 12, border: `1px solid ${opt.color}30`, background: opt.color + '10',
+              cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+              <span style={{ width: 36, height: 36, borderRadius: 10, background: opt.color + '20',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {opt.icon}
+              </span>
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: opt.color }}>{opt.label}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: DIM }}>{opt.sub}</p>
+              </div>
+            </button>
+          ))}
+          <button onClick={() => setAddOpen(false)}
+            style={{ padding: '9px', borderRadius: 10, border: 'none', background: CARD2,
+              color: DIM, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            Annulla
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => setAddOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '13px', borderRadius: 14, border: '1px dashed #ffffff20',
+            background: 'transparent', color: DIM, cursor: 'pointer', fontSize: 13, fontWeight: 600, width: '100%' }}>
+          <Plus size={15} /> Aggiungi sessione
+        </button>
+      )}
     </div>
   )
 }

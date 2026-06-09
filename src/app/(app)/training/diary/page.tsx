@@ -10,7 +10,7 @@ import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 import { SchedaBadge, TennisBadge, WorkoutBadgeDisplay } from '@/components/shared/icons'
 
-const CT            = '#7aafc8'
+const CT            = '#5b9ec9'
 const C_WARM        = '#f0aa78'
 const C_TENNIS      = '#c8a800'
 const TENNIS_NAME   = 'Tennis'
@@ -41,6 +41,13 @@ type Week       = { id: string; name: string; order: number }
 type WeekParamRow = { weekId: string; templateExId: string; sets: number; reps: string | null; restSeconds: number | null }
 type ExPair  = { partnerId: string; partnerName: string; type: 'SS' | 'JS' }
 type AbsSel  = { id: string; type: 'SS' | 'JS' }
+type TennisMeta = {
+  type: 'allenamento' | 'partita' | 'torneo'
+  hours: string
+  opponent?: string
+  result?: 'vinto' | 'perso' | null
+  score?: string
+}
 
 function loadSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set()
@@ -74,6 +81,29 @@ function fmtRest(s: number | null): string | null {
   if (m > 0 && sec > 0) return `${m}'${sec}''`
   if (m > 0) return `${m}'`
   return `${s}''`
+}
+function fmtTennisHours(h: number | string): string {
+  const n = Number(h)
+  if (!n || isNaN(n) || n <= 0) return ''
+  const hPart = Math.floor(n)
+  const mPart = Math.round((n - hPart) * 60)
+  if (hPart === 0) return `${mPart}'`
+  if (mPart === 0) return `${hPart}h`
+  return `${hPart}h${mPart}'`
+}
+function parseScore(raw: string | undefined | null): { me: number; opp: number }[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed
+  } catch {}
+  // Legacy plain-text format: "6-3 6-2"
+  return raw.trim().split(/\s+/).flatMap(s => {
+    const parts = s.split('-').map(Number)
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]))
+      return [{ me: parts[0], opp: parts[1] }]
+    return []
+  })
 }
 
 // ── Set grouping helpers ──────────────────────────────────────────────────────
@@ -371,11 +401,14 @@ export default function TrainingDiaryPage() {
   const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
   const [schedaCollapsed, setSchedaCollapsed] = useState(false)
   const [tennisCollapsed, setTennisCollapsed] = useState(true)
-  const [tennisMeta, setTennisMetaRaw] = useState<{ type: 'allenamento' | 'partita'; hours: string }>({ type: 'allenamento', hours: '' })
+  const [tennisMeta, setTennisMetaRaw] = useState<TennisMeta>({ type: 'allenamento', hours: '' })
   const [warmups,    setWarmups]    = useState<Set<string>>(new Set())
   const [exStatus,   setExStatus]   = useState<Record<string, ExStatus>>({})
   const [tennisLoading, setTennisLoading] = useState(false)
   const [tennisHoursDraft, setTennisHoursDraft] = useState('')
+  const [showCustomHours, setShowCustomHours] = useState(false)
+  const [opponentDraft, setOpponentDraft] = useState('')
+  const [scoreSets, setScoreSets] = useState<{ me: number; opp: number }[]>([])
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -663,39 +696,60 @@ export default function TrainingDiaryPage() {
     setTimerSheet(null)
   }
 
-  function setTennisMeta(update: Partial<{ type: 'allenamento' | 'partita'; hours: string }>) {
+  function setTennisMeta(update: Partial<TennisMeta>) {
     setTennisMetaRaw(prev => {
       const next = { ...prev, ...update }
       try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(next)) } catch {}
       fetch('/api/tennis-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours }),
+        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours, opponent: next.opponent ?? null, result: next.result ?? null, score: next.score ?? null }),
       }).catch(() => {})
       return next
     })
+  }
+  function saveTennisSets(newSets: { me: number; opp: number }[]) {
+    setScoreSets(newSets)
+    setTennisMeta({ score: JSON.stringify(newSets) })
   }
 
   // Load tennis meta when date changes — DB authoritative, localStorage fallback
   useEffect(() => {
     setTennisCollapsed(true)
+    setShowCustomHours(false)
     fetch(`/api/tennis-session?userId=${userId}&date=${selectedDate}`)
       .then(r => r.json())
       .then(dbMeta => {
         if (dbMeta) {
           setTennisMetaRaw(dbMeta)
+          setOpponentDraft(dbMeta.opponent ?? '')
+          setScoreSets(parseScore(dbMeta.score))
           try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(dbMeta)) } catch {}
         } else {
           try {
             const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-            setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' })
-          } catch { setTennisMetaRaw({ type: 'allenamento', hours: '' }) }
+            const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
+            setTennisMetaRaw(parsed)
+            setOpponentDraft(parsed.opponent ?? '')
+            setScoreSets(parseScore(parsed.score))
+          } catch {
+            setTennisMetaRaw({ type: 'allenamento', hours: '' })
+            setOpponentDraft('')
+            setScoreSets([])
+          }
         }
       })
       .catch(() => {
         try {
           const raw = localStorage.getItem(`tennis_meta_${selectedDate}`)
-          setTennisMetaRaw(raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' })
-        } catch { setTennisMetaRaw({ type: 'allenamento', hours: '' }) }
+          const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
+          setTennisMetaRaw(parsed)
+          setOpponentDraft(parsed.opponent ?? '')
+          setScoreSets(parseScore(parsed.score))
+        } catch {
+          setTennisMetaRaw({ type: 'allenamento', hours: '' })
+          setOpponentDraft('')
+          setScoreSets([])
+        }
       })
   }, [selectedDate, userId])
 
@@ -1126,51 +1180,195 @@ export default function TrainingDiaryPage() {
         </div>
       )}
 
-      {/* Tennis pill (collapsible) */}
-      {tennisActive && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-          <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
-          <div className="px-4 py-2.5 flex items-center gap-2">
-            <TennisBadge size={18} />
-            <button className="text-sm font-bold flex-1 text-left uppercase tracking-wide" style={{ color: C_TENNIS }}
-              onClick={() => setTennisCollapsed(c => !c)}>
-              Tennis{tennisMeta.type ? ` — ${tennisMeta.type}` : ''}{tennisMeta.hours ? <span className="normal-case font-semibold"> {tennisMeta.hours}h</span> : ''}
-            </button>
+      {/* Tennis card */}
+      {tennisActive && (() => {
+        const typeLabel = tennisMeta.type === 'torneo' ? 'TORNEO' : tennisMeta.type === 'partita' ? 'PARTITA' : 'ALLENAMENTO'
+        const isMatch = tennisMeta.type === 'partita' || tennisMeta.type === 'torneo'
+        const durationStr = fmtTennisHours(tennisMeta.hours)
+        const scoreStr = scoreSets.length > 0 ? scoreSets.map(s => `${s.me}-${s.opp}`).join(' ') : null
+        const subtitleParts = [
+          durationStr || null,
+          isMatch && tennisMeta.opponent ? `vs ${tennisMeta.opponent}` : null,
+          isMatch && tennisMeta.result ? tennisMeta.result.toUpperCase() : null,
+          isMatch && scoreStr ? scoreStr : null,
+        ].filter(Boolean)
+        const DURATION_PRESETS = [0.5, 1, 1.5, 2, 2.5, 3]
+        return (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm" style={{ borderTopColor: C_TENNIS, borderTopWidth: 3 }}>
+            <SwipeableDeleteRow onDelete={toggleTennis} onEdit={() => setTennisCollapsed(false)}>
+              <div className="px-4 py-2.5 flex items-center gap-2 cursor-pointer"
+                style={{ backgroundColor: C_TENNIS + '14' }}
+                onClick={() => setTennisCollapsed(c => !c)}>
+                <TennisBadge size={18} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold uppercase tracking-wide" style={{ color: C_TENNIS }}>
+                    Tennis — {typeLabel}
+                  </p>
+                  {subtitleParts.length > 0 && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{subtitleParts.join(' · ')}</p>
+                  )}
+                </div>
+                <ChevronDown size={15} className={cn('text-gray-400 transition-transform shrink-0', !tennisCollapsed && 'rotate-180')} />
+              </div>
+            </SwipeableDeleteRow>
+
+            {!tennisCollapsed && (
+              <div className="px-4 pb-4 space-y-3.5 border-t border-gray-100 dark:border-gray-800 pt-3" style={{ backgroundColor: C_TENNIS + '09' }}>
+
+                {/* Tipo sessione */}
+                <div className="flex gap-2">
+                  {(['allenamento', 'partita', 'torneo'] as const).map(t => (
+                    <button key={t} onClick={() => setTennisMeta({ type: t })}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold border transition-colors capitalize"
+                      style={tennisMeta.type === t
+                        ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                        : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Durata */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Durata</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DURATION_PRESETS.map(h => {
+                      const label = fmtTennisHours(h)
+                      const active = Number(tennisMeta.hours) === h
+                      return (
+                        <button key={h}
+                          onClick={() => { setTennisMeta({ hours: String(h) }); setShowCustomHours(false) }}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
+                          style={active
+                            ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                            : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                    {/* Custom */}
+                    <button
+                      onClick={() => setShowCustomHours(c => !c)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
+                      style={showCustomHours || (tennisMeta.hours && !DURATION_PRESETS.includes(Number(tennisMeta.hours)))
+                        ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                        : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                      {tennisMeta.hours && !DURATION_PRESETS.includes(Number(tennisMeta.hours)) ? fmtTennisHours(tennisMeta.hours) : '+'}
+                    </button>
+                  </div>
+                  {showCustomHours && (
+                    <div className="flex gap-2 mt-2">
+                      <input type="number" min="0" max="24" step="0.25"
+                        value={tennisHoursDraft}
+                        onChange={e => setTennisHoursDraft(e.target.value)}
+                        placeholder="es. 1.75"
+                        className="flex-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-center outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                      <button
+                        onClick={() => { if (tennisHoursDraft && Number(tennisHoursDraft) > 0) { setTennisMeta({ hours: tennisHoursDraft }); setShowCustomHours(false) } }}
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold"
+                        style={{ backgroundColor: C_TENNIS, color: '#fff' }}>
+                        OK
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dettagli partita/torneo */}
+                {isMatch && (
+                  <>
+                    {/* Avversario */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Avversario</p>
+                      <input
+                        type="text"
+                        value={opponentDraft}
+                        onChange={e => setOpponentDraft(e.target.value)}
+                        onBlur={() => setTennisMeta({ opponent: opponentDraft })}
+                        placeholder="Nome avversario"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                    </div>
+
+                    {/* Risultato */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Risultato</p>
+                      <div className="flex gap-2">
+                        {(['vinto', 'perso'] as const).map(r => (
+                          <button key={r}
+                            onClick={() => setTennisMeta({ result: tennisMeta.result === r ? null : r })}
+                            className="flex-1 py-2 rounded-xl text-xs font-bold border transition-colors uppercase tracking-wide"
+                            style={tennisMeta.result === r
+                              ? { backgroundColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', borderColor: r === 'vinto' ? '#7dbf7d' : '#ef4444', color: '#fff' }
+                              : { borderColor: '#d1d5db', color: '#6b7280', backgroundColor: 'transparent' }}>
+                            {r === 'vinto' ? '✓ Vinto' : '✗ Perso'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Punteggio — set builder */}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Punteggio</p>
+                      {scoreSets.length > 0 && (
+                        <div className="mb-2 space-y-1.5">
+                          {/* Column headers */}
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="w-10" />
+                            <span className="flex-1 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Tu</span>
+                            <span className="w-4" />
+                            <span className="flex-1 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Avv.</span>
+                            <span className="w-6" />
+                          </div>
+                          {scoreSets.map((set, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="w-10 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
+                              {/* My games */}
+                              <div className="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-2 py-1.5">
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, me: Math.max(0, s.me - 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">−</button>
+                                <span className="w-5 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.me}</span>
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, me: Math.min(7, s.me + 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">+</button>
+                              </div>
+                              <span className="w-4 text-center text-xs font-bold text-gray-300 shrink-0">–</span>
+                              {/* Opp games */}
+                              <div className="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-2 py-1.5">
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, opp: Math.max(0, s.opp - 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">−</button>
+                                <span className="w-5 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.opp}</span>
+                                <button
+                                  onClick={() => saveTennisSets(scoreSets.map((s, idx) => idx === i ? { ...s, opp: Math.min(7, s.opp + 1) } : s))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold text-gray-400 hover:text-gray-700">+</button>
+                              </div>
+                              {/* Remove set */}
+                              <button
+                                onClick={() => saveTennisSets(scoreSets.filter((_, idx) => idx !== i))}
+                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 shrink-0">
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {scoreSets.length < 5 && (
+                        <button
+                          onClick={() => saveTennisSets([...scoreSets, { me: 0, opp: 0 }])}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed text-xs font-bold transition-colors"
+                          style={{ borderColor: C_TENNIS + '80', color: C_TENNIS }}>
+                          <Plus size={12} /> Set
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+
+              </div>
+            )}
           </div>
-          </SwipeableDeleteRow>
-          {!tennisCollapsed && (
-            <div className="px-4 pb-3 space-y-2 border-t border-gray-100 dark:border-gray-700">
-              <div className="flex gap-2 pt-2">
-                {(['allenamento', 'partita'] as const).map(t => (
-                  <button key={t} onClick={() => setTennisMeta({ type: t })}
-                    className="flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors capitalize"
-                    style={tennisMeta.type === t
-                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                      : { borderColor: '#e5e7eb', color: '#6b7280' }}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 shrink-0">Ore</span>
-                <input type="number" min="0" max="24" step="0.5"
-                  value={tennisHoursDraft}
-                  onChange={e => setTennisHoursDraft(e.target.value)}
-                  placeholder=""
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-center outline-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
-              </div>
-              {tennisHoursDraft && Number(tennisHoursDraft) > 0 && (
-                <button
-                  onClick={() => { setTennisMeta({ hours: tennisHoursDraft }); setTennisCollapsed(true) }}
-                  className="w-full py-2 rounded-xl text-sm font-semibold transition-colors"
-                  style={{ backgroundColor: C_TENNIS, color: '#fff' }}>
-                  Conferma
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        )
+      })()}
 
       {/* Scheda exercises */}
       {schedaInfo && (() => {
@@ -1281,13 +1479,10 @@ export default function TrainingDiaryPage() {
         })()
 
         return (
-          <div key={te.id}
+          <div
             className={cn('transition-colors',
               nextUpExId === exId ? 'bg-blue-50/40 dark:bg-blue-950/20' :
-              (isOpen || addOpen) ? 'bg-[#7aafc8]/[0.07] dark:bg-[#7aafc8]/[0.08]' :
-              exSt === 'done'    ? 'bg-green-50/30 dark:bg-green-950/10' :
-              exSt === 'partial' ? 'bg-amber-50/30 dark:bg-amber-950/10' :
-              exSt === 'skipped' ? 'bg-gray-100/60 dark:bg-gray-800/60' : '')}>
+              (isOpen || addOpen) ? 'bg-[#7aafc8]/[0.07] dark:bg-[#7aafc8]/[0.08]' : '')}>
 
             {/* Next-up banner (superset/jumpset) */}
             {nextUpExId === exId && (
@@ -1298,58 +1493,60 @@ export default function TrainingDiaryPage() {
               </div>
             )}
 
-            {/* Pairing badge */}
-            {pairs[exId] && (
-              <div className="flex items-center gap-1.5 px-4 py-1 border-b border-gray-50 dark:border-gray-800">
-                <Link2 size={9} style={{ color: CT }} />
-                <span className="text-[10px] font-bold" style={{ color: CT }}>{pairs[exId].type}</span>
-                <span className="text-[10px] text-gray-400 flex-1 truncate">↔ {pairs[exId].partnerName}</span>
-                <button onClick={() => removePair(exId)} className="text-gray-300 hover:text-red-400"><X size={10} /></button>
-              </div>
-            )}
-
             {/* Header row */}
             <div className="flex items-center gap-2 px-4 py-3">
-              <button
-                onClick={() => cycleStatus(exId)}
-                className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all border"
-                style={
-                  exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
-                  exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
-                  exSt === 'skipped' ? { backgroundColor: '#94a3b8', borderColor: 'transparent', color: '#fff' } :
-                  { borderColor: '#d1d5db' }
-                }>
-                {exSt === 'done'    && <Check  size={12} />}
-                {exSt === 'partial' && <Minus  size={12} />}
-                {exSt === 'skipped' && <X      size={12} />}
-              </button>
+              {isOpen && (
+                <button
+                  onClick={() => cycleStatus(exId)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all border"
+                  style={
+                    exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
+                    exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
+                    exSt === 'skipped' ? { backgroundColor: '#ef4444', borderColor: 'transparent', color: '#fff' } :
+                    { borderColor: '#d1d5db' }
+                  }>
+                  {exSt === 'done'    && <Check  size={12} />}
+                  {exSt === 'partial' && <Minus  size={12} />}
+                  {exSt === 'skipped' && <X      size={12} />}
+                </button>
+              )}
 
-              <button className="flex-1 min-w-0 text-left"
+              <div className="flex-1 min-w-0 cursor-pointer"
                 onClick={() => { setExpandedExId(id => id === exId ? null : exId); setAddExId(null) }}>
                 <p className="font-semibold text-sm truncate text-gray-900 dark:text-gray-100">
                   {te.exercise.name}
                 </p>
+                {pairs[exId] && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[10px] font-bold" style={{ color: pairs[exId].type === 'JS' ? '#9d8fcc' : CT }}>{pairs[exId].type}</span>
+                    <span className="text-[10px] text-gray-400 truncate">↔ {pairs[exId].partnerName}</span>
+                  </div>
+                )}
                 {exSets.length > 0 && (
                   <p className="text-[10px] mt-0.5" style={{ color: CT }}>{exSets.length} eseguiti</p>
                 )}
-              </button>
+              </div>
 
-              {exSets.length > 0 && (
+              {isOpen && exSets.length > 0 && (
                 <button onClick={() => deleteExerciseSets(exId, exSets)}
                   className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50">
                   <Trash2 size={15} />
                 </button>
               )}
-              <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#9ca3af' }}>
-                <Link2 size={14} />
-              </button>
-              <button onClick={() => openAdd(exId, te.reps)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-white"
-                style={{ backgroundColor: addOpen ? CT : CT + '99' }}>
-                <Plus size={15} />
-              </button>
+              {isOpen && (
+                <button onClick={() => setPairPickerExId(p => p === te.id ? null : te.id)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                  style={pairs[exId] || pairPickerExId === te.id ? { backgroundColor: CT + '20', color: CT } : { color: '#9ca3af' }}>
+                  <Link2 size={14} />
+                </button>
+              )}
+              {isOpen && (
+                <button onClick={() => openAdd(exId, te.reps)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-white"
+                  style={{ backgroundColor: addOpen ? CT : CT + '99' }}>
+                  <Plus size={15} />
+                </button>
+              )}
             </div>
 
             {/* Pair picker panel */}
@@ -1396,7 +1593,7 @@ export default function TrainingDiaryPage() {
                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
                       <p className="text-xs font-bold" style={{ color: CT }}>{te.sets}</p>
                     </div>
-                    <div className="flex flex-col items-center gap-0.5 border-x border-gray-100 dark:border-gray-800">
+                    <div className="flex flex-col items-center gap-0.5">
                       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
                       <p className="text-xs font-bold" style={{ color: CT }}>{te.reps || '—'}</p>
                     </div>
@@ -1419,19 +1616,19 @@ export default function TrainingDiaryPage() {
                     <StickyNote size={16} style={{ color: te.noteScheda ? (noteEdit?.exId === te.id && noteEdit.type === 'scheda' ? '#e8924a' : '#f0aa78') : '#d1d5db' }} />
                   </button>
                   <button
-                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800"
+                    className="flex items-center justify-center py-3"
                     onClick={() => setNoteEdit(n => n?.exId === te.id && n.type === 'personali' ? null : { exId: te.id, teId: te.id, type: 'personali', text: te.notePersonali ?? '' })}
                     title="Note personali">
                     <StickyNote size={16} style={{ color: te.notePersonali ? (noteEdit?.exId === te.id && noteEdit.type === 'personali' ? '#7b6db0' : '#9d8fcc') : '#d1d5db' }} />
                   </button>
                   <button
-                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800"
+                    className="flex items-center justify-center py-3"
                     onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
                     title="Cronometro / Timer">
                     <Clock size={16} style={{ color: timerSheet?.teId === te.id || recTimer ? CT : '#d1d5db' }} />
                   </button>
                   <button
-                    className="flex items-center justify-center py-3 border-l border-gray-100 dark:border-gray-800 transition-colors"
+                    className="flex items-center justify-center py-3 transition-colors"
                     onClick={() => toggleHistory(te.id, exId)}
                     title="Carichi sessione precedente">
                     <History size={16} style={{ color: historyExId === te.id ? CT : '#d1d5db' }} />
@@ -1680,25 +1877,15 @@ export default function TrainingDiaryPage() {
         )
         }
         // ── Scheda exercise groups ────────────────────────────────────────
-        const seen1 = new Set<string>()
-        const schedaCards = filteredExes.flatMap(te => {
-          const exId = te.exercise.id
-          if (seen1.has(exId)) return []
-          const pair = pairs[exId]
-          const partnerTe = pair ? filteredExes.find(x => x.exercise.id === pair.partnerId) : null
-          if (partnerTe) {
-            seen1.add(exId); seen1.add(pair!.partnerId)
-            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
-            return [(
-              <div key={te.id + '_pg'} className="border-l-4 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
-                {renderCard(te)}
-                {renderCard(partnerTe)}
-              </div>
-            )]
-          }
-          seen1.add(exId)
-          return [renderCard(te)]
-        })
+        function statusBorder(exerciseId: string) {
+          const st = exStatus[`${selectedDate}_${exerciseId}`]
+          return st === 'done' ? '#7dbf7d' : st === 'partial' ? '#f0aa78' : st === 'skipped' ? '#ef4444' : 'rgba(209,213,219,0.4)'
+        }
+        const schedaCards = filteredExes.map(te => (
+          <div key={te.id} className="rounded-xl overflow-hidden bg-gray-50 dark:bg-black/20" style={{ borderLeft: `3px solid ${statusBorder(te.exercise.id)}` }}>
+            {renderCard(te)}
+          </div>
+        ))
 
         // ── ABS exercise groups ───────────────────────────────────────────
         const absTes: TemplateEx[] = absExIds
@@ -1709,29 +1896,15 @@ export default function TrainingDiaryPage() {
             exercise: { id: o.id, name: o.name, muscleGroup: '' },
             sets: 0, reps: null, restSeconds: null, noteScheda: null, notePersonali: null, isAbs: true,
           }))
-        const seen2 = new Set<string>()
-        const absCards = absTes.flatMap(te => {
-          const exId = te.exercise.id
-          if (seen2.has(exId)) return []
-          const pair = pairs[exId]
-          const partnerTe = pair ? absTes.find(x => x.exercise.id === pair.partnerId) : null
-          if (partnerTe) {
-            seen2.add(exId); seen2.add(pair!.partnerId)
-            const color = pair!.type === 'JS' ? '#9d8fcc' : CT
-            return [(
-              <div key={te.id + '_pg'} className="border-l-4 divide-y divide-gray-100 dark:divide-gray-700" style={{ borderLeftColor: color }}>
-                {renderCard(te)}
-                {renderCard(partnerTe)}
-              </div>
-            )]
-          }
-          seen2.add(exId)
-          return [renderCard(te)]
-        })
+        const absCards = absTes.map(te => (
+          <div key={te.id} className="rounded-xl overflow-hidden bg-gray-50 dark:bg-black/20" style={{ borderLeft: `3px solid ${statusBorder(te.exercise.id)}` }}>
+            {renderCard(te)}
+          </div>
+        ))
 
         return (
           <>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm" style={{ borderTopColor: CT, borderTopWidth: 3 }}>
             {/* Scheda header */}
             <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
             <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
@@ -1750,7 +1923,7 @@ export default function TrainingDiaryPage() {
 
             {/* Exercise rows (hidden when collapsed) */}
             {!schedaCollapsed && (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1 border-t border-gray-100 dark:border-gray-800" style={{ backgroundColor: CT + '09' }}>
                 {schedaCards}
                 {absCards}
               </div>
@@ -2054,7 +2227,7 @@ export default function TrainingDiaryPage() {
                 style={
                   exSt === 'done'    ? { backgroundColor: '#7dbf7d', borderColor: 'transparent', color: '#fff' } :
                   exSt === 'partial' ? { backgroundColor: '#f0aa78', borderColor: 'transparent', color: '#fff' } :
-                  exSt === 'skipped' ? { backgroundColor: '#94a3b8', borderColor: 'transparent', color: '#fff' } :
+                  exSt === 'skipped' ? { backgroundColor: '#ef4444', borderColor: 'transparent', color: '#fff' } :
                   { borderColor: '#d1d5db' }
                 }>
                 {exSt === 'done'    && <Check  size={12} />}
