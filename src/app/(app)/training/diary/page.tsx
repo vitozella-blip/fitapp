@@ -405,11 +405,15 @@ function DrumPicker({
   const scrollRef = useRef<HTMLDivElement>(null)
   const busyRef   = useRef(false)
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const progRef   = useRef(false) // true quando lo scroll è programmatico → non chiamare onChange
 
   useEffect(() => {
     if (busyRef.current || !scrollRef.current) return
     const idx = values.indexOf(value)
-    if (idx >= 0) scrollRef.current.scrollTop = idx * itemH
+    if (idx >= 0) {
+      progRef.current = true
+      scrollRef.current.scrollTop = idx * itemH
+    }
   }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleScroll() {
@@ -420,6 +424,7 @@ function DrumPicker({
       if (!scrollRef.current) return
       const idx = Math.max(0, Math.min(values.length - 1, Math.round(scrollRef.current.scrollTop / itemH)))
       scrollRef.current.scrollTop = idx * itemH
+      if (progRef.current) { progRef.current = false; return }
       onChange(values[idx])
     }, 120)
   }
@@ -439,7 +444,7 @@ function DrumPicker({
       }}>
         {values.map((v, i) => (
           <div key={i}
-            onClick={() => { onChange(v); if (scrollRef.current) scrollRef.current.scrollTop = i * itemH }}
+            onClick={() => { onChange(v); progRef.current = true; if (scrollRef.current) scrollRef.current.scrollTop = i * itemH }}
             style={{ height: itemH, scrollSnapAlign: 'center', display: 'flex', alignItems: 'center',
                      justifyContent: 'center', cursor: 'pointer', fontSize: 15, fontWeight: 700,
                      color: v === value ? accent : undefined }}>
@@ -469,7 +474,7 @@ export default function TrainingDiaryPage() {
   const [tennisLoading, setTennisLoading] = useState(false)
   const [opponentDraft, setOpponentDraft] = useState('')
   const [openDrum, setOpenDrum] = useState<string | null>(null)
-  const [scoreSets, setScoreSets] = useState<{ me: number; opp: number }[]>([])
+  const [scoreSets, setScoreSets] = useState<{ me: number; opp: number; tb?: number }[]>([])
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -768,7 +773,7 @@ export default function TrainingDiaryPage() {
       return next
     })
   }
-  function saveTennisSets(newSets: { me: number; opp: number }[]) {
+  function saveTennisSets(newSets: { me: number; opp: number; tb?: number }[]) {
     setScoreSets(newSets)
     setTennisMeta({ score: JSON.stringify(newSets) })
   }
@@ -1244,7 +1249,9 @@ export default function TrainingDiaryPage() {
         const typeLabel = tennisMeta.type === 'torneo' ? 'TORNEO' : tennisMeta.type === 'amichevole' ? 'AMICHEVOLE' : 'ALLENAMENTO'
         const isMatch = tennisMeta.type === 'amichevole' || tennisMeta.type === 'torneo'
         const durationStr = fmtTennisHours(tennisMeta.hours)
-        const scoreStr = scoreSets.length > 0 ? scoreSets.map(s => `${s.me}-${s.opp}`).join(' ') : null
+        const scoreStr = scoreSets.some(s => s.me > 0 || s.opp > 0)
+          ? scoreSets.filter(s => s.me > 0 || s.opp > 0).map(s => s.tb !== undefined ? `${s.me}-${s.opp}(${s.tb})` : `${s.me}-${s.opp}`).join(' ')
+          : null
         const subtitleParts = [
           durationStr || null,
           isMatch && tennisMeta.opponent ? `vs ${tennisMeta.opponent}` : null,
@@ -1279,6 +1286,9 @@ export default function TrainingDiaryPage() {
                 setTennisMeta({ hours: (h === 0 && m === 0) ? '' : String(h + m / 60) })
               }
               const GAME_VALS = [0,1,2,3,4,5,6,7,8,9,10]
+              const TB_VALS   = [0,1,2,3,4,5,6,7,8,9,10]
+              // 5 righe fisse per match, riempie con valori salvati dove disponibili
+              const displaySets = Array.from({length: 5}, (_, i) => scoreSets[i] ?? { me: 0, opp: 0 })
               return (
               <div className="px-4 pb-4 space-y-4 border-t border-gray-100 dark:border-gray-800 pt-3" style={{ backgroundColor: C_TENNIS + '09' }}>
 
@@ -1295,12 +1305,22 @@ export default function TrainingDiaryPage() {
                   ))}
                 </div>
 
+                {/* Avversario — PRIMA di Durata */}
+                {isMatch && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Avversario</p>
+                    <input type="text" value={opponentDraft}
+                      onChange={e => setOpponentDraft(e.target.value)}
+                      onBlur={() => setTennisMeta({ opponent: opponentDraft })}
+                      placeholder="Nome avversario"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                  </div>
+                )}
+
                 {/* Durata — tap to open drum */}
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Durata</p>
-                  {/* Value buttons */}
                   <div className="flex gap-2 mb-2">
-                    {/* Hours toggle */}
                     <button onClick={() => setOpenDrum(d => d === 'dur-h' ? null : 'dur-h')}
                       className="flex-1 py-3 rounded-xl border-2 font-bold text-center transition-colors"
                       style={openDrum === 'dur-h'
@@ -1309,7 +1329,6 @@ export default function TrainingDiaryPage() {
                       <span className="text-2xl">{hVal}</span>
                       <span className="text-sm ml-0.5 font-semibold opacity-70">h</span>
                     </button>
-                    {/* Minutes toggle */}
                     <button onClick={() => setOpenDrum(d => d === 'dur-m' ? null : 'dur-m')}
                       className="flex-1 py-3 rounded-xl border-2 font-bold text-center transition-colors"
                       style={openDrum === 'dur-m'
@@ -1319,7 +1338,6 @@ export default function TrainingDiaryPage() {
                       <span className="text-sm ml-0.5 font-semibold opacity-70">min</span>
                     </button>
                   </div>
-                  {/* Inline drum */}
                   {(openDrum === 'dur-h' || openDrum === 'dur-m') && (
                     <div className="mb-2">
                       <DrumPicker
@@ -1331,10 +1349,9 @@ export default function TrainingDiaryPage() {
                           setOpenDrum(null)
                         }}
                         fmt={openDrum === 'dur-m' ? (v => String(v).padStart(2,'0')) : undefined}
-                        accent={C_TENNIS} w="100%" itemH={44} />
+                        accent={C_TENNIS} w="100%" itemH={34} />
                     </div>
                   )}
-                  {/* Quick presets */}
                   <div className="flex gap-1.5">
                     {[1, 2, 3].map(h => (
                       <button key={h} onClick={() => { setDuration(h, 0); setOpenDrum(null) }}
@@ -1348,90 +1365,95 @@ export default function TrainingDiaryPage() {
                   </div>
                 </div>
 
-                {/* Dettagli amichevole/torneo */}
                 {isMatch && (
                   <>
-                    {/* Avversario */}
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Avversario</p>
-                      <input type="text" value={opponentDraft}
-                        onChange={e => setOpponentDraft(e.target.value)}
-                        onBlur={() => setTennisMeta({ opponent: opponentDraft })}
-                        placeholder="Nome avversario"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
-                    </div>
-
-                    {/* Punteggio — tap a number to open drum */}
+                    {/* Punteggio — 5 set fissi, TB per set */}
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Punteggio</p>
-                      {scoreSets.length > 0 && (
-                        <div className="mb-2 space-y-1">
-                          {/* Column labels */}
-                          <div className="flex items-center gap-2 mb-1 px-1">
-                            <span className="w-9 shrink-0" />
-                            <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tu</span>
-                            <span className="w-6 shrink-0" />
-                            <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Avv.</span>
-                            <span className="w-6 shrink-0" />
-                          </div>
-                          {scoreSets.map((set, i) => {
-                            const dKey = `s${i}`
-                            const meOpen = openDrum === `${dKey}me`
-                            const oppOpen = openDrum === `${dKey}opp`
-                            return (
-                              <div key={i}>
-                                {/* Score display row */}
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="w-9 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
-                                  <button onClick={() => setOpenDrum(d => d === `${dKey}me` ? null : `${dKey}me`)}
-                                    className="flex-1 py-2.5 rounded-xl border-2 text-xl font-bold text-center transition-colors"
-                                    style={meOpen
-                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                      : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
-                                    {set.me}
-                                  </button>
-                                  <span className="w-6 text-center text-sm font-bold text-gray-300 shrink-0">–</span>
-                                  <button onClick={() => setOpenDrum(d => d === `${dKey}opp` ? null : `${dKey}opp`)}
-                                    className="flex-1 py-2.5 rounded-xl border-2 text-xl font-bold text-center transition-colors"
-                                    style={oppOpen
-                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                      : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
-                                    {set.opp}
-                                  </button>
-                                  <button onClick={() => { saveTennisSets(scoreSets.filter((_, j) => j !== i)); setOpenDrum(null) }}
-                                    className="w-6 h-6 flex items-center justify-center text-gray-300 shrink-0">
-                                    <X size={12} />
-                                  </button>
-                                </div>
-                                {/* Inline drum for this set */}
-                                {(meOpen || oppOpen) && (
-                                  <div className="mb-2">
-                                    <p className="text-[10px] text-gray-400 text-center mb-1.5">
-                                      {meOpen ? 'I tuoi game' : 'Game avversario'}
-                                    </p>
-                                    <DrumPicker
-                                      values={GAME_VALS}
-                                      value={meOpen ? set.me : set.opp}
-                                      onChange={v => {
-                                        const field = meOpen ? 'me' : 'opp'
-                                        saveTennisSets(scoreSets.map((s, j) => j === i ? { ...s, [field]: Number(v) } : s))
-                                        setOpenDrum(null)
-                                      }}
-                                      accent={C_TENNIS} w="100%" itemH={44} />
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })}
+                      <div className="space-y-0.5">
+                        {/* Intestazioni colonne */}
+                        <div className="flex items-center gap-1.5 mb-1 px-1">
+                          <span className="w-10 shrink-0" />
+                          <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tu</span>
+                          <span className="w-4 shrink-0" />
+                          <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Avv.</span>
+                          <span className="w-9 shrink-0" />
                         </div>
-                      )}
-                      {scoreSets.length < 5 && (
-                        <button onClick={() => saveTennisSets([...scoreSets, { me: 0, opp: 0 }])}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed text-xs font-bold"
-                          style={{ borderColor: C_TENNIS + '80', color: C_TENNIS }}>
-                          <Plus size={12} /> Set
-                        </button>
-                      )}
+                        {displaySets.map((set, i) => {
+                          const dKey    = `s${i}`
+                          const meOpen  = openDrum === `${dKey}me`
+                          const oppOpen = openDrum === `${dKey}opp`
+                          const tbOpen  = openDrum === `${dKey}tb`
+                          const hasTb   = set.tb !== undefined && set.tb !== null
+                          return (
+                            <div key={i}>
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="w-10 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
+                                <button onClick={() => setOpenDrum(d => d === `${dKey}me` ? null : `${dKey}me`)}
+                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors"
+                                  style={meOpen
+                                    ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                                    : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                                  {set.me}
+                                </button>
+                                <span className="w-4 text-center text-sm font-bold text-gray-300 shrink-0">–</span>
+                                <button onClick={() => setOpenDrum(d => d === `${dKey}opp` ? null : `${dKey}opp`)}
+                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors"
+                                  style={oppOpen
+                                    ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                                    : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                                  {set.opp}
+                                </button>
+                                {/* Tiebreak toggle */}
+                                <button
+                                  onClick={() => {
+                                    const newSets = displaySets.map((s, j) =>
+                                      j === i ? { ...s, tb: hasTb ? undefined : 0 } : s)
+                                    saveTennisSets(newSets)
+                                    setOpenDrum(hasTb ? null : `${dKey}tb`)
+                                  }}
+                                  className="w-9 h-9 shrink-0 rounded-xl border text-[10px] font-bold transition-colors flex items-center justify-center"
+                                  style={hasTb
+                                    ? { backgroundColor: C_TENNIS + '22', borderColor: C_TENNIS + '80', color: C_TENNIS }
+                                    : { borderColor: '#e5e7eb', color: '#9ca3af', backgroundColor: 'transparent' }}>
+                                  {hasTb ? set.tb : 'TB'}
+                                </button>
+                              </div>
+                              {/* Drum game */}
+                              {(meOpen || oppOpen) && (
+                                <div className="mb-1.5 mt-1">
+                                  <p className="text-[10px] text-gray-400 text-center mb-1">
+                                    {meOpen ? 'I tuoi game' : 'Game avversario'}
+                                  </p>
+                                  <DrumPicker
+                                    values={GAME_VALS}
+                                    value={meOpen ? set.me : set.opp}
+                                    onChange={v => {
+                                      const field = meOpen ? 'me' : 'opp'
+                                      saveTennisSets(displaySets.map((s, j) => j === i ? { ...s, [field]: Number(v) } : s))
+                                      setOpenDrum(null)
+                                    }}
+                                    accent={C_TENNIS} w="100%" itemH={34} />
+                                </div>
+                              )}
+                              {/* Drum tiebreak */}
+                              {tbOpen && (
+                                <div className="mb-1.5 mt-1">
+                                  <p className="text-[10px] text-gray-400 text-center mb-1">Punti persi nel tiebreak</p>
+                                  <DrumPicker
+                                    values={TB_VALS}
+                                    value={set.tb ?? 0}
+                                    onChange={v => {
+                                      saveTennisSets(displaySets.map((s, j) => j === i ? { ...s, tb: Number(v) } : s))
+                                      setOpenDrum(null)
+                                    }}
+                                    accent={C_TENNIS} w="100%" itemH={34} />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
 
                     {/* Risultato — chiude la card */}
