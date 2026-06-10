@@ -1263,9 +1263,7 @@ export default function TrainingDiaryPage() {
         const subtitleParts = [
           durationStr || null,
           tennisMeta.type === 'torneo' && tennisMeta.tournament ? tennisMeta.tournament : null,
-          isMatch && tennisMeta.opponent ? `vs ${tennisMeta.opponent}` : null,
           isMatch && tennisMeta.result ? tennisMeta.result.toUpperCase() : null,
-          isMatch && scoreStr ? scoreStr : null,
         ].filter(Boolean)
         return (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm" style={{ borderTopColor: C_TENNIS, borderTopWidth: 3 }}>
