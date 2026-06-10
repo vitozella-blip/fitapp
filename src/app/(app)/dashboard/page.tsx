@@ -197,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="shrink-0">
-        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor={schedaInfo?.color} controlColor="#9d8fcc" />
+        <DateNav selectedDate={selectedDate} onChange={setSelectedDate} accent={C.kcal} schedaColor="#9d8fcc" controlColor="#9d8fcc" />
       </div>
 
       <div className="flex flex-col gap-2 flex-1 min-h-0 md:grid md:gap-3" style={{ gridTemplateRows: gridRows }}>
@@ -205,10 +205,10 @@ export default function DashboardPage() {
         {/* MACRO — al posto dei pasti, con ordine: kcal → 3 macro → Ti restano */}
         <button onClick={() => router.push('/food/diary')}
           className="surface bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col text-left active:scale-[0.98] transition-transform"
-          style={{ borderTopWidth: 3, borderTopColor: SECTION.food }}>
+          style={{ borderTopWidth: 3, borderTopColor: '#6b7280' }}>
           <div className="px-4 py-2 shrink-0 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between"
-            style={{ backgroundColor: SECTION.food + '14' }}>
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: SECTION.food }}>Macro</p>
+            style={{ backgroundColor: 'rgba(107,114,128,0.08)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9ca3af' }}>Macro</p>
             <div className="flex items-center gap-2.5 flex-wrap justify-end">
               {[['Calorie', C.kcal], ['Grassi', C.fat], ['Carboidrati', C.carbs], ['Proteine', C.protein]].map(([lbl, col]) => (
                 <span key={lbl} className="flex items-center gap-1">
