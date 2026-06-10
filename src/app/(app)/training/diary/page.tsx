@@ -44,6 +44,7 @@ type AbsSel  = { id: string; type: 'SS' | 'JS' }
 type TennisMeta = {
   type: 'allenamento' | 'amichevole' | 'torneo'
   hours: string
+  tournament?: string
   opponent?: string
   result?: 'vinto' | 'perso' | null
   score?: string
@@ -473,6 +474,7 @@ export default function TrainingDiaryPage() {
   const [exStatus,   setExStatus]   = useState<Record<string, ExStatus>>({})
   const [tennisLoading, setTennisLoading] = useState(false)
   const [opponentDraft, setOpponentDraft] = useState('')
+  const [tournamentDraft, setTournamentDraft] = useState('')
   const [openDrum, setOpenDrum] = useState<string | null>(null)
   const [scoreSets, setScoreSets] = useState<{ me: number; opp: number; tb?: number }[]>([])
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
@@ -768,7 +770,7 @@ export default function TrainingDiaryPage() {
       try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(next)) } catch {}
       fetch('/api/tennis-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours, opponent: next.opponent ?? null, result: next.result ?? null, score: next.score ?? null }),
+        body: JSON.stringify({ userId, date: selectedDate, type: next.type, hours: next.hours, tournament: next.tournament ?? null, opponent: next.opponent ?? null, result: next.result ?? null, score: next.score ?? null }),
       }).catch(() => {})
       return next
     })
@@ -787,6 +789,7 @@ export default function TrainingDiaryPage() {
         if (dbMeta) {
           setTennisMetaRaw(dbMeta)
           setOpponentDraft(dbMeta.opponent ?? '')
+          setTournamentDraft(dbMeta.tournament ?? '')
           setScoreSets(parseScore(dbMeta.score))
           try { localStorage.setItem(`tennis_meta_${selectedDate}`, JSON.stringify(dbMeta)) } catch {}
         } else {
@@ -795,10 +798,12 @@ export default function TrainingDiaryPage() {
             const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
             setTennisMetaRaw(parsed)
             setOpponentDraft(parsed.opponent ?? '')
+            setTournamentDraft(parsed.tournament ?? '')
             setScoreSets(parseScore(parsed.score))
           } catch {
             setTennisMetaRaw({ type: 'allenamento', hours: '' })
             setOpponentDraft('')
+            setTournamentDraft('')
             setScoreSets([])
           }
         }
@@ -809,10 +814,12 @@ export default function TrainingDiaryPage() {
           const parsed = raw ? JSON.parse(raw) : { type: 'allenamento', hours: '' }
           setTennisMetaRaw(parsed)
           setOpponentDraft(parsed.opponent ?? '')
+          setTournamentDraft(parsed.tournament ?? '')
           setScoreSets(parseScore(parsed.score))
         } catch {
           setTennisMetaRaw({ type: 'allenamento', hours: '' })
           setOpponentDraft('')
+          setTournamentDraft('')
           setScoreSets([])
         }
       })
@@ -1254,6 +1261,7 @@ export default function TrainingDiaryPage() {
           : null
         const subtitleParts = [
           durationStr || null,
+          tennisMeta.type === 'torneo' && tennisMeta.tournament ? tennisMeta.tournament : null,
           isMatch && tennisMeta.opponent ? `vs ${tennisMeta.opponent}` : null,
           isMatch && tennisMeta.result ? tennisMeta.result.toUpperCase() : null,
           isMatch && scoreStr ? scoreStr : null,
@@ -1305,15 +1313,27 @@ export default function TrainingDiaryPage() {
                   ))}
                 </div>
 
-                {/* Avversario — PRIMA di Durata */}
+                {/* Torneo: nome torneo + avversario; Amichevole: solo avversario */}
                 {isMatch && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Avversario</p>
-                    <input type="text" value={opponentDraft}
-                      onChange={e => setOpponentDraft(e.target.value)}
-                      onBlur={() => setTennisMeta({ opponent: opponentDraft })}
-                      placeholder="Nome avversario"
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                  <div className="space-y-3">
+                    {tennisMeta.type === 'torneo' && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Nome torneo</p>
+                        <input type="text" value={tournamentDraft}
+                          onChange={e => setTournamentDraft(e.target.value)}
+                          onBlur={() => setTennisMeta({ tournament: tournamentDraft })}
+                          placeholder="es. Torneo Città di Roma"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Avversario</p>
+                      <input type="text" value={opponentDraft}
+                        onChange={e => setOpponentDraft(e.target.value)}
+                        onBlur={() => setTennisMeta({ opponent: opponentDraft })}
+                        placeholder="Nome avversario"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-400" />
+                    </div>
                   </div>
                 )}
 
@@ -1322,18 +1342,18 @@ export default function TrainingDiaryPage() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Durata</p>
                   <div className="flex gap-2 mb-2">
                     <button onClick={() => setOpenDrum(d => d === 'dur-h' ? null : 'dur-h')}
-                      className="flex-1 py-3 rounded-xl border-2 font-bold text-center transition-colors"
+                      className="flex-1 py-1.5 rounded-xl border-2 font-bold text-center transition-colors text-gray-900 dark:text-white"
                       style={openDrum === 'dur-h'
                         ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                        : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                        : { borderColor: '#d1d5db', backgroundColor: 'transparent' }}>
                       <span className="text-2xl">{hVal}</span>
                       <span className="text-sm ml-0.5 font-semibold opacity-70">h</span>
                     </button>
                     <button onClick={() => setOpenDrum(d => d === 'dur-m' ? null : 'dur-m')}
-                      className="flex-1 py-3 rounded-xl border-2 font-bold text-center transition-colors"
+                      className="flex-1 py-1.5 rounded-xl border-2 font-bold text-center transition-colors text-gray-900 dark:text-white"
                       style={openDrum === 'dur-m'
                         ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                        : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                        : { borderColor: '#d1d5db', backgroundColor: 'transparent' }}>
                       <span className="text-2xl">{String(mVal).padStart(2,'0')}</span>
                       <span className="text-sm ml-0.5 font-semibold opacity-70">min</span>
                     </button>
@@ -1390,18 +1410,18 @@ export default function TrainingDiaryPage() {
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <span className="w-10 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
                                 <button onClick={() => setOpenDrum(d => d === `${dKey}me` ? null : `${dKey}me`)}
-                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors"
+                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors text-gray-900 dark:text-white"
                                   style={meOpen
                                     ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                    : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                                    : { borderColor: '#d1d5db', backgroundColor: 'transparent' }}>
                                   {set.me}
                                 </button>
                                 <span className="w-4 text-center text-sm font-bold text-gray-300 shrink-0">–</span>
                                 <button onClick={() => setOpenDrum(d => d === `${dKey}opp` ? null : `${dKey}opp`)}
-                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors"
+                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors text-gray-900 dark:text-white"
                                   style={oppOpen
                                     ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                    : { borderColor: '#d1d5db', color: '#374151', backgroundColor: 'transparent' }}>
+                                    : { borderColor: '#d1d5db', backgroundColor: 'transparent' }}>
                                   {set.opp}
                                 </button>
                                 {/* Tiebreak toggle */}
