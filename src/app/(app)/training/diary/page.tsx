@@ -476,7 +476,7 @@ export default function TrainingDiaryPage() {
   const [opponentDraft, setOpponentDraft] = useState('')
   const [tournamentDraft, setTournamentDraft] = useState('')
   const [openDrum, setOpenDrum] = useState<string | null>(null)
-  const [scoreSets, setScoreSets] = useState<{ me: number; opp: number; tb?: number }[]>([])
+  const [scoreSets, setScoreSets] = useState<{ me: number; opp: number; tbMe?: number; tbOpp?: number }[]>([])
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -775,7 +775,7 @@ export default function TrainingDiaryPage() {
       return next
     })
   }
-  function saveTennisSets(newSets: { me: number; opp: number; tb?: number }[]) {
+  function saveTennisSets(newSets: { me: number; opp: number; tbMe?: number; tbOpp?: number }[]) {
     setScoreSets(newSets)
     setTennisMeta({ score: JSON.stringify(newSets) })
   }
@@ -1257,7 +1257,7 @@ export default function TrainingDiaryPage() {
         const isMatch = tennisMeta.type === 'amichevole' || tennisMeta.type === 'torneo'
         const durationStr = fmtTennisHours(tennisMeta.hours)
         const scoreStr = scoreSets.some(s => s.me > 0 || s.opp > 0)
-          ? scoreSets.filter(s => s.me > 0 || s.opp > 0).map(s => s.tb !== undefined ? `${s.me}-${s.opp}(${s.tb})` : `${s.me}-${s.opp}`).join(' ')
+          ? scoreSets.filter(s => s.me > 0 || s.opp > 0).map(s => s.tbMe !== undefined ? `${s.me}-${s.opp}(${s.tbMe}-${s.tbOpp})` : `${s.me}-${s.opp}`).join(' ')
           : null
         const subtitleParts = [
           durationStr || null,
@@ -1296,7 +1296,7 @@ export default function TrainingDiaryPage() {
               const GAME_VALS = [0,1,2,3,4,5,6,7,8,9,10]
               const TB_VALS   = [0,1,2,3,4,5,6,7,8,9,10]
               // 5 righe fisse per match, riempie con valori salvati dove disponibili
-              const displaySets = Array.from({length: 5}, (_, i) => scoreSets[i] ?? { me: 0, opp: 0 })
+              const displaySets = Array.from({length: 5}, (_, i) => scoreSets[i] ?? { me: 0, opp: 0, tbMe: undefined, tbOpp: undefined })
               return (
               <div className="px-4 pb-4 space-y-4 border-t border-gray-100 dark:border-gray-800 pt-3" style={{ backgroundColor: C_TENNIS + '09' }}>
 
@@ -1400,13 +1400,15 @@ export default function TrainingDiaryPage() {
                           <span className="w-9 shrink-0" />
                         </div>
                         {displaySets.map((set, i) => {
-                          const dKey    = `s${i}`
-                          const meOpen  = openDrum === `${dKey}me`
-                          const oppOpen = openDrum === `${dKey}opp`
-                          const tbOpen  = openDrum === `${dKey}tb`
-                          const hasTb   = set.tb !== undefined && set.tb !== null
+                          const dKey      = `s${i}`
+                          const meOpen    = openDrum === `${dKey}me`
+                          const oppOpen   = openDrum === `${dKey}opp`
+                          const tbMeOpen  = openDrum === `${dKey}tbme`
+                          const tbOppOpen = openDrum === `${dKey}tbopp`
+                          const hasTb     = set.tbMe !== undefined
                           return (
                             <div key={i}>
+                              {/* Riga set principale */}
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <span className="w-10 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
                                 <button onClick={() => setOpenDrum(d => d === `${dKey}me` ? null : `${dKey}me`)}
@@ -1428,18 +1430,18 @@ export default function TrainingDiaryPage() {
                                 <button
                                   onClick={() => {
                                     const newSets = displaySets.map((s, j) =>
-                                      j === i ? { ...s, tb: hasTb ? undefined : 0 } : s)
+                                      j === i ? { ...s, tbMe: hasTb ? undefined : 0, tbOpp: hasTb ? undefined : 0 } : s)
                                     saveTennisSets(newSets)
-                                    setOpenDrum(hasTb ? null : `${dKey}tb`)
+                                    setOpenDrum(hasTb ? null : `${dKey}tbme`)
                                   }}
-                                  className="w-9 h-9 shrink-0 rounded-xl border text-[10px] font-bold transition-colors flex items-center justify-center"
+                                  className="w-9 h-9 shrink-0 rounded-xl border text-[9px] font-bold transition-colors flex items-center justify-center leading-tight"
                                   style={hasTb
                                     ? { backgroundColor: C_TENNIS + '22', borderColor: C_TENNIS + '80', color: C_TENNIS }
                                     : { borderColor: '#e5e7eb', color: '#9ca3af', backgroundColor: 'transparent' }}>
-                                  {hasTb ? set.tb : 'TB'}
+                                  {hasTb ? <span className="text-center">{set.tbMe}<br/>{set.tbOpp}</span> : 'TB'}
                                 </button>
                               </div>
-                              {/* Drum game */}
+                              {/* Drum game principale */}
                               {(meOpen || oppOpen) && (
                                 <div className="mb-1.5 mt-1">
                                   <p className="text-[10px] text-gray-400 text-center mb-1">
@@ -1456,15 +1458,40 @@ export default function TrainingDiaryPage() {
                                     accent={C_TENNIS} w="100%" itemH={34} />
                                 </div>
                               )}
-                              {/* Drum tiebreak */}
-                              {tbOpen && (
+                              {/* Riga tiebreak (score TB) */}
+                              {hasTb && (
+                                <div className="flex items-center gap-1.5 mb-0.5 pl-10">
+                                  <span className="text-[9px] font-bold text-gray-400 shrink-0 w-4">TB</span>
+                                  <button onClick={() => setOpenDrum(d => d === `${dKey}tbme` ? null : `${dKey}tbme`)}
+                                    className="flex-1 py-1.5 rounded-xl border-2 text-sm font-bold text-center transition-colors text-gray-900 dark:text-white"
+                                    style={tbMeOpen
+                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                                      : { borderColor: C_TENNIS + '60', backgroundColor: 'transparent' }}>
+                                    {set.tbMe}
+                                  </button>
+                                  <span className="w-4 text-center text-xs font-bold text-gray-300 shrink-0">–</span>
+                                  <button onClick={() => setOpenDrum(d => d === `${dKey}tbopp` ? null : `${dKey}tbopp`)}
+                                    className="flex-1 py-1.5 rounded-xl border-2 text-sm font-bold text-center transition-colors text-gray-900 dark:text-white"
+                                    style={tbOppOpen
+                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
+                                      : { borderColor: C_TENNIS + '60', backgroundColor: 'transparent' }}>
+                                    {set.tbOpp}
+                                  </button>
+                                  <span className="w-9 shrink-0" />
+                                </div>
+                              )}
+                              {/* Drum TB */}
+                              {(tbMeOpen || tbOppOpen) && (
                                 <div className="mb-1.5 mt-1">
-                                  <p className="text-[10px] text-gray-400 text-center mb-1">Punti persi nel tiebreak</p>
+                                  <p className="text-[10px] text-gray-400 text-center mb-1">
+                                    {tbMeOpen ? 'Tuoi punti (TB)' : 'Punti avversario (TB)'}
+                                  </p>
                                   <DrumPicker
                                     values={TB_VALS}
-                                    value={set.tb ?? 0}
+                                    value={tbMeOpen ? (set.tbMe ?? 0) : (set.tbOpp ?? 0)}
                                     onChange={v => {
-                                      saveTennisSets(displaySets.map((s, j) => j === i ? { ...s, tb: Number(v) } : s))
+                                      const field = tbMeOpen ? 'tbMe' : 'tbOpp'
+                                      saveTennisSets(displaySets.map((s, j) => j === i ? { ...s, [field]: Number(v) } : s))
                                       setOpenDrum(null)
                                     }}
                                     accent={C_TENNIS} w="100%" itemH={34} />
