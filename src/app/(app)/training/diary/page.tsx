@@ -477,6 +477,7 @@ export default function TrainingDiaryPage() {
   const [tournamentDraft, setTournamentDraft] = useState('')
   const [openDrum, setOpenDrum] = useState<string | null>(null)
   const [scoreSets, setScoreSets] = useState<{ me: number; opp: number; tbMe?: number; tbOpp?: number }[]>([])
+  const [editSetIdx, setEditSetIdx] = useState<number | null>(null)
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
@@ -1293,10 +1294,6 @@ export default function TrainingDiaryPage() {
               function setDuration(h: number, m: number) {
                 setTennisMeta({ hours: (h === 0 && m === 0) ? '' : String(h + m / 60) })
               }
-              const GAME_VALS = [0,1,2,3,4,5,6,7,8,9,10]
-              const TB_VALS   = [0,1,2,3,4,5,6,7,8,9,10]
-              // 5 righe fisse per match, riempie con valori salvati dove disponibili
-              const displaySets = Array.from({length: 5}, (_, i) => scoreSets[i] ?? { me: 0, opp: 0, tbMe: undefined, tbOpp: undefined })
               return (
               <div className="px-4 pb-4 space-y-4 border-t border-gray-100 dark:border-gray-800 pt-3" style={{ backgroundColor: C_TENNIS + '09' }}>
 
@@ -1387,120 +1384,147 @@ export default function TrainingDiaryPage() {
 
                 {isMatch && (
                   <>
-                    {/* Punteggio — 5 set fissi, TB per set */}
+                    {/* Punteggio — stile "aggiungi serie" */}
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Punteggio</p>
-                      <div className="space-y-0.5">
-                        {/* Intestazioni colonne */}
-                        <div className="flex items-center gap-1.5 mb-1 px-1">
-                          <span className="w-10 shrink-0" />
-                          <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tu</span>
-                          <span className="w-4 shrink-0" />
-                          <span className="flex-1 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Avv.</span>
-                          <span className="w-9 shrink-0" />
-                        </div>
-                        {displaySets.map((set, i) => {
-                          const dKey      = `s${i}`
-                          const meOpen    = openDrum === `${dKey}me`
-                          const oppOpen   = openDrum === `${dKey}opp`
-                          const tbMeOpen  = openDrum === `${dKey}tbme`
-                          const tbOppOpen = openDrum === `${dKey}tbopp`
-                          const hasTb     = set.tbMe !== undefined
-                          return (
-                            <div key={i}>
-                              {/* Riga set principale */}
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="w-10 text-[10px] font-bold text-gray-400 shrink-0">Set {i + 1}</span>
-                                <button onClick={() => setOpenDrum(d => d === `${dKey}me` ? null : `${dKey}me`)}
-                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors text-gray-900 dark:text-white"
-                                  style={meOpen
-                                    ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                    : { borderColor: '#d1d5db', backgroundColor: 'transparent' }}>
-                                  {set.me}
-                                </button>
-                                <span className="w-4 text-center text-sm font-bold text-gray-300 shrink-0">–</span>
-                                <button onClick={() => setOpenDrum(d => d === `${dKey}opp` ? null : `${dKey}opp`)}
-                                  className="flex-1 py-2 rounded-xl border-2 text-lg font-bold text-center transition-colors text-gray-900 dark:text-white"
-                                  style={oppOpen
-                                    ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                    : { borderColor: '#d1d5db', backgroundColor: 'transparent' }}>
-                                  {set.opp}
-                                </button>
-                                {/* Tiebreak toggle */}
-                                <button
-                                  onClick={() => {
-                                    const newSets = displaySets.map((s, j) =>
-                                      j === i ? { ...s, tbMe: hasTb ? undefined : 0, tbOpp: hasTb ? undefined : 0 } : s)
-                                    saveTennisSets(newSets)
-                                    setOpenDrum(hasTb ? null : `${dKey}tbme`)
-                                  }}
-                                  className="w-9 h-9 shrink-0 rounded-xl border text-[9px] font-bold transition-colors flex items-center justify-center leading-tight"
-                                  style={hasTb
-                                    ? { backgroundColor: C_TENNIS + '22', borderColor: C_TENNIS + '80', color: C_TENNIS }
-                                    : { borderColor: '#e5e7eb', color: '#9ca3af', backgroundColor: 'transparent' }}>
-                                  {hasTb ? <span className="text-center">{set.tbMe}<br/>{set.tbOpp}</span> : 'TB'}
-                                </button>
+
+                      {/* Righe set già inseriti */}
+                      {scoreSets.length > 0 && (
+                        <div className="border-t border-gray-100 dark:border-gray-800 mb-2">
+                          {scoreSets.map((set, i) => {
+                            const isEditing = editSetIdx === i
+                            const hasTb     = set.tbMe !== undefined
+                            return (
+                              <div key={i} className={i > 0 ? 'border-t border-gray-100 dark:border-gray-800' : ''}>
+                                {isEditing ? (
+                                  /* Form inline di modifica */
+                                  <div className="px-3 py-2.5 space-y-2" style={{ backgroundColor: C_TENNIS + '0d' }}>
+                                    {/* Steppers Me / Opp */}
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] text-gray-400 w-5 shrink-0">Tu</span>
+                                      <div className="flex-1 flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                        <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                          onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],me:Math.max(0,set.me-1)}; saveTennisSets(ns) }}>–</button>
+                                        <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.me}</span>
+                                        <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                          onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],me:set.me+1}; saveTennisSets(ns) }}>+</button>
+                                      </div>
+                                      <span className="text-gray-300 text-sm">–</span>
+                                      <div className="flex-1 flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                        <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                          onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],opp:Math.max(0,set.opp-1)}; saveTennisSets(ns) }}>–</button>
+                                        <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.opp}</span>
+                                        <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                          onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],opp:set.opp+1}; saveTennisSets(ns) }}>+</button>
+                                      </div>
+                                      <span className="text-[10px] text-gray-400 w-5 text-right shrink-0">Avv</span>
+                                    </div>
+                                    {/* Steppers TB (solo se attivi) */}
+                                    {hasTb && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold w-5 shrink-0" style={{ color: C_TENNIS }}>TB</span>
+                                        <div className="flex-1 flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                          <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                            onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],tbMe:Math.max(0,(set.tbMe??0)-1)}; saveTennisSets(ns) }}>–</button>
+                                          <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.tbMe}</span>
+                                          <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                            onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],tbMe:(set.tbMe??0)+1}; saveTennisSets(ns) }}>+</button>
+                                        </div>
+                                        <span className="text-gray-300 text-sm">–</span>
+                                        <div className="flex-1 flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                          <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                            onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],tbOpp:Math.max(0,(set.tbOpp??0)-1)}; saveTennisSets(ns) }}>–</button>
+                                          <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{set.tbOpp}</span>
+                                          <button className="px-2.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400"
+                                            onClick={() => { const ns=[...scoreSets]; ns[i]={...ns[i],tbOpp:(set.tbOpp??0)+1}; saveTennisSets(ns) }}>+</button>
+                                        </div>
+                                        <span className="w-5 shrink-0" />
+                                      </div>
+                                    )}
+                                    {/* Toggle TB + Fine */}
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => {
+                                          const ns=[...scoreSets]
+                                          ns[i]=hasTb
+                                            ? {...ns[i],tbMe:undefined,tbOpp:undefined}
+                                            : {...ns[i],tbMe:0,tbOpp:0}
+                                          saveTennisSets(ns)
+                                        }}
+                                        className="flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                        style={hasTb
+                                          ? { backgroundColor: C_TENNIS, color: '#fff' }
+                                          : { backgroundColor: C_TENNIS + '20', color: C_TENNIS }}>
+                                        TB
+                                      </button>
+                                      <button onClick={() => setEditSetIdx(null)}
+                                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1"
+                                        style={{ backgroundColor: C_TENNIS }}>
+                                        <Check size={12} /> Fine
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* Riga display compatta */
+                                  <div className="flex items-center gap-2 px-3 py-2">
+                                    {/* Badge numero set */}
+                                    <button
+                                      onClick={() => setEditSetIdx(editSetIdx === i ? null : i)}
+                                      className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors"
+                                      style={{ backgroundColor: C_TENNIS + '20', color: C_TENNIS }}>
+                                      {i + 1}
+                                    </button>
+                                    {/* Punteggio con pallini TB in superscript */}
+                                    <button
+                                      className="flex-1 flex items-end gap-0.5 leading-none"
+                                      onClick={() => setEditSetIdx(editSetIdx === i ? null : i)}>
+                                      <span className="text-sm font-bold text-gray-900 dark:text-white">{set.me}</span>
+                                      {hasTb && (
+                                        <span className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold self-start"
+                                          style={{ backgroundColor: C_TENNIS + '28', color: C_TENNIS }}>
+                                          {set.tbMe}
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-gray-400 mx-0.5">–</span>
+                                      <span className="text-sm font-bold text-gray-900 dark:text-white">{set.opp}</span>
+                                      {hasTb && (
+                                        <span className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold self-start"
+                                          style={{ backgroundColor: C_TENNIS + '28', color: C_TENNIS }}>
+                                          {set.tbOpp}
+                                        </span>
+                                      )}
+                                    </button>
+                                    {/* Elimina set */}
+                                    <button
+                                      onClick={() => {
+                                        const ns = scoreSets.filter((_,j) => j !== i)
+                                        saveTennisSets(ns)
+                                        if (editSetIdx === i) setEditSetIdx(null)
+                                      }}
+                                      className="w-7 h-7 rounded-lg text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
-                              {/* Drum game principale */}
-                              {(meOpen || oppOpen) && (
-                                <div className="mb-1.5 mt-1">
-                                  <p className="text-[10px] text-gray-400 text-center mb-1">
-                                    {meOpen ? 'I tuoi game' : 'Game avversario'}
-                                  </p>
-                                  <DrumPicker
-                                    values={GAME_VALS}
-                                    value={meOpen ? set.me : set.opp}
-                                    onChange={v => {
-                                      const field = meOpen ? 'me' : 'opp'
-                                      saveTennisSets(displaySets.map((s, j) => j === i ? { ...s, [field]: Number(v) } : s))
-                                      setOpenDrum(null)
-                                    }}
-                                    accent={C_TENNIS} w="100%" itemH={34} />
-                                </div>
-                              )}
-                              {/* Riga tiebreak (score TB) */}
-                              {hasTb && (
-                                <div className="flex items-center gap-1.5 mb-0.5 pl-10">
-                                  <span className="text-[9px] font-bold text-gray-400 shrink-0 w-4">TB</span>
-                                  <button onClick={() => setOpenDrum(d => d === `${dKey}tbme` ? null : `${dKey}tbme`)}
-                                    className="flex-1 py-1.5 rounded-xl border-2 text-sm font-bold text-center transition-colors text-gray-900 dark:text-white"
-                                    style={tbMeOpen
-                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                      : { borderColor: C_TENNIS + '60', backgroundColor: 'transparent' }}>
-                                    {set.tbMe}
-                                  </button>
-                                  <span className="w-4 text-center text-xs font-bold text-gray-300 shrink-0">–</span>
-                                  <button onClick={() => setOpenDrum(d => d === `${dKey}tbopp` ? null : `${dKey}tbopp`)}
-                                    className="flex-1 py-1.5 rounded-xl border-2 text-sm font-bold text-center transition-colors text-gray-900 dark:text-white"
-                                    style={tbOppOpen
-                                      ? { backgroundColor: C_TENNIS, borderColor: C_TENNIS, color: '#fff' }
-                                      : { borderColor: C_TENNIS + '60', backgroundColor: 'transparent' }}>
-                                    {set.tbOpp}
-                                  </button>
-                                  <span className="w-9 shrink-0" />
-                                </div>
-                              )}
-                              {/* Drum TB */}
-                              {(tbMeOpen || tbOppOpen) && (
-                                <div className="mb-1.5 mt-1">
-                                  <p className="text-[10px] text-gray-400 text-center mb-1">
-                                    {tbMeOpen ? 'Tuoi punti (TB)' : 'Punti avversario (TB)'}
-                                  </p>
-                                  <DrumPicker
-                                    values={TB_VALS}
-                                    value={tbMeOpen ? (set.tbMe ?? 0) : (set.tbOpp ?? 0)}
-                                    onChange={v => {
-                                      const field = tbMeOpen ? 'tbMe' : 'tbOpp'
-                                      saveTennisSets(displaySets.map((s, j) => j === i ? { ...s, [field]: Number(v) } : s))
-                                      setOpenDrum(null)
-                                    }}
-                                    accent={C_TENNIS} w="100%" itemH={34} />
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Bottone aggiungi set */}
+                      {scoreSets.length < 5 && (
+                        <button
+                          onClick={() => {
+                            const ns = [...scoreSets, { me: 0, opp: 0 }]
+                            saveTennisSets(ns)
+                            setEditSetIdx(ns.length - 1)
+                          }}
+                          className="w-full py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border-2 border-dashed transition-colors"
+                          style={{ borderColor: C_TENNIS + '60', color: C_TENNIS, backgroundColor: C_TENNIS + '08' }}>
+                          <Plus size={13} /> Set {scoreSets.length + 1}
+                        </button>
+                      )}
                     </div>
 
                     {/* Risultato — chiude la card */}
