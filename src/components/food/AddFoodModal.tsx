@@ -153,19 +153,6 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
                 )}>
                 <Star size={16} fill={favFilter ? 'currentColor' : 'none'} />
               </button>
-              {onFreeMeal && (
-                <button
-                  onClick={() => { onFreeMeal(); onClose() }}
-                  aria-label="Pasto libero"
-                  className={cn(
-                    'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors',
-                    isFree
-                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-400'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
-                  )}>
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>🍟</span>
-                </button>
-              )}
             </div>
 
             {categories.length > 0 && (
