@@ -22,6 +22,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
   const [qty, setQty] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [saving, setSaving] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [favFilter, setFavFilter] = useState(false)
@@ -38,7 +39,7 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
     })
   }, [userId])
 
-  // Pre-load all foods on mount so instant filtering works from first keystroke
+  // Pre-load first 100 foods on mount for instant display when no query typed
   useEffect(() => {
     fetch(`/api/food?q=&userId=${userId}`)
       .then(r => r.json())
@@ -46,26 +47,40 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
       .catch(() => {})
   }, [userId])
 
-  // Only re-fetch when category/fav filter changes — text search is handled client-side
+  // Unified search: server-side when query typed (searches full DB), local cache otherwise
   useEffect(() => {
+    const trim = q.trim()
     const hasFilter = favFilter || !!catFilter
-    if (!hasFilter) { setResults(allFoodsRef.current); return }
-    const p = new URLSearchParams({ userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
-    fetch(`/api/food?${p}`)
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setResults(data) })
-      .catch(() => {})
-  }, [userId, favFilter, catFilter])
+
+    if (!trim && !hasFilter) {
+      setResults(allFoodsRef.current)
+      return
+    }
+
+    // With query: debounced server-side search so foods beyond the first 100 are found
+    const delay = trim ? 300 : 0
+    const timeout = setTimeout(() => {
+      setSearching(true)
+      const p = new URLSearchParams({
+        userId,
+        ...(trim ? { q: trim, limit: '300' } : {}),
+        ...(catFilter ? { categoryId: catFilter } : {}),
+        ...(favFilter ? { fav: '1' } : {}),
+      })
+      fetch(`/api/food?${p}`)
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setResults(data); setSearched(true) })
+        .catch(() => {})
+        .finally(() => setSearching(false))
+    }, delay)
+
+    return () => clearTimeout(timeout)
+  }, [q, userId, favFilter, catFilter])
 
   const displayResults = useMemo(() => {
     const hasFilter = favFilter || !!catFilter
     if (!q.trim() && !hasFilter) return []
-    if (!q.trim()) return results
-    const lower = q.trim().toLowerCase()
-    return results.filter(f =>
-      f.name.toLowerCase().includes(lower) ||
-      (f.brand?.toLowerCase().includes(lower) ?? false)
-    )
+    return results
   }, [results, q, favFilter, catFilter])
 
   function addToCart() {
@@ -137,7 +152,9 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
           <>
             <div className="flex items-center gap-2 mb-2">
               <div className="relative flex-1">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                {searching
+                  ? <Loader2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 animate-spin" />
+                  : <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />}
                 <input autoFocus value={q} onChange={e => { setQ(e.target.value); setSelected(null) }}
                   placeholder="Cerca alimento o marca..."
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
