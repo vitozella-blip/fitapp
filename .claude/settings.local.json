@@ -38,7 +38,8 @@
       "Bash(timeout 25 curl -s -o /dev/null -w \"dashboard=%{http_code}\\\\n\" http://localhost:3000/dashboard)",
       "Bash(timeout 25 curl -s -o /dev/null -w \"api/mealplan=%{http_code}\\\\n\" \"http://localhost:3000/api/mealplan?userId=test\")",
       "Bash(git reset *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }

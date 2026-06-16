@@ -38,19 +38,19 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
     })
   }, [userId])
 
-  // Pre-load all foods on mount so instant filtering works from first keystroke
+  // Pre-load ALL foods on mount so client-side filtering is instant
   useEffect(() => {
-    fetch(`/api/food?q=&userId=${userId}`)
+    fetch(`/api/food?q=&userId=${userId}&limit=9999`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) { allFoodsRef.current = data; setResults(data); setSearched(true) } })
       .catch(() => {})
   }, [userId])
 
-  // Only re-fetch when category/fav filter changes — text search is handled client-side
+  // Re-fetch only when category/fav filter changes — text search stays client-side
   useEffect(() => {
     const hasFilter = favFilter || !!catFilter
     if (!hasFilter) { setResults(allFoodsRef.current); return }
-    const p = new URLSearchParams({ userId, ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
+    const p = new URLSearchParams({ userId, limit: '9999', ...(catFilter ? { categoryId: catFilter } : {}), ...(favFilter ? { fav: '1' } : {}) })
     fetch(`/api/food?${p}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setResults(data) })
@@ -153,19 +153,6 @@ export function AddFoodModal({ meal, date, onClose, onAdded, isFree, onFreeMeal 
                 )}>
                 <Star size={16} fill={favFilter ? 'currentColor' : 'none'} />
               </button>
-              {onFreeMeal && (
-                <button
-                  onClick={() => { onFreeMeal(); onClose() }}
-                  aria-label="Pasto libero"
-                  className={cn(
-                    'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors',
-                    isFree
-                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-400'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-400'
-                  )}>
-                  <span style={{ fontSize: 16, lineHeight: 1 }}>🍟</span>
-                </button>
-              )}
             </div>
 
             {categories.length > 0 && (
