@@ -98,7 +98,7 @@ function TotalsBox({ totals, servings = 1, cookedWeight }: { totals: Totals; ser
         {cookedWeight && (
           <p className="text-[10px] text-gray-400">
             <span className="font-semibold text-gray-500">{totals.totalWeight}g</span> crudo
-            <span className="mx-1.5 text-gray-300">→</span>
+            <span className="mx-1.5 text-gray-300">·</span>
             <span className="font-semibold text-gray-500">{cookedWeight}g</span> cotto
           </p>
         )}
