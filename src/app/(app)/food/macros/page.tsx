@@ -154,9 +154,9 @@ export default function MacrosPage() {
                 onChange={e => setAmount(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && confirmAmount()}
                 onBlur={onAmountBlur}
-                placeholder=""
+                placeholder="—"
                 autoFocus
-                className="w-full px-4 py-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-gray-400 text-center"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 text-center caret-transparent placeholder:text-gray-400"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold" style={{ color: sm!.hex }}>g</span>
             </div>
