@@ -346,8 +346,8 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
   )
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" style={{ borderTopColor: OC, borderTopWidth: 3 }}>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800" style={{ backgroundColor: OC + '14' }}>
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl" style={{ borderTopColor: OC, borderTopWidth: 3 }}>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 rounded-t-2xl" style={{ backgroundColor: OC + '14' }}>
         <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: OC }}>Nuova Ricetta</p>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
           <X size={12} />
@@ -381,18 +381,13 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
           <>
             <Breadcrumb toStep={1} />
             <FoodSearch userId={userId} onSelect={addFood} />
-            {ingredients.length > 0 && (
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
-                {ingredients.map(ing => (
-                  <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
-                    onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
-                ))}
-              </div>
-            )}
             <button onClick={() => setStep(3)} disabled={ingredients.length === 0}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
               style={{ backgroundColor: OC }}>
               Avanti
+              {ingredients.length > 0 && (
+                <span className="text-xs font-normal opacity-80">({ingredients.length})</span>
+              )}
             </button>
           </>
         )}
