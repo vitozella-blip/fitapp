@@ -349,8 +349,8 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" style={{ borderTopColor: OC, borderTopWidth: 3 }}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800" style={{ backgroundColor: OC + '14' }}>
         <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: OC }}>Nuova Ricetta</p>
-        <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <X size={14} />
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+          <X size={12} />
         </button>
       </div>
       <div className="p-4 space-y-4">
