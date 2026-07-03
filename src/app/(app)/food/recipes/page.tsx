@@ -412,17 +412,17 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <Plus size={12} /> Aggiungi ingrediente
             </button>
-            <div className="space-y-2">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 w-20 shrink-0">Porzioni</span>
+                <span className="text-xs text-gray-400 shrink-0">Porzioni</span>
                 <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-                  className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+                  className="w-14 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 w-20 shrink-0">Peso cotto <span className="font-normal">(g)</span></span>
+                <span className="text-xs text-gray-400 shrink-0">Peso cotto (g)</span>
                 <input type="number" value={cookedWeight} onChange={e => setCookedWeight(e.target.value)} min="1"
-                  placeholder={totals.totalWeight > 0 ? `crudo ${totals.totalWeight}g` : 'opzionale'}
-                  className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
+                  placeholder={totals.totalWeight > 0 ? `${totals.totalWeight}g` : 'opz.'}
+                  className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
               </div>
             </div>
             <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} cookedWeight={cookedWeight ? Number(cookedWeight) : null} />
@@ -584,17 +584,19 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
         <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OC }}>Modifica ingredienti</p>
-            <div className="flex items-center gap-1.5">
-              <input type="number" value={editServings} onChange={e => setEditServings(e.target.value)} min="1"
-                className="w-10 px-1 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none" />
-              <span className="text-xs text-gray-400">porz.</span>
-            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 shrink-0">Peso cotto (g)</span>
-            <input type="number" value={editCookedWeight} onChange={e => setEditCookedWeight(e.target.value)} min="1"
-              placeholder="opzionale"
-              className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 shrink-0">Porzioni</span>
+              <input type="number" value={editServings} onChange={e => setEditServings(e.target.value)} min="1"
+                className="w-14 px-1 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 shrink-0">Peso cotto (g)</span>
+              <input type="number" value={editCookedWeight} onChange={e => setEditCookedWeight(e.target.value)} min="1"
+                placeholder="opz."
+                className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
+            </div>
           </div>
           {editIngredients.length > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
