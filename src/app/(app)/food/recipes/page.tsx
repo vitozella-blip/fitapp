@@ -380,14 +380,19 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         {step === 2 && (
           <>
             <Breadcrumb toStep={1} />
+            {ingredients.length > 0 && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {ingredients.map(ing => (
+                  <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
+                    onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
+                ))}
+              </div>
+            )}
             <FoodSearch userId={userId} onSelect={addFood} />
             <button onClick={() => setStep(3)} disabled={ingredients.length === 0}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
               style={{ backgroundColor: OC }}>
               Avanti
-              {ingredients.length > 0 && (
-                <span className="text-xs font-normal opacity-80">({ingredients.length})</span>
-              )}
             </button>
           </>
         )}
