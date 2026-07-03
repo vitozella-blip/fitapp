@@ -677,11 +677,11 @@ export default function RecipesPage() {
         <RecipeForm userId={userId} onSaved={() => { setShowForm(false); load() }} onClose={() => setShowForm(false)} />
       )}
 
-      {loading ? (
+      {!showForm && (loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: OC, borderTopColor: 'transparent' }} />
         </div>
-      ) : recipes.length === 0 && !showForm ? (
+      ) : recipes.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-10 text-center">
           <ChefHat size={28} className="mx-auto text-gray-300 mb-2" />
           <p className="text-sm font-semibold text-gray-500">Nessuna ricetta</p>
@@ -691,7 +691,7 @@ export default function RecipesPage() {
         recipes.map(r => (
           <RecipeCard key={r.id} recipe={r} userId={userId} onDelete={load} onUpdate={load} />
         ))
-      )}
+      ))}
     </div>
   )
 }
