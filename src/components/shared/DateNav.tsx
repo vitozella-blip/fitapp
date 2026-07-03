@@ -53,7 +53,7 @@ function buildTennisDates(): Set<string> {
   return s
 }
 
-function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkoutColors = false }: {
+export function CalendarModal({ selectedDate, onChange, onClose, accent, disableWorkoutColors = false }: {
   selectedDate: string
   onChange: (d: string) => void
   onClose: () => void

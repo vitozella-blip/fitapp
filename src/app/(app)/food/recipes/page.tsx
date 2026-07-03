@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil } from 'lucide-react'
+import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil, Calendar } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { CalendarModal } from '@/components/shared/DateNav'
 import { cn } from '@/lib/utils'
 
 const OC = '#fb923c'
@@ -299,6 +300,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
   const [name, setName] = useState('')
   const [servings, setServings] = useState('1')
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString().slice(0, 10))
+  const [calOpen, setCalOpen] = useState(false)
   const [cookedWeight, setCookedWeight] = useState('')
   const [ingredients, setIngredients] = useState<DraftIngredient[]>([])
   const [saving, setSaving] = useState(false)
@@ -344,14 +346,19 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
       <div className="p-4 space-y-4">
         {step === 1 ? (
           <>
-            <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
-              onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(2)} />
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400 shrink-0">Data creazione</label>
-              <input type="date" value={createdAt} onChange={e => setCreatedAt(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+              <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
+                className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+                onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(2)} />
+              <button onClick={() => setCalOpen(true)}
+                className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title={createdAt}>
+                <Calendar size={16} style={{ color: OC }} />
+              </button>
             </div>
+            {calOpen && (
+              <CalendarModal selectedDate={createdAt} onChange={setCreatedAt} onClose={() => setCalOpen(false)} accent={OC} disableWorkoutColors />
+            )}
             <button onClick={() => setStep(2)} disabled={!name.trim()}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
               style={{ backgroundColor: OC }}>
