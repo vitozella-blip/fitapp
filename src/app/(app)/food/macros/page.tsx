@@ -109,15 +109,17 @@ export default function MacrosPage() {
     </button>
   )
 
+  const accent = sm?.hex ?? '#fb923c'
+
   return (
     <div className="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none md:h-full">
       <PageHeader title="Completa i Macro" icon={Target} accent="food" />
 
       {/* ── Step 1: Macro ───────────────────────────────────────────────────── */}
       {activeStep === 1 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Macro</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" style={{ borderTopColor: accent, borderTopWidth: 3 }}>
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800" style={{ backgroundColor: accent + '14' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Macro</p>
           </div>
           <div className="p-4 space-y-3">
           <div className="grid grid-cols-3 gap-2">
@@ -140,9 +142,9 @@ export default function MacrosPage() {
       {/* ── Step 2: Quantità ────────────────────────────────────────────────── */}
       {macro && (
         activeStep === 2 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantità</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" style={{ borderTopColor: accent, borderTopWidth: 3 }}>
+            <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800" style={{ backgroundColor: accent + '14' }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Quantità</p>
             </div>
             <div className="p-4 space-y-3">
             <div className="relative">
@@ -177,9 +179,9 @@ export default function MacrosPage() {
       {/* ── Step 3: Fonte ───────────────────────────────────────────────────── */}
       {macro && amount && Number(amount) > 0 && (
         activeStep === 3 ? (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fonte</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" style={{ borderTopColor: accent, borderTopWidth: 3 }}>
+            <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800" style={{ backgroundColor: accent + '14' }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Fonte</p>
             </div>
             <div className="p-4 space-y-3">
             <div className="relative">
