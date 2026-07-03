@@ -412,17 +412,27 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <Plus size={12} /> Aggiungi ingrediente
             </button>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 shrink-0">Porzioni</span>
-                <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-                  className="w-14 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-400">Peso crudo</span>
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{totals.totalWeight}g</span>
+                </div>
+                <span className="text-gray-300 dark:text-gray-600">·</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-400">Peso cotto</span>
+                  <div className="flex items-center gap-1">
+                    <input type="number" value={cookedWeight} onChange={e => setCookedWeight(e.target.value)} min="1"
+                      placeholder="—"
+                      className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-400" />
+                    <span className="text-xs text-gray-400">g</span>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 shrink-0">Peso cotto (g)</span>
-                <input type="number" value={cookedWeight} onChange={e => setCookedWeight(e.target.value)} min="1"
-                  placeholder={totals.totalWeight > 0 ? `${totals.totalWeight}g` : 'opz.'}
-                  className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
+                <span className="text-xs text-gray-400">Porzioni</span>
+                <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
+                  className="w-14 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
               </div>
             </div>
             <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} cookedWeight={cookedWeight ? Number(cookedWeight) : null} />
