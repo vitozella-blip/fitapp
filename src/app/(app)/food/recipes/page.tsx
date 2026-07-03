@@ -296,7 +296,7 @@ function IngredientRow({ name, brand, qty, unit, onQtyChange, onUnitChange, onRe
 
 // ── RecipeForm ────────────────────────────────────────────────────────────────
 function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () => void; onClose: () => void }) {
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [name, setName] = useState('')
   const [servings, setServings] = useState('1')
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString().slice(0, 10))
@@ -317,6 +317,8 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
   const totals = calcTotals(ingredients)
   const canSave = name.trim() && ingredients.length > 0
 
+  const dateLabel = new Date(createdAt + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+
   async function save() {
     if (!canSave) return
     setSaving(true)
@@ -335,8 +337,16 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
     onSaved()
   }
 
+  const Breadcrumb = ({ toStep }: { toStep: 1 | 2 }) => (
+    <div className="flex items-center gap-2 mb-1">
+      <button onClick={() => setStep(toStep)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">← {name}</button>
+      <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
+      <span className="text-xs text-gray-400">{dateLabel}</span>
+    </div>
+  )
+
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm" style={{ borderLeftColor: OC, borderLeftWidth: 3 }}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <p className="text-xs font-bold uppercase tracking-widest" style={{ color: OC }}>Nuova Ricetta</p>
         <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -344,7 +354,7 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         </button>
       </div>
       <div className="p-4 space-y-4">
-        {step === 1 ? (
+        {step === 1 && (
           <>
             <div className="flex items-center gap-2">
               <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
@@ -365,16 +375,12 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
               Ingredienti
             </button>
           </>
-        ) : (
+        )}
+
+        {step === 2 && (
           <>
-            <div className="flex items-center gap-2 mb-1">
-              <button onClick={() => setStep(1)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">← {name}</button>
-              <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
-              <span className="text-xs text-gray-400">{new Date(createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            </div>
-
+            <Breadcrumb toStep={1} />
             <FoodSearch userId={userId} onSelect={addFood} />
-
             {ingredients.length > 0 && (
               <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
                 {ingredients.map(ing => (
@@ -383,25 +389,43 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
                 ))}
               </div>
             )}
+            <button onClick={() => setStep(3)} disabled={ingredients.length === 0}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
+              style={{ backgroundColor: OC }}>
+              Avanti
+            </button>
+          </>
+        )}
 
+        {step === 3 && (
+          <>
+            <Breadcrumb toStep={1} />
             {ingredients.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 w-20 shrink-0">Porzioni</span>
-                  <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-                    className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 w-20 shrink-0">Peso cotto <span className="font-normal">(g)</span></span>
-                  <input type="number" value={cookedWeight} onChange={e => setCookedWeight(e.target.value)} min="1"
-                    placeholder={totals.totalWeight > 0 ? `crudo ${totals.totalWeight}g` : 'opzionale'}
-                    className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
-                </div>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {ingredients.map(ing => (
+                  <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
+                    onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
+                ))}
               </div>
             )}
-
-            {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} cookedWeight={cookedWeight ? Number(cookedWeight) : null} />}
-
+            <button onClick={() => setStep(2)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <Plus size={12} /> Aggiungi ingrediente
+            </button>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 w-20 shrink-0">Porzioni</span>
+                <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
+                  className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 w-20 shrink-0">Peso cotto <span className="font-normal">(g)</span></span>
+                <input type="number" value={cookedWeight} onChange={e => setCookedWeight(e.target.value)} min="1"
+                  placeholder={totals.totalWeight > 0 ? `crudo ${totals.totalWeight}g` : 'opzionale'}
+                  className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
+              </div>
+            </div>
+            <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} cookedWeight={cookedWeight ? Number(cookedWeight) : null} />
             <button onClick={save} disabled={!canSave || saving}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
               style={{ backgroundColor: OC }}>
@@ -489,7 +513,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden relative">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden relative" style={{ borderLeftColor: OC, borderLeftWidth: 3 }}>
       {/* Swipe actions — nascosti quando la card è aperta o in editing */}
       {!editing && !open && <>
         <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: OC }}
