@@ -37,11 +37,12 @@ async function upsertRecipeFood(recipeId: string) {
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { servings, ingredients } = await req.json()
+  const { servings, cookedWeight, ingredients } = await req.json()
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   try {
     if (servings != null) {
-      await pool.query(`UPDATE "Recipe" SET servings=$1 WHERE id=$2`, [Math.max(1, Number(servings) || 1), id])
+      const cw = cookedWeight != null ? Math.round(Number(cookedWeight)) || null : null
+      await pool.query(`UPDATE "Recipe" SET servings=$1, "cookedWeight"=$2 WHERE id=$3`, [Math.max(1, Number(servings) || 1), cw, id])
     }
     await pool.query(`DELETE FROM "RecipeIngredient" WHERE "recipeId"=$1`, [id])
     for (const ing of (ingredients ?? [])) {

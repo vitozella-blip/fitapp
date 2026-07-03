@@ -40,6 +40,7 @@ async function ensureSchema() {
     "userId" TEXT NOT NULL, "createdAt" TIMESTAMP DEFAULT NOW()
   )`)
   await pool.query(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS servings INT DEFAULT 1`)
+  await pool.query(`ALTER TABLE "Recipe" ADD COLUMN IF NOT EXISTS "cookedWeight" INT`)
   // foodId and quantity are nullable to support free-text ingredients
   await pool.query(`CREATE TABLE IF NOT EXISTS "RecipeIngredient" (
     id TEXT PRIMARY KEY, "recipeId" TEXT NOT NULL,
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
   try {
     await ensureSchema()
     const { rows } = await pool.query(`
-      SELECT r.id, r.name, r."createdAt", COALESCE(r.servings, 1) as servings,
+      SELECT r.id, r.name, r."createdAt", COALESCE(r.servings, 1) as servings, r."cookedWeight",
         COALESCE(json_agg(json_build_object(
           'foodId',   ri."foodId",
           'foodName', COALESCE(f.name, ri.name, ''),
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "RecipeIngredient" ri ON ri."recipeId" = r.id
       LEFT JOIN "Food" f ON f.id = ri."foodId"
       WHERE r."userId" = $1
-      GROUP BY r.id, r.name, r."createdAt", r.servings
+      GROUP BY r.id, r.name, r."createdAt", r.servings, r."cookedWeight"
       ORDER BY r."createdAt" DESC
     `, [userId])
     return NextResponse.json(rows)
@@ -82,15 +83,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, name, servings, ingredients } = await req.json()
+  const { userId, name, servings, createdAt, cookedWeight, ingredients } = await req.json()
   if (!userId || !name) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   try {
     await ensureSchema()
     const id = `recipe-${Date.now()}`
     const s = Math.max(1, Number(servings) || 1)
+    const ts = createdAt ? new Date(createdAt) : new Date()
+    const cw = cookedWeight ? Math.round(Number(cookedWeight)) : null
     await pool.query(
-      `INSERT INTO "Recipe" (id, name, "userId", servings, "createdAt") VALUES ($1,$2,$3,$4,NOW())`,
-      [id, name, userId, s]
+      `INSERT INTO "Recipe" (id, name, "userId", servings, "createdAt", "cookedWeight") VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, name, userId, s, ts, cw]
     )
     for (const ing of (ingredients ?? [])) {
       const iid = `ri-${Date.now()}-${Math.random().toString(36).slice(2)}`

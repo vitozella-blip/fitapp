@@ -14,7 +14,7 @@ type SelectedItem = { food?: Food; name: string; brand?: string; qty?: number; u
 type DraftIngredient = { localId: string; foodId?: string; food?: Food; name: string; brand?: string; qty?: number; unit: Unit }
 type EditIngredient  = { localId: string; foodId?: string; foodName: string; brand?: string; qty?: number; unit: Unit }
 type SavedIngredient = { foodId?: string; foodName: string; brand?: string; qty?: number; unit: Unit; calories: number; protein: number; carbs: number; fat: number }
-type Recipe  = { id: string; name: string; createdAt: string; servings: number; ingredients: SavedIngredient[] }
+type Recipe  = { id: string; name: string; createdAt: string; servings: number; cookedWeight?: number | null; ingredients: SavedIngredient[] }
 type Totals  = { totalWeight: number; cal: number; pro: number; carb: number; fat: number; p100: { calories: number; protein: number; carbs: number; fat: number } | null }
 
 // ── Calc helpers ──────────────────────────────────────────────────────────────
@@ -72,31 +72,60 @@ function MacroPills({ calories, protein, carbs, fat, size = 'sm' }: {
 }
 
 // ── TotalsBox ─────────────────────────────────────────────────────────────────
-function TotalsBox({ totals, servings = 1 }: { totals: Totals; servings?: number }) {
+function TotalsBox({ totals, servings = 1, cookedWeight }: { totals: Totals; servings?: number; cookedWeight?: number | null }) {
   if (!totals.p100) return null
   const s = Math.max(1, servings)
-  const portionWeight = Math.round(totals.totalWeight / s)
+  const rawPortionG = Math.round(totals.totalWeight / s)
+  const cookedPortionG = cookedWeight ? Math.round(cookedWeight / s) : null
   const portion = {
     calories: Math.round(totals.cal / s),
     protein:  Math.round(totals.pro  * 10 / s) / 10,
     carbs:    Math.round(totals.carb * 10 / s) / 10,
     fat:      Math.round(totals.fat  * 10 / s) / 10,
   }
+  const p100cooked = cookedWeight ? {
+    calories: Math.round(totals.cal / cookedWeight * 100),
+    protein:  Math.round(totals.pro  / cookedWeight * 1000) / 10,
+    carbs:    Math.round(totals.carb / cookedWeight * 1000) / 10,
+    fat:      Math.round(totals.fat  / cookedWeight * 1000) / 10,
+  } : null
   return (
     <div className="rounded-xl overflow-hidden" style={{ backgroundColor: OC + '0f' }}>
       <div className="px-3 pt-3 pb-2.5 text-center space-y-1.5">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Totale</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Totale ricetta</p>
         <MacroPills size="sm" calories={totals.cal} protein={totals.pro} carbs={totals.carb} fat={totals.fat} />
+        {cookedWeight && (
+          <p className="text-[10px] text-gray-400">
+            <span className="font-semibold text-gray-500">{totals.totalWeight}g</span> crudo
+            <span className="mx-1.5 text-gray-300">→</span>
+            <span className="font-semibold text-gray-500">{cookedWeight}g</span> cotto
+          </p>
+        )}
       </div>
-      <div className="px-3 py-2.5 text-center space-y-1.5 border-t" style={{ borderColor: OC + '20' }}>
-        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
-          Per porzione
-        </p>
+      <div className="px-3 py-2.5 text-center space-y-1 border-t" style={{ borderColor: OC + '20' }}>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Per porzione ({s})</p>
         <MacroPills size="sm" calories={portion.calories} protein={portion.protein} carbs={portion.carbs} fat={portion.fat} />
+        <p className="text-[10px] text-gray-400">
+          <span className="font-semibold text-gray-500">{rawPortionG}g</span> crudo
+          {cookedPortionG && (
+            <><span className="mx-1.5 text-gray-300">·</span><span className="font-semibold text-gray-500">{cookedPortionG}g</span> cotto</>
+          )}
+        </p>
       </div>
       <div className="px-3 py-3 text-center space-y-2 border-t" style={{ borderColor: OC + '20', backgroundColor: OC + '18' }}>
         <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OC }}>Per 100g</p>
-        <MacroPills size="lg" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] text-gray-400 w-10 text-right shrink-0">crudo</span>
+            <MacroPills size="sm" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
+          </div>
+          {p100cooked && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-gray-400 w-10 text-right shrink-0">cotto</span>
+              <MacroPills size="lg" calories={p100cooked.calories} protein={p100cooked.protein} carbs={p100cooked.carbs} fat={p100cooked.fat} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -132,7 +161,7 @@ function FoodSearch({ userId, onSelect }: { userId: string; onSelect: (item: Sel
   }, [])
 
   useEffect(() => {
-    fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
+    fetch(`/api/food?q=&userId=${userId}&limit=9999`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
   }, [userId])
 
   const displayResults = useMemo(() => {
@@ -266,8 +295,11 @@ function IngredientRow({ name, brand, qty, unit, onQtyChange, onUnitChange, onRe
 
 // ── RecipeForm ────────────────────────────────────────────────────────────────
 function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () => void; onClose: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1)
   const [name, setName] = useState('')
   const [servings, setServings] = useState('1')
+  const [createdAt, setCreatedAt] = useState(() => new Date().toISOString().slice(0, 10))
+  const [cookedWeight, setCookedWeight] = useState('')
   const [ingredients, setIngredients] = useState<DraftIngredient[]>([])
   const [saving, setSaving] = useState(false)
 
@@ -292,6 +324,8 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
       body: JSON.stringify({
         userId, name: name.trim(),
         servings: Math.max(1, Number(servings) || 1),
+        createdAt,
+        cookedWeight: cookedWeight ? Number(cookedWeight) : null,
         ingredients: ingredients.map(i => ({ foodId: i.foodId, name: i.name, qty: i.qty, unit: i.unit })),
       }),
     })
@@ -308,65 +342,67 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
         </button>
       </div>
       <div className="p-4 space-y-4">
-        <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-
-        <FoodSearch userId={userId} onSelect={addFood} />
-
-        {ingredients.length > 0 && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
-            {ingredients.map(ing => (
-              <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
-                onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
-            ))}
-          </div>
-        )}
-
-        {ingredients.length > 0 && (
-          <div className="space-y-1.5">
-            {totals.totalWeight > 0 && (
-              <p className="text-xs text-gray-400">
-                Peso totale: <span className="font-bold text-gray-700 dark:text-gray-200">{totals.totalWeight}g</span>
-              </p>
-            )}
+        {step === 1 ? (
+          <>
+            <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Nome ricetta..."
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-base font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+              onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(2)} />
             <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">Porzioni:</span>
-            <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-              className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-            {totals.totalWeight > 0 && (
-              <span className="text-xs text-gray-400">
-                → <span className="font-bold text-gray-600 dark:text-gray-300">
-                  {Math.round(totals.totalWeight / Math.max(1, Number(servings) || 1))}g
-                </span> a porzione
-              </span>
-            )}
+              <label className="text-xs text-gray-400 shrink-0">Data creazione</label>
+              <input type="date" value={createdAt} onChange={e => setCreatedAt(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
             </div>
-          </div>
-        )}
+            <button onClick={() => setStep(2)} disabled={!name.trim()}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
+              style={{ backgroundColor: OC }}>
+              Ingredienti
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-1">
+              <button onClick={() => setStep(1)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">← {name}</button>
+              <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
+              <span className="text-xs text-gray-400">{new Date(createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            </div>
 
-        {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} />}
+            <FoodSearch userId={userId} onSelect={addFood} />
 
-        {ingredients.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">Porzioni:</span>
-            <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
-              className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
-            {totals.totalWeight > 0 && (
-              <span className="text-xs text-gray-400">
-                → <span className="font-bold text-gray-600 dark:text-gray-300">
-                  {Math.round(totals.totalWeight / Math.max(1, Number(servings) || 1))}g
-                </span> a porzione
-              </span>
+            {ingredients.length > 0 && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {ingredients.map(ing => (
+                  <IngredientRow key={ing.localId} name={ing.name} brand={ing.brand} qty={ing.qty} unit={ing.unit}
+                    onRemove={() => setIngredients(prev => prev.filter(i => i.localId !== ing.localId))} />
+                ))}
+              </div>
             )}
-          </div>
-        )}
 
-        <button onClick={save} disabled={!canSave || saving}
-          className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
-          style={{ backgroundColor: OC }}>
-          {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-          Salva Ricetta
-        </button>
+            {ingredients.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 w-20 shrink-0">Porzioni</span>
+                  <input type="number" value={servings} onChange={e => setServings(e.target.value)} min="1"
+                    className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 w-20 shrink-0">Peso cotto <span className="font-normal">(g)</span></span>
+                  <input type="number" value={cookedWeight} onChange={e => setCookedWeight(e.target.value)} min="1"
+                    placeholder={totals.totalWeight > 0 ? `crudo ${totals.totalWeight}g` : 'opzionale'}
+                    className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
+                </div>
+              </div>
+            )}
+
+            {ingredients.length > 0 && <TotalsBox totals={totals} servings={Math.max(1, Number(servings) || 1)} cookedWeight={cookedWeight ? Number(cookedWeight) : null} />}
+
+            <button onClick={save} disabled={!canSave || saving}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
+              style={{ backgroundColor: OC }}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              Salva Ricetta
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -378,6 +414,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
   const [editing, setEditing] = useState(false)
   const [editIngredients, setEditIngredients] = useState<EditIngredient[]>([])
   const [editServings, setEditServings] = useState('1')
+  const [editCookedWeight, setEditCookedWeight] = useState('')
   const [saving, setSaving] = useState(false)
   const totals = calcTotalsFromSaved(recipe.ingredients)
 
@@ -388,6 +425,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
       qty: i.qty, unit: (i.unit ?? 'g') as Unit,
     })))
     setEditServings(String(recipe.servings ?? 1))
+    setEditCookedWeight(recipe.cookedWeight ? String(recipe.cookedWeight) : '')
     setEditing(true)
   }
   function cancelEdit() { setEditing(false); setEditIngredients([]) }
@@ -418,6 +456,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         servings: Math.max(1, Number(editServings) || 1),
+        cookedWeight: editCookedWeight ? Number(editCookedWeight) : null,
         ingredients: editIngredients.map(i => ({ foodId: i.foodId, name: i.foodName, qty: i.qty, unit: i.unit })),
       }),
     })
@@ -466,18 +505,24 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
       <div className="flex items-start gap-3 px-4 py-3 cursor-pointer"
         onClick={() => { if (snapped.current) { snapTo(null); return }; if (!editing) setOpen(o => !o) }}>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            {recipe.name}
-            {totals.totalWeight > 0 && <>
-              <span className="text-gray-400"> · </span>
-              <span className="text-gray-500 font-medium">{totals.totalWeight}g</span>
-              <span className="text-gray-400 text-[11px] font-normal">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{recipe.name}</p>
+            {recipe.createdAt && (
+              <span className="text-[10px] text-gray-400 shrink-0">
+                {new Date(recipe.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+          {totals.totalWeight > 0 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {totals.totalWeight}g
+              <span className="text-gray-400 font-normal">
                 {' '}({recipe.servings > 1
                   ? `${recipe.servings} porzioni da ${Math.round(totals.totalWeight / recipe.servings)}g`
                   : '1 porzione'})
               </span>
-            </>}
-          </p>
+            </p>
+          )}
           {totals.p100 && (
             <p className="text-xs mt-0.5">
               <span style={{ color: '#6abf6a' }}>{totals.p100.calories}</span>
@@ -513,6 +558,12 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
                 className="w-10 px-1 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none" />
               <span className="text-xs text-gray-400">porz.</span>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 shrink-0">Peso cotto (g)</span>
+            <input type="number" value={editCookedWeight} onChange={e => setEditCookedWeight(e.target.value)} min="1"
+              placeholder="opzionale"
+              className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold text-center text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400 placeholder:font-normal placeholder:text-gray-300" />
           </div>
           {editIngredients.length > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
@@ -557,7 +608,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
           )}
           {totals.p100 && (
             <div className="mx-4 my-3">
-              <TotalsBox totals={totals} servings={recipe.servings ?? 1} />
+              <TotalsBox totals={totals} servings={recipe.servings ?? 1} cookedWeight={recipe.cookedWeight} />
             </div>
           )}
         </div>
