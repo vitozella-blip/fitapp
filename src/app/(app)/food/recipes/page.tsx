@@ -513,7 +513,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden relative" style={{ borderTopColor: OC, borderTopWidth: 3 }}>
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden relative" style={{ borderLeftColor: OC, borderLeftWidth: 3 }}>
       {/* Swipe actions — nascosti quando la card è aperta o in editing */}
       {!editing && !open && <>
         <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: OC }}
