@@ -115,15 +115,15 @@ function TotalsBox({ totals, servings = 1, cookedWeight }: { totals: Totals; ser
       </div>
       <div className="px-3 py-3 text-center space-y-2 border-t" style={{ borderColor: OC + '20', backgroundColor: OC + '18' }}>
         <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OC }}>Per 100g</p>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] text-gray-400 w-10 text-right shrink-0">crudo</span>
-            <MacroPills size="sm" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[9px] text-gray-400 w-8 text-right shrink-0">crudo</span>
+            <MacroPills size="lg" calories={totals.p100.calories} protein={totals.p100.protein} carbs={totals.p100.carbs} fat={totals.p100.fat} />
           </div>
           {p100cooked && (
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] text-gray-400 w-10 text-right shrink-0">cotto</span>
-              <MacroPills size="lg" calories={p100cooked.calories} protein={p100cooked.protein} carbs={p100cooked.carbs} fat={p100cooked.fat} />
+            <div className="flex items-center justify-center gap-2 opacity-70">
+              <span className="text-[9px] text-gray-400 w-8 text-right shrink-0">cotto</span>
+              <MacroPills size="sm" calories={p100cooked.calories} protein={p100cooked.protein} carbs={p100cooked.carbs} fat={p100cooked.fat} />
             </div>
           )}
         </div>
