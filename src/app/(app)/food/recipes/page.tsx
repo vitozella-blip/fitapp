@@ -346,9 +346,9 @@ function RecipeForm({ userId, onSaved, onClose }: { userId: string; onSaved: () 
   )
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm" style={{ borderLeftColor: OC, borderLeftWidth: 3 }}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: OC }}>Nuova Ricetta</p>
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden" style={{ borderTopColor: OC, borderTopWidth: 3 }}>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800" style={{ backgroundColor: OC + '14' }}>
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: OC }}>Nuova Ricetta</p>
         <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           <X size={14} />
         </button>
@@ -513,7 +513,7 @@ function RecipeCard({ recipe, userId, onDelete, onUpdate }: { recipe: Recipe; us
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden relative" style={{ borderLeftColor: OC, borderLeftWidth: 3 }}>
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden relative" style={{ borderTopColor: OC, borderTopWidth: 3 }}>
       {/* Swipe actions — nascosti quando la card è aperta o in editing */}
       {!editing && !open && <>
         <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SNAP, backgroundColor: OC }}
