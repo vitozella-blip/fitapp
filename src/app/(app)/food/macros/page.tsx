@@ -125,7 +125,7 @@ export default function MacrosPage() {
           <div className="grid grid-cols-3 gap-2">
             {MACROS.map(m => (
               <button key={m.key} onClick={() => chooseMacro(m.key)}
-                className={cn('py-3 rounded-xl border text-sm font-bold transition-all',
+                className={cn('py-3 rounded-xl border text-xs font-bold transition-all',
                   macro === m.key ? m.bg + ' ' + m.color : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}>
                 {m.label}
               </button>
