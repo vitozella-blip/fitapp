@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
 import { BrowserMultiFormatReader } from '@zxing/browser'
 import { NotFoundException } from '@zxing/library'
-import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter, ScanBarcode } from 'lucide-react'
+import { Search, Plus, Trash2, Star, ChevronDown, Pencil, X, Loader2, Check, Filter, ScanBarcode, Scale } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Apple } from 'lucide-react'
@@ -728,6 +728,103 @@ function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onC
   )
 }
 
+function FoodCompareModal({ foods, onClose }: { foods: Food[]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <p className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Scale size={16} className="text-orange-400" /> Confronto alimenti
+          </p>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <table className="border-collapse w-full">
+            <thead>
+              <tr className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                <th className="sticky left-0 z-30 bg-white dark:bg-gray-900 w-[80px] min-w-[80px] px-3 py-2.5" />
+                {foods.map(f => (
+                  <th key={f.id} className="w-[110px] min-w-[110px] px-2 py-2.5 text-center font-normal">
+                    <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 leading-tight">{f.name}</p>
+                    {f.brand && <p className="text-[9px] text-gray-400 mt-0.5">{f.brand}</p>}
+                  </th>
+                ))}
+              </tr>
+              <tr>
+                <td colSpan={foods.length + 1} className="sticky left-0 px-3 pt-2 pb-1 bg-white dark:bg-gray-900">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Valori per 100g</p>
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              {DETAIL_ROWS.map(r => {
+                const values = foods.map(f => f[r.key] as number | null | undefined)
+                const nums = values.filter((v): v is number => v != null && v > 0)
+                const maxVal = nums.length > 1 ? Math.max(...nums) : null
+                const minVal = nums.length > 1 ? Math.min(...nums) : null
+                const rowBg = r.sub ? 'bg-gray-50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'
+
+                return (
+                  <tr key={String(r.key)} className="border-b border-gray-50 dark:border-gray-800/60">
+                    <td className={cn('sticky left-0 z-10 px-3 py-2.5', r.sub ? 'pl-5' : '', rowBg)}>
+                      <span className={cn('text-[11px]', r.sub ? 'font-normal text-gray-400' : 'font-semibold')}
+                        style={{ color: r.sub ? undefined : r.color }}>
+                        {r.label}
+                      </span>
+                    </td>
+                    {foods.map(f => {
+                      const raw = f[r.key] as number | null | undefined
+                      const val = raw != null && raw > 0 ? `${raw}` : '—'
+                      const unit = r.key === 'calories' ? 'kcal' : 'g'
+                      const isMax = raw != null && raw > 0 && raw === maxVal
+                      const isMin = raw != null && raw > 0 && raw === minVal
+                      return (
+                        <td key={f.id} className="px-1.5 py-1 text-center">
+                          <div className="py-1 px-1 flex flex-col items-center">
+                            {isMax && <span className="text-[9px] font-bold text-red-400 leading-none mb-0.5">▲</span>}
+                            {isMin && <span className="text-[9px] font-bold text-green-500 leading-none mb-0.5">▼</span>}
+                            {!isMax && !isMin && <span className="text-[9px] leading-none mb-0.5 opacity-0">·</span>}
+                            {val === '—'
+                              ? <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                              : <span className={cn('text-sm', isMax || isMin ? 'font-bold' : 'font-medium')} style={{ color: r.color }}>
+                                  {val}<span className="text-[10px] font-normal ml-0.5 opacity-70">{unit}</span>
+                                </span>
+                            }
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 text-[11px] text-gray-400 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-green-500 font-bold">▼</span>
+            Valore più basso
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-red-400 font-bold">▲</span>
+            Valore più alto
+          </div>
+        </div>
+
+        <div className="px-4 pb-6 pt-2 shrink-0">
+          <button onClick={onClose} className="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold text-sm">
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const PAGE = 100
 
 function FoodDatabasePage() {
@@ -749,7 +846,9 @@ function FoodDatabasePage() {
   const [saving, setSaving] = useState(false)
   const [selecting, setSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedFoodsMap, setSelectedFoodsMap] = useState<Map<string, Food>>(new Map())
   const [showScanner, setShowScanner] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const fetchAll = useCallback(async (query = q, cat = catFilter, fav = favOnly) => {
@@ -849,6 +948,8 @@ function FoodDatabasePage() {
   function startSelecting(foodId: string) {
     setSelecting(true)
     setSelectedIds(new Set([foodId]))
+    const food = displayFoods.find(f => f.id === foodId)
+    setSelectedFoodsMap(new Map(food ? [[foodId, food]] : []))
   }
 
   function toggleSelect(foodId: string) {
@@ -857,11 +958,22 @@ function FoodDatabasePage() {
       n.has(foodId) ? n.delete(foodId) : n.add(foodId)
       return n
     })
+    setSelectedFoodsMap(prev => {
+      const n = new Map(prev)
+      if (n.has(foodId)) {
+        n.delete(foodId)
+      } else {
+        const food = displayFoods.find(f => f.id === foodId)
+        if (food) n.set(foodId, food)
+      }
+      return n
+    })
   }
 
   function cancelSelecting() {
     setSelecting(false)
     setSelectedIds(new Set())
+    setSelectedFoodsMap(new Map())
   }
 
   async function deleteSelected() {
@@ -963,6 +1075,13 @@ function FoodDatabasePage() {
         />
       )}
 
+      {showCompare && (
+        <FoodCompareModal
+          foods={[...selectedFoodsMap.values()]}
+          onClose={() => setShowCompare(false)}
+        />
+      )}
+
       {showForm && (
         <FoodFormModal form={form} setForm={setForm} categories={categories} userId={userId}
           onSave={handleSave} onClose={() => { setShowForm(false); setEditFood(null) }}
@@ -970,17 +1089,32 @@ function FoodDatabasePage() {
           editing={!!editFood} saving={saving} />
       )}
 
-      {selecting && (
+      {selecting && !showCompare && (
         <div className="fixed bottom-20 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="bg-gray-900 dark:bg-white rounded-2xl shadow-2xl flex items-center gap-3 px-4 py-3 text-sm font-semibold max-w-sm w-full pointer-events-auto">
-            <span className="flex-1 text-white dark:text-gray-900">{selectedIds.size} selezionat{selectedIds.size === 1 ? 'o' : 'i'}</span>
-            <button onClick={deleteSelected}
-              className="flex items-center gap-1.5 text-red-400 dark:text-red-500 disabled:opacity-50"
-              disabled={selectedIds.size === 0}>
-              <Trash2 size={15} /> Elimina
-            </button>
-            <span className="text-gray-600 dark:text-gray-400">·</span>
-            <button onClick={cancelSelecting} className="text-gray-400 dark:text-gray-500">Annulla</button>
+          <div className="bg-gray-900 dark:bg-white rounded-2xl shadow-2xl flex items-center px-4 py-2.5 max-w-sm w-full pointer-events-auto">
+            <div className="flex-1">
+              <span className="text-white dark:text-gray-900 font-bold text-base">{selectedIds.size}</span>
+              <span className="text-gray-400 dark:text-gray-500 text-xs ml-1.5">selezionat{selectedIds.size === 1 ? 'o' : 'i'}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {selectedIds.size >= 2 && (
+                <button onClick={() => setShowCompare(true)}
+                  className="w-11 h-11 rounded-xl flex flex-col items-center justify-center gap-0.5 text-orange-400 hover:bg-white/10 dark:hover:bg-gray-100 transition-colors">
+                  <Scale size={18} />
+                  <span className="text-[9px] font-semibold">Confronta</span>
+                </button>
+              )}
+              <button onClick={deleteSelected} disabled={selectedIds.size === 0}
+                className="w-11 h-11 rounded-xl flex flex-col items-center justify-center gap-0.5 text-red-400 hover:bg-white/10 dark:hover:bg-gray-100 transition-colors disabled:opacity-40">
+                <Trash2 size={18} />
+                <span className="text-[9px] font-semibold">Elimina</span>
+              </button>
+              <button onClick={cancelSelecting}
+                className="w-11 h-11 rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-400 hover:bg-white/10 dark:hover:bg-gray-100 transition-colors">
+                <X size={18} />
+                <span className="text-[9px] font-semibold">Annulla</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
