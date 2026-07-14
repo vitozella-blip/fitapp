@@ -728,28 +728,122 @@ function FoodFormModal({ form, setForm, categories, userId, onSave, onClose, onC
   )
 }
 
-function FoodCompareModal({ foods, onClose }: { foods: Food[]; onClose: () => void }) {
+function FoodCompareModal({ initialFoods, userId, onClose }: { initialFoods: Food[]; userId: string; onClose: () => void }) {
+  const [foods, setFoods] = useState<Food[]>(initialFoods)
+  const [adding, setAdding] = useState(false)
+  const [addQ, setAddQ] = useState('')
+  const [addResults, setAddResults] = useState<Food[]>([])
+  const [addLoading, setAddLoading] = useState(false)
+  const addTimer = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  function searchAdd(q: string) {
+    setAddQ(q)
+    clearTimeout(addTimer.current)
+    if (!q.trim()) { setAddResults([]); return }
+    addTimer.current = setTimeout(async () => {
+      setAddLoading(true)
+      try {
+        const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}&limit=20&offset=0`)
+        const list = await r.json()
+        setAddResults(Array.isArray(list) ? list.filter((f: Food) => !foods.some(c => c.id === f.id)) : [])
+      } finally { setAddLoading(false) }
+    }, 250)
+  }
+
+  function addFood(food: Food) {
+    setFoods(prev => [...prev, food])
+    setAddResults(prev => prev.filter(f => f.id !== food.id))
+    setAddQ('')
+    setAdding(false)
+  }
+
+  function removeFood(id: string) {
+    setFoods(prev => prev.filter(f => f.id !== id))
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-2xl w-full md:max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
+
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <p className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Scale size={16} className="text-orange-400" /> Confronto alimenti
           </p>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setAdding(a => !a); setAddQ(''); setAddResults([]) }}
+              className={cn('flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors',
+                adding ? 'bg-orange-400 text-white' : 'bg-orange-50 dark:bg-orange-950/40 text-orange-500')}>
+              <Plus size={13} /> Aggiungi
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
+        {/* Pannello ricerca inline */}
+        {adding && (
+          <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 shrink-0 space-y-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                autoFocus
+                value={addQ}
+                onChange={e => searchAdd(e.target.value)}
+                placeholder="Cerca alimento da aggiungere..."
+                className="w-full pl-8 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+              />
+              {addQ && (
+                <button onClick={() => { setAddQ(''); setAddResults([]) }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {addLoading && (
+              <div className="flex justify-center py-1">
+                <Loader2 size={15} className="animate-spin text-orange-400" />
+              </div>
+            )}
+            {addResults.length > 0 && (
+              <div className="max-h-36 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-800">
+                {addResults.map(f => (
+                  <button key={f.id} onClick={() => addFood(f)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{f.name}</p>
+                      {f.brand && <p className="text-[11px] text-gray-400 truncate">{f.brand}</p>}
+                    </div>
+                    <span className="text-xs font-bold shrink-0" style={{ color: '#6abf6a' }}>{f.calories} kcal</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {addQ.trim() && !addLoading && addResults.length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-1">Nessun risultato</p>
+            )}
+          </div>
+        )}
+
+        {/* Tabella confronto */}
         <div className="flex-1 overflow-auto">
           <table className="border-collapse w-full">
             <thead>
               <tr className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
                 <th className="sticky left-0 z-30 bg-white dark:bg-gray-900 w-[80px] min-w-[80px] px-3 py-2.5" />
                 {foods.map(f => (
-                  <th key={f.id} className="w-[110px] min-w-[110px] px-2 py-2.5 text-center font-normal">
-                    <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 leading-tight">{f.name}</p>
-                    {f.brand && <p className="text-[9px] text-gray-400 mt-0.5">{f.brand}</p>}
+                  <th key={f.id} className="w-[110px] min-w-[110px] px-2 py-2 text-center font-normal">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 leading-tight">{f.name}</p>
+                      {f.brand && <p className="text-[9px] text-gray-400">{f.brand}</p>}
+                      {foods.length > 1 && (
+                        <button onClick={() => removeFood(f.id)}
+                          className="mt-0.5 w-4 h-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-red-100 hover:text-red-400 transition-colors">
+                          <X size={9} />
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -766,7 +860,6 @@ function FoodCompareModal({ foods, onClose }: { foods: Food[]; onClose: () => vo
                 const maxVal = nums.length > 1 ? Math.max(...nums) : null
                 const minVal = nums.length > 1 ? Math.min(...nums) : null
                 const rowBg = r.sub ? 'bg-gray-50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'
-
                 return (
                   <tr key={String(r.key)} className="border-b border-gray-50 dark:border-gray-800/60">
                     <td className={cn('sticky left-0 z-10 px-3 py-2.5', r.sub ? 'pl-5' : '', rowBg)}>
@@ -1077,7 +1170,8 @@ function FoodDatabasePage() {
 
       {showCompare && (
         <FoodCompareModal
-          foods={[...selectedFoodsMap.values()]}
+          initialFoods={[...selectedFoodsMap.values()]}
+          userId={userId}
           onClose={() => setShowCompare(false)}
         />
       )}
