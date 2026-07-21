@@ -942,16 +942,20 @@ function WeekExRow({ ex, weekId, param, color }: {
         </div>
       </div>
       {hasMultiSets && (
-        <div className="flex gap-1 flex-wrap mt-1 pb-0.5">
+        <div className="mt-1 mb-0.5 rounded border overflow-hidden" style={{ borderColor: color + '40' }}>
           {parsedReps.sets.map((t, i) => (
-            <span key={i} className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: color + '18', color }}>
-              #{i + 1} {t.min === t.max ? t.min : `${t.min}–${t.max}`}
-            </span>
+            <div key={i} className="flex items-center gap-2 px-2 py-0.5 border-b last:border-0" style={{ borderColor: color + '25' }}>
+              <span className="text-[9px] font-bold w-4 shrink-0" style={{ color }}>{i + 1}</span>
+              <span className="text-[9px] font-bold" style={{ color }}>
+                {t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`} reps
+              </span>
+            </div>
           ))}
-          {parsedReps.mods.map((m, i) => (
-            <span key={`m${i}`} className="text-[9px] font-bold text-gray-400 italic px-1 py-0.5">{m}</span>
-          ))}
+          {parsedReps.mods.length > 0 && (
+            <div className="px-2 py-0.5 border-t" style={{ borderColor: color + '25' }}>
+              <span className="text-[9px] text-gray-400 italic">{parsedReps.mods.join(' · ')}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
