@@ -1238,8 +1238,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   }
 
   const exCount = tmpl.exercises?.length ?? 0
-  const tIdx  = idx   // 0-based position in sorted array
-  const color = SCHEDA_COLORS[tIdx % SCHEDA_COLORS.length]
+  const color = badge.color
   const exercises = tmpl.exercises ?? []
 
   return (
