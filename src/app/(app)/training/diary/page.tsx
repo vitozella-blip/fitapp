@@ -4,7 +4,7 @@ import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, C
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
-import { cn, localToday } from '@/lib/utils'
+import { cn, localToday, parseRepsTargets } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
@@ -107,26 +107,6 @@ function parseScore(raw: string | undefined | null): { me: number; opp: number }
   })
 }
 
-// ── Reps string parser ───────────────────────────────────────────────────────
-type SetTarget = { min: number; max: number }
-function parseRepsTargets(reps: string | null): { sets: SetTarget[]; mods: string[] } {
-  if (!reps) return { sets: [], mods: [] }
-  const tokens = reps.split(/\s*\+\s*/)
-  const sets: SetTarget[] = []
-  const mods: string[] = []
-  for (const tok of tokens) {
-    const m = tok.trim().match(/^(\d+)x(\d+)(?:\/(\d+))?$/)
-    if (m) {
-      const count = parseInt(m[1])
-      const minR = parseInt(m[2])
-      const maxR = m[3] ? parseInt(m[3]) : minR
-      for (let i = 0; i < count; i++) sets.push({ min: minR, max: maxR })
-    } else if (tok.trim()) {
-      mods.push(tok.trim())
-    }
-  }
-  return { sets, mods }
-}
 
 // ── Set grouping helpers ──────────────────────────────────────────────────────
 type SetItem  = { s: WorkoutSet; isW: boolean; label: string }

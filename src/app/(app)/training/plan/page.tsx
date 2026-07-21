@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { cn } from '@/lib/utils'
+import { cn, parseRepsTargets } from '@/lib/utils'
 import { SCHEDA_COLORS } from '@/components/training/WorkoutBadge'
 import { SchedaBadge, WorkoutBadgeDisplay, BADGE_ICON_NAMES, BADGE_ICONS } from '@/components/shared/icons'
 import { schedaAbbrev, schedaColorByOrder, SCHEDA_PALETTE } from '@/lib/theme'
@@ -918,6 +918,9 @@ function WeekExRow({ ex, weekId, param, color }: {
     setSaving(false)
   }
 
+  const parsedReps = parseRepsTargets(reps)
+  const hasMultiSets = parsedReps.sets.length > 1
+
   return (
     <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 last:border-0">
       <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
@@ -938,6 +941,19 @@ function WeekExRow({ ex, weekId, param, color }: {
             className="w-12 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
         </div>
       </div>
+      {hasMultiSets && (
+        <div className="flex gap-1 flex-wrap mt-1 pb-0.5">
+          {parsedReps.sets.map((t, i) => (
+            <span key={i} className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+              style={{ backgroundColor: color + '18', color }}>
+              #{i + 1} {t.min === t.max ? t.min : `${t.min}–${t.max}`}
+            </span>
+          ))}
+          {parsedReps.mods.map((m, i) => (
+            <span key={`m${i}`} className="text-[9px] font-bold text-gray-400 italic px-1 py-0.5">{m}</span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
