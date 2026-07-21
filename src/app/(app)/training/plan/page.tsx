@@ -942,19 +942,27 @@ function WeekExRow({ ex, weekId, param, color }: {
         </div>
       </div>
       {hasMultiSets && (
-        <div className="mt-1 mb-0.5 rounded border overflow-hidden" style={{ borderColor: color + '40' }}>
+        <div className="mt-1 mb-0.5 space-y-1">
           {parsedReps.sets.map((t, i) => (
-            <div key={i} className="flex items-center gap-2 px-2 py-0.5 border-b last:border-0" style={{ borderColor: color + '25' }}>
-              <span className="text-[9px] font-bold w-4 shrink-0" style={{ color }}>{i + 1}</span>
-              <span className="text-[9px] font-bold" style={{ color }}>
-                {t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`} reps
-              </span>
+            <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+              <span />
+              <div className="flex flex-col items-center gap-0.5">
+                {i === 0 && <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Set</span>}
+                <div className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 text-center">
+                  {i + 1}
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                {i === 0 && <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>}
+                <div className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 text-center">
+                  {t.min === t.max ? `${t.min}` : `${t.min}/${t.max}`}
+                </div>
+              </div>
+              <div className="w-12" />
             </div>
           ))}
           {parsedReps.mods.length > 0 && (
-            <div className="px-2 py-0.5 border-t" style={{ borderColor: color + '25' }}>
-              <span className="text-[9px] text-gray-400 italic">{parsedReps.mods.join(' · ')}</span>
-            </div>
+            <p className="text-[9px] text-gray-400 italic pl-1">{parsedReps.mods.join(' · ')}</p>
           )}
         </div>
       )}
