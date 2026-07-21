@@ -107,6 +107,27 @@ function parseScore(raw: string | undefined | null): { me: number; opp: number }
   })
 }
 
+// ── Reps string parser ───────────────────────────────────────────────────────
+type SetTarget = { min: number; max: number }
+function parseRepsTargets(reps: string | null): { sets: SetTarget[]; mods: string[] } {
+  if (!reps) return { sets: [], mods: [] }
+  const tokens = reps.split(/\s*\+\s*/)
+  const sets: SetTarget[] = []
+  const mods: string[] = []
+  for (const tok of tokens) {
+    const m = tok.trim().match(/^(\d+)x(\d+)(?:\/(\d+))?$/)
+    if (m) {
+      const count = parseInt(m[1])
+      const minR = parseInt(m[2])
+      const maxR = m[3] ? parseInt(m[3]) : minR
+      for (let i = 0; i < count; i++) sets.push({ min: minR, max: maxR })
+    } else if (tok.trim()) {
+      mods.push(tok.trim())
+    }
+  }
+  return { sets, mods }
+}
+
 // ── Set grouping helpers ──────────────────────────────────────────────────────
 type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
 type SetGroup = { key: string; type: string; items: SetItem[]; isGrouped: boolean }
@@ -499,6 +520,7 @@ export default function TrainingDiaryPage() {
   const [addExId,       setAddExId]       = useState<string | null>(null)
   const [formReps,      setFormReps]      = useState('')
   const [formTargetReps, setFormTargetReps] = useState('')
+  const addTargetRepsRef = useRef<string | null>(null)
   const [formWeight,    setFormWeight]    = useState('')
   const [formTag,       setFormTag]       = useState('')
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
@@ -986,7 +1008,19 @@ export default function TrainingDiaryPage() {
         setRecTimer({ mode: 'countdown', rem: 60, init: 60, on: true })
       }
     }
-    setFormReps(formTargetReps); setFormWeight('')
+    let nextReps = formTargetReps
+    if (!isWarmup && addTargetRepsRef.current) {
+      const parsed = parseRepsTargets(addTargetRepsRef.current)
+      if (parsed.sets.length > 0) {
+        const dbWarmupIds = new Set((w?.sets ?? []).filter(s => s.isWarmup).map(s => s.id))
+        const allWarmupIds = new Set([...warmups, ...dbWarmupIds])
+        const newNonWarmupCount = (w?.sets ?? []).filter(s => s.exerciseId === exId && !allWarmupIds.has(s.id)).length
+        const nextTarget = parsed.sets[newNonWarmupCount] ?? parsed.sets[parsed.sets.length - 1]
+        nextReps = String(nextTarget.min)
+        setFormTargetReps(nextReps)
+      }
+    }
+    setFormReps(nextReps); setFormWeight('')
     setFormSaving(false)
     bumpWorkoutVersion()
   }
@@ -1157,9 +1191,18 @@ export default function TrainingDiaryPage() {
     const isSame = addExId === exId
     setAddExId(isSame ? null : exId)
     setExpandedExId(exId)
-    const num = targetReps?.match(/\d+/)?.[0] ?? ''
-    setFormTargetReps(num)
-    if (!isSame) { setFormReps(num); setFormWeight(''); setFormTag(''); setTagPickerOpen(false) }
+    addTargetRepsRef.current = targetReps
+    const parsed = parseRepsTargets(targetReps)
+    let defaultReps: string
+    if (parsed.sets.length > 0) {
+      const loggedCount = (workout?.sets ?? []).filter(s => s.exerciseId === exId && !warmups.has(s.id)).length
+      const nextTarget = parsed.sets[loggedCount] ?? parsed.sets[parsed.sets.length - 1]
+      defaultReps = String(nextTarget.min)
+    } else {
+      defaultReps = targetReps?.match(/\d+/)?.[0] ?? ''
+    }
+    setFormTargetReps(defaultReps)
+    if (!isSame) { setFormReps(defaultReps); setFormWeight(''); setFormTag(''); setTagPickerOpen(false) }
   }
 
   const allSets    = (workout?.sets ?? []).filter(Boolean)
@@ -1575,6 +1618,8 @@ export default function TrainingDiaryPage() {
         const addOpen = addExId === exId
         let workIdx = 0, warmIdx = 0
         const rest = fmtRest(te.restSeconds)
+        const parsedReps = parseRepsTargets(te.reps)
+        const nonWarmupLogged = exSets.filter(s => !warmups.has(s.id)).length
 
         const historyView = (() => {
           if (historyExId !== te.id) return null
@@ -1772,25 +1817,56 @@ export default function TrainingDiaryPage() {
               <div className="border-t border-gray-50 dark:border-gray-800">
                 {/* Target table */}
                 <div className="px-4 pt-2.5 pb-0">
-                  {/* Stats row: SET · REP · REC */}
-                  <div className="grid grid-cols-3 mb-2">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
-                      <p className="text-xs font-bold" style={{ color: CT }}>{te.sets}</p>
+                  {parsedReps.sets.length > 1 ? (
+                    <div className="mb-2">
+                      <div className="grid grid-cols-[20px_1fr_auto] gap-x-3 px-1 mb-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">#</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Target</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
+                      </div>
+                      {parsedReps.sets.map((t, i) => {
+                        const isDoneSet = i < nonWarmupLogged
+                        return (
+                          <div key={i} className="grid grid-cols-[20px_1fr_auto] gap-x-3 items-center py-0.5 px-1">
+                            <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>{i + 1}</p>
+                            <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>
+                              {t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`} reps
+                            </p>
+                            {i === 0 ? (
+                              <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#9ca3af' : CT }}
+                                onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}>
+                                {rest || '—'}
+                              </button>
+                            ) : <span />}
+                          </div>
+                        )
+                      })}
+                      {parsedReps.mods.length > 0 && (
+                        <p className="text-[10px] text-gray-400 italic px-1 mt-1">
+                          {parsedReps.mods.join(' · ')}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
-                      <p className="text-xs font-bold" style={{ color: CT }}>{te.reps || '—'}</p>
+                  ) : (
+                    <div className="grid grid-cols-3 mb-2">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
+                        <p className="text-xs font-bold" style={{ color: CT }}>{te.sets}</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
+                        <p className="text-xs font-bold" style={{ color: CT }}>{te.reps || '—'}</p>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
+                        <button
+                          className="text-xs font-bold leading-none"
+                          style={{ color: CT }}
+                          onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
+                        >{rest || '—'}</button>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
-                      <button
-                        className="text-xs font-bold leading-none"
-                        style={{ color: CT }}
-                        onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
-                      >{rest || '—'}</button>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 {/* Actions row: full-width icon bar */}
                 <div className="grid grid-cols-4 border-t border-gray-100 dark:border-gray-800">

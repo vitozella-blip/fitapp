@@ -1207,8 +1207,8 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
     await fetch(`/api/template-exercises/${exId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggleAbs' }) })
     onRefresh()
   }
-  async function renameExercise(exerciseId: string, newName: string) {
-    await fetch(`/api/exercises/${exerciseId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) })
+  async function renameExercise(exerciseId: string, templateExId: string, newName: string) {
+    await fetch(`/api/exercises/${exerciseId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, userId, templateExerciseId: templateExId }) })
     onRefresh()
   }
   async function addWeek() {
@@ -1309,7 +1309,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                     <BaseExRow key={ex.id} ex={ex}
                       onDelete={() => deleteExercise(ex.id)}
                       onToggleAbs={() => toggleAbsExercise(ex.id)}
-                      onRename={name => renameExercise(ex.exercise.id, name)} />
+                      onRename={name => renameExercise(ex.exercise.id, ex.id, name)} />
                   ))}
                 </div>
                 <div className="px-3 pb-2 pt-2 border-t border-gray-200 dark:border-gray-700">
