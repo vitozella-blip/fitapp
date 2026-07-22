@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "Food" f ON f.id = ri."foodId"
       WHERE r."userId" = $1
       GROUP BY r.id, r.name, r."createdAt", r.servings, r."cookedWeight"
-      ORDER BY r."createdAt" DESC
+      ORDER BY LOWER(r.name) ASC
     `, [userId])
     return NextResponse.json(rows)
   } catch (e) { console.error(e); return NextResponse.json([]) }
