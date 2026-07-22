@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil, Calendar } from 'lucide-react'
+import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil, SlidersHorizontal } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { CalendarModal } from '@/components/shared/DateNav'
@@ -668,6 +668,18 @@ export default function RecipesPage() {
   const [showForm, setShowForm] = useState(false)
   const [q, setQ] = useState('')
   const [sortBy, setSortBy] = useState<'alpha' | 'date'>('alpha')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [showSort, setShowSort] = useState(false)
+  const sortRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showSort) return
+    function h(e: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setShowSort(false)
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [showSort])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -682,12 +694,13 @@ export default function RecipesPage() {
     const filtered = q.trim()
       ? recipes.filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
       : recipes
-    return [...filtered].sort((a, b) =>
-      sortBy === 'alpha'
+    return [...filtered].sort((a, b) => {
+      const cmp = sortBy === 'alpha'
         ? a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
-        : new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
-    )
-  }, [recipes, q, sortBy])
+        : new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [recipes, q, sortBy, sortDir])
 
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-6">
@@ -724,15 +737,42 @@ export default function RecipesPage() {
                 </button>
               )}
             </div>
-            <button
-              onClick={() => setSortBy(s => s === 'alpha' ? 'date' : 'alpha')}
-              title={sortBy === 'alpha' ? 'Ordine alfabetico' : 'Data creazione'}
-              className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 transition-colors hover:border-orange-300 dark:hover:border-orange-700"
-              style={sortBy === 'date' ? { borderColor: OC, color: OC } : { color: '#9ca3af' }}>
-              {sortBy === 'alpha'
-                ? <span className="text-[11px] font-bold">A-Z</span>
-                : <Calendar size={15} />}
-            </button>
+            <div className="relative" ref={sortRef}>
+              <button
+                onClick={() => setShowSort(o => !o)}
+                className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 transition-colors hover:border-orange-300 dark:hover:border-orange-700"
+                style={(sortBy !== 'alpha' || sortDir !== 'asc') ? { borderColor: OC, color: OC } : { color: '#9ca3af' }}>
+                <SlidersHorizontal size={15} />
+              </button>
+              {showSort && (
+                <div className="absolute right-0 top-12 z-50 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg overflow-hidden">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 pt-3 pb-1">Ordina per</p>
+                  {([['alpha', 'Alfabetico'], ['date', 'Data creazione']] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setSortBy(val)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                      <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                        style={sortBy === val ? { borderColor: OC, backgroundColor: OC } : { borderColor: '#d1d5db' }}>
+                        {sortBy === val && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-gray-700 dark:text-gray-300">{label}</span>
+                    </button>
+                  ))}
+                  <div className="border-t border-gray-100 dark:border-gray-800 mt-1" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 pt-2 pb-1">Ordine</p>
+                  {([['asc', '↑ Crescente'], ['desc', '↓ Decrescente']] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setSortDir(val)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+                      <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                        style={sortDir === val ? { borderColor: OC, backgroundColor: OC } : { borderColor: '#d1d5db' }}>
+                        {sortDir === val && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-gray-700 dark:text-gray-300">{label}</span>
+                    </button>
+                  ))}
+                  <div className="pb-2" />
+                </div>
+              )}
+            </div>
           </div>
 
           {loading ? (
