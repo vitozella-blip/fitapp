@@ -666,6 +666,8 @@ export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [q, setQ] = useState('')
+  const [sortBy, setSortBy] = useState<'alpha' | 'date'>('alpha')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -675,6 +677,17 @@ export default function RecipesPage() {
   }, [userId])
 
   useEffect(() => { load() }, [load])
+
+  const displayRecipes = useMemo(() => {
+    const filtered = q.trim()
+      ? recipes.filter(r => r.name.toLowerCase().includes(q.toLowerCase()))
+      : recipes
+    return [...filtered].sort((a, b) =>
+      sortBy === 'alpha'
+        ? a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
+        : new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
+    )
+  }, [recipes, q, sortBy])
 
   return (
     <div className="space-y-3 max-w-2xl mx-auto md:max-w-none pb-6">
@@ -694,21 +707,55 @@ export default function RecipesPage() {
         <RecipeForm userId={userId} onSaved={() => { setShowForm(false); load() }} onClose={() => setShowForm(false)} />
       )}
 
-      {!showForm && (loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: OC, borderTopColor: 'transparent' }} />
-        </div>
-      ) : recipes.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-10 text-center">
-          <ChefHat size={28} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-sm font-semibold text-gray-500">Nessuna ricetta</p>
-          <p className="text-xs text-gray-400 mt-1">Clicca &ldquo;Nuova Ricetta&rdquo; per iniziare</p>
-        </div>
-      ) : (
-        recipes.map(r => (
-          <RecipeCard key={r.id} recipe={r} userId={userId} onDelete={load} onUpdate={load} />
-        ))
-      ))}
+      {!showForm && (
+        <>
+          {/* Search + sort bar */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Cerca ricetta..."
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-orange-400"
+              />
+              {q && (
+                <button onClick={() => setQ('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setSortBy(s => s === 'alpha' ? 'date' : 'alpha')}
+              title={sortBy === 'alpha' ? 'Ordine alfabetico' : 'Data creazione'}
+              className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 transition-colors hover:border-orange-300 dark:hover:border-orange-700"
+              style={sortBy === 'date' ? { borderColor: OC, color: OC } : { color: '#9ca3af' }}>
+              {sortBy === 'alpha'
+                ? <span className="text-[11px] font-bold">A-Z</span>
+                : <Calendar size={15} />}
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: OC, borderTopColor: 'transparent' }} />
+            </div>
+          ) : recipes.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-10 text-center">
+              <ChefHat size={28} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-sm font-semibold text-gray-500">Nessuna ricetta</p>
+              <p className="text-xs text-gray-400 mt-1">Clicca &ldquo;Nuova Ricetta&rdquo; per iniziare</p>
+            </div>
+          ) : displayRecipes.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center">
+              <p className="text-sm text-gray-400">Nessuna ricetta trovata per &ldquo;{q}&rdquo;</p>
+            </div>
+          ) : (
+            displayRecipes.map(r => (
+              <RecipeCard key={r.id} recipe={r} userId={userId} onDelete={load} onUpdate={load} />
+            ))
+          )}
+        </>
+      )}
     </div>
   )
 }
