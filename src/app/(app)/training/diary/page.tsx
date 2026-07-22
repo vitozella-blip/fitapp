@@ -188,6 +188,7 @@ function SwipeableDeleteRow({ children, onDelete, onEdit }: {
     curX.current = x
   }
   function onTouchStart(e: React.TouchEvent) {
+    e.stopPropagation()
     startX.current = e.touches[0].clientX
     if (rowRef.current) rowRef.current.style.transition = ''
   }
@@ -197,8 +198,10 @@ function SwipeableDeleteRow({ children, onDelete, onEdit }: {
     const raw  = base + dx
     const max  = onEdit ? SNAP_DEL : 0
     move(Math.max(-SNAP_DEL, Math.min(max, raw)))
+    e.stopPropagation()
   }
-  function onTouchEnd() {
+  function onTouchEnd(e: React.TouchEvent) {
+    e.stopPropagation()
     const x = curX.current
     if      (x < -THRESH_DEL)         snapTo('left')
     else if (onEdit && x > THRESH_DEL) snapTo('right')

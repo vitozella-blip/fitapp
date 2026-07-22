@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Search, Target, X, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -21,6 +22,7 @@ const KCAL_COLOR = '#6abf6a'
 
 export default function MacrosPage() {
   const userId = useAppStore((s) => s.userId)
+  const searchParams = useSearchParams()
 
   const [macro, setMacro]         = useState<Macro | null>(null)
   const [activeStep, setActiveStep] = useState<ActiveStep>(1)
@@ -35,6 +37,16 @@ export default function MacrosPage() {
     fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
   }, [userId])
 
+  useEffect(() => {
+    const m = searchParams.get('macro') as Macro | null
+    const a = searchParams.get('amount')
+    if (m && ['fat', 'carbs', 'protein'].includes(m)) {
+      setMacro(m)
+      if (a && Number(a) > 0) { setAmount(a); setActiveStep(3) }
+      else setActiveStep(2)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const displayResults = useMemo(() => {
     if (!q.trim()) return results
     const lower = q.trim().toLowerCase()
@@ -43,11 +55,11 @@ export default function MacrosPage() {
 
   useEffect(() => {
     clearTimeout(timer.current)
-    if (q.length < 1) return
     timer.current = setTimeout(async () => {
       const r = await fetch(`/api/food?q=${encodeURIComponent(q)}&userId=${userId}`)
-      setResults(await r.json())
-    }, 200)
+      const data = await r.json()
+      if (Array.isArray(data)) setResults(data)
+    }, q.length < 1 ? 0 : 200)
   }, [q, userId])
 
   useEffect(() => {

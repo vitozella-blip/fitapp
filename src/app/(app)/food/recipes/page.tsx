@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil, SlidersHorizontal } from 'lucide-react'
+import { ChefHat, Plus, Trash2, Search, X, Loader2, Check, ChevronDown, Pencil, SlidersHorizontal, Calendar } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { CalendarModal } from '@/components/shared/DateNav'

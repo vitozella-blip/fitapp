@@ -6,6 +6,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DateNav } from '@/components/shared/DateNav'
 import { AddFoodModal } from '@/components/food/AddFoodModal'
+import Link from 'next/link'
 import { cn, localToday, shiftDate } from '@/lib/utils'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 import { useDateSwipe } from '@/hooks/useDateSwipe'
@@ -359,15 +360,15 @@ export default function FoodDiaryPage() {
 
           {/* Ti restano */}
           <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ backgroundColor: C.kcal + '1f' }}>
-            <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Ti restano</span>
-            <span className="flex items-baseline gap-1.5">
+            <Link href="/food/macros" className="text-xs text-gray-500 dark:text-gray-400 shrink-0 underline-offset-2 hover:underline">Ti restano</Link>
+            <span className="flex items-baseline gap-3">
               <span className="text-sm font-extrabold" style={{ color: C.kcal }}>{left.calories}<span className="text-[10px] font-medium text-gray-400"> kcal</span></span>
               <span className="text-gray-300 dark:text-gray-600">·</span>
-              <span className="text-[13px] font-medium" style={{ color: C.fat }}>{left.fat}<span className="text-[9px] text-gray-400">g</span></span>
+              <Link href={`/food/macros?macro=fat&amount=${left.fat}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.fat }}>{left.fat}<span className="text-[9px] text-gray-400">g</span></Link>
               <span className="text-gray-300 dark:text-gray-600">/</span>
-              <span className="text-[13px] font-medium" style={{ color: C.carbs }}>{left.carbs}<span className="text-[9px] text-gray-400">g</span></span>
+              <Link href={`/food/macros?macro=carbs&amount=${left.carbs}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.carbs }}>{left.carbs}<span className="text-[9px] text-gray-400">g</span></Link>
               <span className="text-gray-300 dark:text-gray-600">/</span>
-              <span className="text-[13px] font-medium" style={{ color: C.protein }}>{left.protein}<span className="text-[9px] text-gray-400">g</span></span>
+              <Link href={`/food/macros?macro=protein&amount=${left.protein}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.protein }}>{left.protein}<span className="text-[9px] text-gray-400">g</span></Link>
             </span>
           </div>
 
@@ -393,6 +394,7 @@ export default function FoodDiaryPage() {
 
               {/* Header */}
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+                style={isOpen ? { backgroundColor: C.carbs + '14' } : undefined}
                 onClick={() => setExpandedMeal(isOpen ? null : meal)}>
                 <MealIcon name={meal} size={18} color={hasData ? C.carbs : '#9ca3af'} />
                 <div className="flex-1 min-w-0">
@@ -422,8 +424,17 @@ export default function FoodDiaryPage() {
                 'border-t border-gray-50 dark:border-gray-800 md:flex-1 md:overflow-y-auto md:flex md:flex-col',
                 isOpen ? 'block' : 'hidden md:block'
               )}>
-                {/* Pasto libero + Copia ieri */}
+                {/* Aggiungi + Copia ieri + Libero */}
                 <div className="flex gap-2 px-4 py-2.5">
+                  <button onClick={() => setModal(meal)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold"
+                    style={{ background: C.carbs + '1a', border: `1.5px solid ${C.carbs + '40'}`, color: C.carbs }}>
+                    Aggiungi
+                  </button>
+                  <button onClick={() => copyFromYesterday(meal)}
+                    className="flex-1 py-2 rounded-xl text-xs font-semibold text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    Copia ieri
+                  </button>
                   <button onClick={() => toggleFreeMeal(meal)}
                     className="flex-1 py-2 rounded-xl text-xs font-bold"
                     style={{
@@ -431,11 +442,7 @@ export default function FoodDiaryPage() {
                       background: isFree ? C.carbs + '1a' : 'transparent',
                       color: C.carbs,
                     }}>
-                    {isFree ? '✓ Pasto libero' : 'Pasto libero'}
-                  </button>
-                  <button onClick={() => copyFromYesterday(meal)}
-                    className="flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                    <Copy size={12} /> Copia ieri
+                    {isFree ? '✓ Libero' : 'Libero'}
                   </button>
                 </div>
 
@@ -449,20 +456,19 @@ export default function FoodDiaryPage() {
                       const eProt  = calc(e.food.protein,  e.quantity)
                       return (
                         <SwipeableRow key={e.id} onDelete={() => deleteEntry(e.id)} onEdit={() => setEditEntry(e)}>
-                          <div className="flex items-center px-4 py-2.5 gap-2">
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{e.food.name}</span>
-                              <span className="text-xs text-gray-400 ml-1.5">{e.quantity}g</span>
+                          <div className="px-4 py-2.5">
+                            <div className="flex items-baseline gap-1.5 min-w-0">
+                              <p className="text-sm text-gray-800 dark:text-gray-200 truncate">{e.food.name}</p>
+                              <span className="text-xs text-gray-400 shrink-0">{e.quantity}g</span>
                             </div>
-                            <div className="grid shrink-0 items-center text-[11px]"
-                              style={{ gridTemplateColumns: '28px 5px 14px 5px 18px 5px 18px' }}>
-                              <span style={{ color: C.kcal, fontWeight: 600, textAlign: 'right' }}>{eKcal}</span>
-                              <span className="text-center text-gray-300 dark:text-gray-600">·</span>
-                              <span style={{ color: C.fat, textAlign: 'right' }}>{eFat}</span>
-                              <span className="text-center text-gray-300 dark:text-gray-600">·</span>
-                              <span style={{ color: C.carbs, textAlign: 'right' }}>{eCarbs}</span>
-                              <span className="text-center text-gray-300 dark:text-gray-600">·</span>
-                              <span style={{ color: C.protein, textAlign: 'right' }}>{eProt}</span>
+                            <div className="flex items-center gap-1 text-[11px] mt-0.5">
+                              <span style={{ color: C.kcal, fontWeight: 600 }}>{eKcal}</span>
+                              <span className="text-gray-300 dark:text-gray-600">·</span>
+                              <span style={{ color: C.fat }}>{eFat}</span>
+                              <span className="text-gray-300 dark:text-gray-600">·</span>
+                              <span style={{ color: C.carbs }}>{eCarbs}</span>
+                              <span className="text-gray-300 dark:text-gray-600">·</span>
+                              <span style={{ color: C.protein }}>{eProt}</span>
                             </div>
                           </div>
                         </SwipeableRow>
@@ -471,13 +477,6 @@ export default function FoodDiaryPage() {
                   </div>
                 )}
 
-                {/* Aggiungi alimento */}
-                <button onClick={() => setModal(meal)}
-                  className="flex items-center gap-2 px-4 py-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  style={{ borderTop: mealEntries.length > 0 ? '1px solid rgba(243,244,246,1)' : 'none' }}>
-                  <Plus size={13} style={{ color: C.carbs }} />
-                  <span className="text-sm font-semibold" style={{ color: C.carbs }}>Aggiungi alimento</span>
-                </button>
               </div>
             </div>
           )

@@ -903,69 +903,98 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
 function WeekExRow({ ex, weekId, param, color }: {
   ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string
 }) {
-  const [sets, setSets]   = useState(String(param?.sets ?? 3))
-  const [reps, setReps]   = useState(param?.reps ?? '')
-  const [rest, setRest]   = useState(String(param?.restSeconds ?? 90))
-  const [notes, setNotes] = useState(param?.notes ?? '')
+  const [rest, setRest] = useState(String(param?.restSeconds ?? 90))
   const [saving, setSaving] = useState(false)
 
-  async function save() {
+  // Initialize per-set values from stored reps string, falling back to `sets` empty rows
+  const [perSetVals, setPerSetVals] = useState<string[]>(() => {
+    const pr = parseRepsTargets(param?.reps ?? '')
+    if (pr.sets.length > 0) return pr.sets.map(t => t.min === t.max ? String(t.min) : `${t.min}/${t.max}`)
+    const n = param?.sets ?? 3
+    const fallback = param?.reps?.match(/\d+/)?.[0] ?? ''
+    return Array.from({ length: n }, () => fallback)
+  })
+
+  function buildReps(vals: string[]) {
+    return vals.map(v => `1x${v}`).join(' + ')
+  }
+
+  async function saveAll(vals: string[], restVal?: string) {
     setSaving(true)
+    const newReps = buildReps(vals)
     await fetch('/api/week-exercise-params', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weekId, templateExId: ex.id, sets: Number(sets)||3, reps: reps||null, restSeconds: Number(rest)||null, notes: notes||null }),
+      body: JSON.stringify({
+        weekId, templateExId: ex.id,
+        sets: vals.length,
+        reps: newReps || null,
+        restSeconds: Number(restVal ?? rest) || null,
+        notes: null,
+      }),
     })
     setSaving(false)
   }
 
-  const parsedReps = parseRepsTargets(reps)
-  const hasMultiSets = parsedReps.sets.length > 1
+  function updateVal(idx: number, val: string) {
+    setPerSetVals(prev => prev.map((v, i) => i === idx ? val : v))
+  }
+
+  function addSet() {
+    const last = perSetVals[perSetVals.length - 1] ?? ''
+    const next = [...perSetVals, last]
+    setPerSetVals(next)
+    saveAll(next)
+  }
+
+  function removeSet(idx: number) {
+    if (perSetVals.length <= 1) return
+    const next = perSetVals.filter((_, i) => i !== idx)
+    setPerSetVals(next)
+    saveAll(next)
+  }
+
+  const inp = "w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400"
 
   return (
     <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 last:border-0">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
+      {/* Header: name + SET count (read-only) + REC */}
+      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 mb-1">
         <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{ex.exercise.name}</p>
         <div className="flex flex-col items-center gap-0.5">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Set</span>
-          <input type="number" value={sets} onChange={e => setSets(e.target.value)} onBlur={save} min="1"
-            className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
-        </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>
-          <input value={reps} onChange={e => setReps(e.target.value)} onBlur={save} placeholder=""
-            className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
+          <div className={inp + " pointer-events-none"}>{perSetVals.length}</div>
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rec</span>
-          <input type="number" value={rest} onChange={e => setRest(e.target.value)} onBlur={save} min="0"
+          <input type="number" value={rest} onChange={e => setRest(e.target.value)}
+            onBlur={() => saveAll(perSetVals, rest)} min="0"
             className="w-12 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
         </div>
       </div>
-      {hasMultiSets && (
-        <div className="mt-1 mb-0.5 space-y-1">
-          {parsedReps.sets.map((t, i) => (
-            <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-              <span />
-              <div className="flex flex-col items-center gap-0.5">
-                {i === 0 && <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Set</span>}
-                <div className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 text-center">
-                  {i + 1}
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                {i === 0 && <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>}
-                <div className="w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 text-center">
-                  {t.min === t.max ? `${t.min}` : `${t.min}/${t.max}`}
-                </div>
-              </div>
-              <div className="w-12" />
+
+      {/* Per-set rows */}
+      <div className="space-y-1">
+        {perSetVals.map((val, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-400 w-4 text-right shrink-0">{i + 1}</span>
+            <div className="flex flex-col items-center gap-0.5">
+              {i === 0 && <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>}
+              <input value={val} onChange={e => updateVal(i, e.target.value)}
+                onBlur={() => saveAll(perSetVals)}
+                placeholder="—"
+                className={inp} />
             </div>
-          ))}
-          {parsedReps.mods.length > 0 && (
-            <p className="text-[9px] text-gray-400 italic pl-1">{parsedReps.mods.join(' · ')}</p>
-          )}
-        </div>
-      )}
+            <button onClick={() => removeSet(i)}
+              className="text-gray-300 hover:text-red-400 transition-colors text-base leading-none mt-0.5">
+              ×
+            </button>
+          </div>
+        ))}
+        <button onClick={addSet}
+          className="ml-6 mt-0.5 w-10 h-6 flex items-center justify-center text-xs font-bold rounded border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors">
+          +
+        </button>
+      </div>
     </div>
   )
 }

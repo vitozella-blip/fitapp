@@ -259,12 +259,10 @@ export function DateNav({ selectedDate, onChange, accent, schedaColor, showWorko
       <div className="flex items-center gap-2">
         {/* Date band — colorata con ctrl quando oggi è selezionato */}
         <div className={cn("flex-1 min-w-0 h-9 rounded-2xl px-1 flex items-center gap-0.5 border transition-colors",
-            !schedaColor && !isToday && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
+            !isToday && "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800")}
           style={
             isToday && ctrl
               ? { backgroundColor: ctrl + '55', borderColor: ctrl }
-              : schedaColor
-              ? { backgroundColor: schedaColor + '18', borderColor: schedaColor + '50' }
               : undefined
           }>
           <button onClick={() => changeDate(-1)}
