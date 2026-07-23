@@ -312,14 +312,15 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
               <p className="text-sm text-gray-400 text-center py-8">Nessuna scheda. Creala nella sezione Piano.</p>
             )}
             {templates.map((t, i) => {
-              const color = SCHEDA_COLORS[i % SCHEDA_COLORS.length]
+              const color = t.badgeColor ?? SCHEDA_COLORS[i % SCHEDA_COLORS.length]
+              const badgeLabel = t.badgeLabel ?? schedaAbbrev(t.name)
               const sepIdx = t.name.indexOf(' — ')
               const label1 = sepIdx >= 0 ? t.name.slice(0, sepIdx) : t.name
               const label2 = sepIdx >= 0 ? t.name.slice(sepIdx + 3) : null
               return (
                 <button key={t.id} onClick={() => selectTemplate(t, i)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                  <SchedaBadge label={schedaAbbrev(t.name)} color={color} size={36} />
+                  <SchedaBadge label={badgeLabel} color={color} size={36} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-gray-400 truncate">{label1}</p>
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{label2 ?? label1}</p>
