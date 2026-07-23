@@ -900,11 +900,12 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
 }
 
 // ── Per-week exercise row ─────────────────────────────────────────────────────
-function WeekExRow({ ex, weekId, param, color }: {
-  ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string
+function WeekExRow({ ex, weekId, param, color, onToggleAbs }: {
+  ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string; onToggleAbs: () => void
 }) {
   const [rest, setRest] = useState(String(param?.restSeconds ?? 90))
-  const [saving, setSaving] = useState(false)
+  const [note, setNote] = useState(param?.notes ?? ex.noteScheda ?? '')
+  const [open, setOpen] = useState(false)
 
   function initVals(p: WeekParam | undefined): string[] {
     const pr = parseRepsTargets(p?.reps ?? '')
@@ -914,32 +915,29 @@ function WeekExRow({ ex, weekId, param, color }: {
     return Array.from({ length: n }, () => fallback)
   }
 
-  const [perSetVals, setPerSetVals] = useState<string[]>(() => initVals(param))
+  const [perSetVals, setPerSetVals] = useState(() => initVals(param))
 
-  // Sync when param loads asynchronously
   useEffect(() => {
     setPerSetVals(initVals(param))
     setRest(String(param?.restSeconds ?? 90))
-  }, [param?.reps, param?.sets, param?.restSeconds]) // eslint-disable-line react-hooks/exhaustive-deps
+    setNote(param?.notes ?? ex.noteScheda ?? '')
+  }, [param?.reps, param?.sets, param?.restSeconds, param?.notes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function buildReps(vals: string[]) {
     return vals.map(v => `1x${v}`).join(' + ')
   }
 
-  async function saveAll(vals: string[], restVal?: string) {
-    setSaving(true)
-    const newReps = buildReps(vals)
+  async function saveAll(vals: string[], restVal?: string, noteVal?: string) {
     await fetch('/api/week-exercise-params', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         weekId, templateExId: ex.id,
         sets: vals.length,
-        reps: newReps || null,
+        reps: buildReps(vals) || null,
         restSeconds: Number(restVal ?? rest) || null,
-        notes: null,
+        notes: (noteVal ?? note) || null,
       }),
     })
-    setSaving(false)
   }
 
   function updateVal(idx: number, val: string) {
@@ -960,48 +958,81 @@ function WeekExRow({ ex, weekId, param, color }: {
     saveAll(next)
   }
 
-  const inp = "w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400"
+  const inp = 'w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400'
+  const inpStatic = inp + ' pointer-events-none'
 
-  return (
-    <div className="px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 last:border-0">
-      {/* Header: name + SET count (read-only) + REC */}
-      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 mb-1">
-        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{ex.exercise.name}</p>
-        <div className="flex flex-col items-center gap-0.5">
+  const absClass = ex.isAbs
+    ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
+    : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400'
+
+  function handleAbsClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    onToggleAbs()
+  }
+
+  const expandedBody = open ? (
+    <div className="px-3 pb-2">
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        onBlur={() => saveAll(perSetVals, rest, note)}
+        placeholder="Nota..."
+        rows={2}
+        className="w-full text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 outline-none resize-none leading-snug focus:border-gray-400 mb-2"
+      />
+      <div className="flex items-start gap-3">
+        <div className="flex flex-col items-center gap-0.5 shrink-0">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Set</span>
-          <div className={inp + " pointer-events-none"}>{perSetVals.length}</div>
+          <div className={inpStatic}>{perSetVals.length}</div>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
+        <div className="flex flex-col gap-1 items-start">
+          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide text-center w-10">Rep</span>
+          {perSetVals.map((val, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <span className="text-[10px] text-gray-400 w-3 text-right shrink-0">{i + 1}</span>
+              <input value={val} onChange={e => updateVal(i, e.target.value)}
+                onBlur={() => saveAll(perSetVals)}
+                placeholder="--"
+                className={inp} />
+              <button onClick={() => removeSet(i)}
+                className="text-gray-300 hover:text-red-400 transition-colors text-base leading-none">
+                x
+              </button>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 shrink-0" />
+            <button onClick={addSet}
+              className="w-10 h-5 flex items-center justify-center text-xs font-bold rounded border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors">
+              +
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-0.5 w-12">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rec</span>
           <input type="number" value={rest} onChange={e => setRest(e.target.value)}
             onBlur={() => saveAll(perSetVals, rest)} min="0"
             className="w-12 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
         </div>
       </div>
+    </div>
+  ) : null
 
-      {/* Per-set rows */}
-      <div className="space-y-1">
-        {perSetVals.map((val, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-400 w-4 text-right shrink-0">{i + 1}</span>
-            <div className="flex flex-col items-center gap-0.5">
-              {i === 0 && <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rep</span>}
-              <input value={val} onChange={e => updateVal(i, e.target.value)}
-                onBlur={() => saveAll(perSetVals)}
-                placeholder="—"
-                className={inp} />
-            </div>
-            <button onClick={() => removeSet(i)}
-              className="text-gray-300 hover:text-red-400 transition-colors text-base leading-none mt-0.5">
-              ×
-            </button>
-          </div>
-        ))}
-        <button onClick={addSet}
-          className="ml-6 mt-0.5 w-10 h-6 flex items-center justify-center text-xs font-bold rounded border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors">
-          +
+  return (
+    <div className="border-b border-gray-200 dark:border-gray-700 last:border-0">
+      <div
+        className="w-full flex items-center px-3 py-2 cursor-pointer gap-2"
+        onClick={() => setOpen(o => !o)}
+      >
+        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate flex-1">{ex.exercise.name}</p>
+        <button
+          onClick={handleAbsClick}
+          className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors', absClass)}
+        >
+          ABS
         </button>
       </div>
+      {expandedBody}
     </div>
   )
 }
@@ -1216,8 +1247,6 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
   function hdrTouchEnd() { if (editing) return; const x = hdrCurX.current; if (x < -H_THRESH) hdrSnap('left'); else if (x > H_THRESH) hdrSnap('right'); else hdrSnap(null) }
   const [addEx, setAddEx]               = useState(false)
   const [collapsed, setCollapsed]       = useState(true)
-  const [baseCollapsed, setBaseCollapsed] = useState(true)
-  const [weeksCollapsed, setWeeksCollapsed] = useState(true)
 
   const [weeks, setWeeks]               = useState<Week[]>([])
   const [activeWeekId, setActiveWeekId] = useState<string | null>(null)
@@ -1357,96 +1386,65 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
       </div>
 
       {!collapsed && (
-        <>
-          <div className="border-t border-gray-200 dark:border-gray-700">
-            <button onClick={() => setBaseCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 text-left" style={{ backgroundColor: color + '0c' }}>
-              <Chevron size={12} className={cn('text-gray-400 transition-transform shrink-0', baseCollapsed && '-rotate-90')} />
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">
-                Esercizi di base <span className="font-normal opacity-60">({exCount})</span>
-              </p>
-            </button>
-            {!baseCollapsed && (
-              <>
-                <div>
-                  {exercises.map((ex) => (
-                    <BaseExRow key={ex.id} ex={ex}
-                      onDelete={() => deleteExercise(ex.id)}
-                      onToggleAbs={() => toggleAbsExercise(ex.id)}
-                      onRename={name => renameExercise(ex.exercise.id, ex.id, name)} />
-                  ))}
-                </div>
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          {loadingWeeks ? (
+            <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color }} /></div>
+          ) : (
+            <>
+              <div className="grid grid-cols-4 gap-1 px-2 py-2 border-b border-gray-100 dark:border-gray-800">
+                {weeks.map(w => (
+                  renamingWeekId === w.id ? (
+                    <div key={w.id} className="col-span-2 flex items-center gap-1">
+                      <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') renameWeek(w.id); if (e.key === 'Escape') setRenamingWeekId(null) }}
+                        className="flex-1 min-w-0 px-2 py-1 rounded-lg border text-xs outline-none font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        style={{ borderColor: color }} />
+                      <button onClick={() => renameWeek(w.id)} className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0" style={{ backgroundColor: color }}><Check size={10} /></button>
+                      <button onClick={() => setRenamingWeekId(null)} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
+                    </div>
+                  ) : (
+                    <div key={w.id} onClick={() => setActiveWeekId(w.id)}
+                      className={cn('flex items-center justify-between gap-0.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer', activeWeekId === w.id ? 'text-white' : 'border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800')}
+                      style={activeWeekId === w.id ? { backgroundColor: color, borderColor: color } : {}}>
+                      <span className="truncate">{w.name}</span>
+                      <WeekMenuBtn
+                        onRename={() => { setRenamingWeekId(w.id); setRenameVal(w.name) }}
+                        onDuplicate={() => duplicateWeek(w.id)}
+                        onDelete={() => deleteWeek(w.id)} />
+                    </div>
+                  )
+                ))}
+                {addingWeek ? (
+                  <div className="col-span-2 flex items-center gap-1">
+                    <input autoFocus value={newWeekName} onChange={e => setNewWeekName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') addWeek(); if (e.key === 'Escape') { setAddingWeek(false); setNewWeekName('') } }}
+                      placeholder="Nome..." className="flex-1 min-w-0 px-2 py-1 rounded-lg border text-xs outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" style={{ borderColor: color }} />
+                    <button onClick={addWeek} disabled={!newWeekName.trim()} className="w-5 h-5 rounded flex items-center justify-center text-white disabled:opacity-40 shrink-0" style={{ backgroundColor: color }}><Check size={10} /></button>
+                    <button onClick={() => { setAddingWeek(false); setNewWeekName('') }} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAddingWeek(true)}
+                    className="flex items-center justify-center py-1.5 rounded-lg text-[11px] font-bold border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-gray-600 transition-colors">
+                    +
+                  </button>
+                )}
+              </div>
+              {activeWeekId && exercises.length > 0 ? (
+                <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} onToggleAbs={() => toggleAbsExercise(ex.id)} />)}</div>
+              ) : activeWeekId ? null
+              : weeks.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4 px-3">Nessuna week. Clicca + per aggiungerne una.</p>
+              ) : null}
+              {activeWeekId && (
                 <div className="px-3 pb-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                   <button onClick={() => setAddEx(true)} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed text-xs font-medium transition-colors" style={{ borderColor: color + '60', color }}>
                     <Plus size={13} /> Aggiungi esercizio
                   </button>
                 </div>
-              </>
-            )}
-          </div>
-
-          <div className="border-t border-gray-200 dark:border-gray-700">
-            <div onClick={() => setWeeksCollapsed(o => !o)} className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer" style={{ backgroundColor: color + '0c' }}>
-              <Chevron size={12} className={cn('text-gray-400 transition-transform shrink-0', weeksCollapsed && '-rotate-90')} />
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex-1">
-                Week <span className="font-normal opacity-60">({weeks.length})</span>
-              </p>
-              {!weeksCollapsed && (
-                <button onClick={e => { e.stopPropagation(); setAddingWeek(true) }}
-                  className="w-5 h-5 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
-                  <Plus size={11} />
-                </button>
               )}
-            </div>
-            {!weeksCollapsed && (
-              loadingWeeks ? (
-                <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color }} /></div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-4 gap-1 px-2 py-2 border-b border-gray-100 dark:border-gray-800">
-                    {weeks.map(w => (
-                      renamingWeekId === w.id ? (
-                        <div key={w.id} className="col-span-2 flex items-center gap-1">
-                          <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') renameWeek(w.id); if (e.key === 'Escape') setRenamingWeekId(null) }}
-                            className="flex-1 min-w-0 px-2 py-1 rounded-lg border text-xs outline-none font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                            style={{ borderColor: color }} />
-                          <button onClick={() => renameWeek(w.id)} className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0" style={{ backgroundColor: color }}><Check size={10} /></button>
-                          <button onClick={() => setRenamingWeekId(null)} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
-                        </div>
-                      ) : (
-                        <div key={w.id} onClick={() => setActiveWeekId(w.id)}
-                          className={cn('flex items-center justify-between gap-0.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer', activeWeekId === w.id ? 'text-white' : 'border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800')}
-                          style={activeWeekId === w.id ? { backgroundColor: color, borderColor: color } : {}}>
-                          <span className="truncate">{w.name}</span>
-                          <WeekMenuBtn
-                            onRename={() => { setRenamingWeekId(w.id); setRenameVal(w.name) }}
-                            onDuplicate={() => duplicateWeek(w.id)}
-                            onDelete={() => deleteWeek(w.id)} />
-                        </div>
-                      )
-                    ))}
-                    {addingWeek && (
-                      <div className="col-span-2 flex items-center gap-1">
-                        <input autoFocus value={newWeekName} onChange={e => setNewWeekName(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') addWeek(); if (e.key === 'Escape') { setAddingWeek(false); setNewWeekName('') } }}
-                          placeholder="Nome..." className="flex-1 min-w-0 px-2 py-1 rounded-lg border text-xs outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" style={{ borderColor: color }} />
-                        <button onClick={addWeek} disabled={!newWeekName.trim()} className="w-5 h-5 rounded flex items-center justify-center text-white disabled:opacity-40 shrink-0" style={{ backgroundColor: color }}><Check size={10} /></button>
-                        <button onClick={() => { setAddingWeek(false); setNewWeekName('') }} className="w-5 h-5 rounded flex items-center justify-center text-gray-400 shrink-0"><X size={10} /></button>
-                      </div>
-                    )}
-                  </div>
-                  {activeWeekId && exercises.length > 0 ? (
-                    <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} />)}</div>
-                  ) : activeWeekId ? (
-                    <p className="text-xs text-gray-400 text-center py-4 px-3">Nessun esercizio. Apri &ldquo;Esercizi di base&rdquo; per aggiungerne.</p>
-                  ) : weeks.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-4 px-3">Nessuna routine. Clicca + per aggiungerne una.</p>
-                  ) : null}
-                </>
-              )
-            )}
-          </div>
-        </>
+            </>
+          )}
+        </div>
       )}
 
       {addEx && <ExerciseFormModal templateId={tmpl.id} userId={userId} onClose={() => setAddEx(false)} onSaved={() => { setAddEx(false); onRefresh() }} />}
