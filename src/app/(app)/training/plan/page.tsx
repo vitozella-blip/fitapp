@@ -906,14 +906,21 @@ function WeekExRow({ ex, weekId, param, color }: {
   const [rest, setRest] = useState(String(param?.restSeconds ?? 90))
   const [saving, setSaving] = useState(false)
 
-  // Initialize per-set values from stored reps string, falling back to `sets` empty rows
-  const [perSetVals, setPerSetVals] = useState<string[]>(() => {
-    const pr = parseRepsTargets(param?.reps ?? '')
+  function initVals(p: WeekParam | undefined): string[] {
+    const pr = parseRepsTargets(p?.reps ?? '')
     if (pr.sets.length > 0) return pr.sets.map(t => t.min === t.max ? String(t.min) : `${t.min}/${t.max}`)
-    const n = param?.sets ?? 3
-    const fallback = param?.reps?.match(/\d+/)?.[0] ?? ''
+    const n = p?.sets ?? 3
+    const fallback = p?.reps?.match(/\d+/)?.[0] ?? ''
     return Array.from({ length: n }, () => fallback)
-  })
+  }
+
+  const [perSetVals, setPerSetVals] = useState<string[]>(() => initVals(param))
+
+  // Sync when param loads asynchronously
+  useEffect(() => {
+    setPerSetVals(initVals(param))
+    setRest(String(param?.restSeconds ?? 90))
+  }, [param?.reps, param?.sets, param?.restSeconds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function buildReps(vals: string[]) {
     return vals.map(v => `1x${v}`).join(' + ')
