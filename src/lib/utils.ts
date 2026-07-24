@@ -44,14 +44,21 @@ export function parseRepsTargets(reps: string | null): { sets: SetTarget[]; mods
   const sets: SetTarget[] = []
   const mods: string[] = []
   for (const tok of tokens) {
-    const m = tok.trim().match(/^(\d+)x(\d+)(?:\/(\d+))?$/)
-    if (m) {
-      const count = parseInt(m[1])
-      const minR = parseInt(m[2])
-      const maxR = m[3] ? parseInt(m[3]) : minR
+    const structured = tok.trim().match(/^(\d+)x(\d+)(?:\/(\d+))?$/)
+    if (structured) {
+      const count = parseInt(structured[1])
+      const minR = parseInt(structured[2])
+      const maxR = structured[3] ? parseInt(structured[3]) : minR
       for (let i = 0; i < count; i++) sets.push({ min: minR, max: maxR })
-    } else if (tok.trim()) {
-      mods.push(tok.trim())
+    } else {
+      const plain = tok.trim().match(/^(\d+)(?:\/(\d+))?$/)
+      if (plain) {
+        const minR = parseInt(plain[1])
+        const maxR = plain[2] ? parseInt(plain[2]) : minR
+        sets.push({ min: minR, max: maxR })
+      } else if (tok.trim()) {
+        mods.push(tok.trim())
+      }
     }
   }
   return { sets, mods }

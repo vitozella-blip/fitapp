@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, date, exerciseId, sets, reps, weight, weekId, isWarmup, unit } = await req.json()
+  const { userId, date, exerciseId, sets, reps, weight, weekId, isWarmup, unit, setNumber: clientSetNumber } = await req.json()
   try {
     await pool.query(
       `INSERT INTO "User" (id, name, "targetCalories", "targetProtein", "targetCarbs", "targetFat", goal, "createdAt") VALUES ($1,'Utente',2000,150,220,65,'maintain',NOW()) ON CONFLICT (id) DO NOTHING`,
@@ -124,9 +124,10 @@ export async function POST(req: NextRequest) {
     const baseSetNumber = Number(maxRowsRes.rows[0].max)
     const baseGlobalIndex = Number(globalRowsRes.rows[0].gmax)
     for (let i = 0; i < sets; i++) {
+      const resolvedSetNumber = (!isWarmup && clientSetNumber != null) ? clientSetNumber : baseSetNumber + i + 1
       await pool.query(
         `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight, "isWarmup", "globalIndex", unit) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null, isWarmup ?? false, baseGlobalIndex + i + 1, unit ?? 'kg']
+        [crypto.randomUUID(), workoutId, exerciseId, resolvedSetNumber, reps, weight || null, isWarmup ?? false, baseGlobalIndex + i + 1, unit ?? 'kg']
       )
     }
     return NextResponse.json({ ok: true, workoutId })

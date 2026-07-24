@@ -140,10 +140,10 @@ export default function MacrosPage() {
   // ── collapsed row shared style ────────────────────────────────────────────
   const collapsedRow = (label: string, content: React.ReactNode, onReopen: () => void) => (
     <button onClick={onReopen}
-      className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-5 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
-      <span className="text-xs font-bold uppercase tracking-widest text-gray-400 w-20 shrink-0">{label}</span>
+      className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 w-16 shrink-0">{label}</span>
       <span className="flex-1 min-w-0">{content}</span>
-      <ChevronRight size={15} className="shrink-0 text-gray-300" />
+      <ChevronRight size={14} className="shrink-0 text-gray-300" />
     </button>
   )
 
@@ -173,7 +173,7 @@ export default function MacrosPage() {
         </div>
       ) : macro && collapsedRow(
         'Macro',
-        <span className={cn('text-base font-bold', sm!.color)}>{sm!.label}</span>,
+        <span className="text-sm font-bold" style={{ color: sm!.hex }}>{sm!.label}</span>,
         () => setActiveStep(1)
       )}
 
@@ -259,7 +259,7 @@ export default function MacrosPage() {
 
             {selected && (
               <div className={cn('px-4 py-3 rounded-xl border', sm!.bg)}>
-                <p className={cn('font-bold text-sm', sm!.color)}>{selected.name}</p>
+                <p className="font-bold text-sm" style={{ color: sm!.hex }}>{selected.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
                   G {selected.fat}g · C {selected.carbs}g · P {selected.protein}g / 100g
                 </p>
@@ -276,42 +276,40 @@ export default function MacrosPage() {
 
       {/* ── Result ──────────────────────────────────────────────────────────── */}
       {result && selected && amount && (
-        <div className="flex-1 min-h-0 bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col"
+        <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden flex flex-col"
           style={{ border: '2px solid #f0aa7835' }}>
-          <div className="px-5 py-3 border-b shrink-0" style={{ backgroundColor: '#f0aa7818', borderColor: '#f0aa7830' }}>
-            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#f0aa78' }}>Risultato</p>
+          <div className="px-4 py-2 border-b shrink-0" style={{ backgroundColor: '#f0aa7818', borderColor: '#f0aa7830' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#f0aa78' }}>Risultato</p>
           </div>
-          <div className="flex-1 min-h-0 flex flex-col p-5 gap-4">
-            <div className="text-center shrink-0">
-              <p className="text-sm text-gray-400 mb-1">
-                Per ottenere <span className={cn('font-bold', sm!.color)}>{amount}g di {sm!.label}</span>
+          <div className="flex flex-col p-3 gap-2">
+            <div className="text-center">
+              <p className="text-xs text-gray-400 mb-0.5">
+                Per ottenere <span className="font-bold" style={{ color: sm!.hex }}>{amount}g di {sm!.label}</span>
               </p>
-              <p className="text-6xl font-bold text-gray-900 dark:text-gray-100">
-                {result.grams}<span className="text-2xl text-gray-400 ml-1">g</span>
+              <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+                {result.grams}<span className="text-lg text-gray-400 ml-1">g</span>
               </p>
-              <p className="text-xl font-semibold text-gray-600 dark:text-gray-300 mt-1">{selected.name}</p>
+              <p className="text-sm font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{selected.name}</p>
             </div>
 
-            <div className="h-px bg-gray-100 dark:bg-gray-800 shrink-0" />
+            <div className="h-px bg-gray-100 dark:bg-gray-800" />
 
-            <div className="flex-1 min-h-0 flex flex-col gap-2">
-              <p className="text-sm font-bold text-gray-400 uppercase tracking-widest shrink-0">Apporto totale</p>
-              {/* Kcal — riga intera */}
-              <div className="rounded-xl flex items-center justify-center p-3" style={{ backgroundColor: KCAL_COLOR + '18' }}>
-                <p className="text-3xl font-bold" style={{ color: KCAL_COLOR }}>
-                  {result.calories}<span className="text-base font-normal ml-0.5">kcal</span>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Apporto totale</p>
+              <div className="rounded-xl flex items-center justify-center py-2" style={{ backgroundColor: KCAL_COLOR + '18' }}>
+                <p className="text-2xl font-bold" style={{ color: KCAL_COLOR }}>
+                  {result.calories}<span className="text-sm font-normal ml-0.5">kcal</span>
                 </p>
               </div>
-              {/* 3 macro — riga unica */}
-              <div className="grid grid-cols-3 gap-2 flex-1">
+              <div className="grid grid-cols-3 gap-1.5">
                 {[
                   { value: result.fat,     unit: 'g', color: '#5b9bd5', bg: '#5b9bd518' },
                   { value: result.carbs,   unit: 'g', color: '#f0aa78', bg: '#f0aa7818' },
                   { value: result.protein, unit: 'g', color: '#9d8fcc', bg: '#9d8fcc18' },
                 ].map((item, i) => (
-                  <div key={i} className="rounded-xl flex items-center justify-center p-3" style={{ backgroundColor: item.bg }}>
-                    <p className="text-2xl font-bold" style={{ color: item.color }}>
-                      {item.value}<span className="text-sm font-normal ml-0.5">{item.unit}</span>
+                  <div key={i} className="rounded-xl flex items-center justify-center py-2" style={{ backgroundColor: item.bg }}>
+                    <p className="text-xl font-bold" style={{ color: item.color }}>
+                      {item.value}<span className="text-xs font-normal ml-0.5">{item.unit}</span>
                     </p>
                   </div>
                 ))}

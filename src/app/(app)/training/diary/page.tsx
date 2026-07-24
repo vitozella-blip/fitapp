@@ -112,52 +112,28 @@ function parseScore(raw: string | undefined | null): { me: number; opp: number }
 // ── Set grouping helpers ──────────────────────────────────────────────────────
 type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
 type SetGroup = { key: string; type: string; items: SetItem[]; isGrouped: boolean }
-const GROUP_TAGS = new Set(['SS', 'JS', 'MR', 'WD', 'PB'])
 
-function groupColor(type: string): string {
-  if (type === 'JS') return '#9d8fcc'
-  if (type === 'MR') return '#7dbf7d'
-  if (type === 'WD') return '#e8a0a0'
-  if (type === 'PB') return '#f5c842'
-  if (type === 'TSBO') return '#f0aa78'
-  return CT
-}
-
-function groupSets(sets: WorkoutSet[], tags: Record<string, string>, warmupIds: Set<string>): SetGroup[] {
-  let wIdx = 0, rIdx = 0
+function groupSets(sets: WorkoutSet[], _tags: Record<string, string>, warmupIds: Set<string>): SetGroup[] {
+  let rIdx = 0
   const items: SetItem[] = sets.map(s => {
     const isW = warmupIds.has(s.id)
-    return { s, isW, label: isW ? `R${++rIdx}` : `S${++wIdx}` }
+    return { s, isW, label: isW ? `R${++rIdx}` : `S${s.setNumber}` }
   })
   const result: SetGroup[] = []
   let i = 0
   while (i < items.length) {
     const item = items[i]
-    const tag = tags[item.s.id] ?? ''
-    // D+S pairing: different side tags adjacent → group (not D+D or S+S)
-    if ((tag === 'D' || tag === 'S') && i + 1 < items.length) {
-      const nextTag = tags[items[i + 1].s.id] ?? ''
-      if ((tag === 'D' && nextTag === 'S') || (tag === 'S' && nextTag === 'D')) {
-        result.push({ key: item.s.id, type: 'DS', items: [item, items[i + 1]], isGrouped: true })
-        i += 2; continue
+    // Same setNumber: group consecutive non-warmup sets with the same setNumber
+    if (!item.isW && i + 1 < items.length) {
+      const next = items[i + 1]
+      if (!next.isW && next.s.setNumber === item.s.setNumber) {
+        const grp = [item]; let j = i + 1
+        while (j < items.length && !items[j].isW && items[j].s.setNumber === item.s.setNumber) { grp.push(items[j]); j++ }
+        result.push({ key: item.s.id, type: 'SN', items: grp, isGrouped: true })
+        i = j; continue
       }
     }
-    // TS+BO pairing: different tags adjacent → group (not TS+TS or BO+BO)
-    if ((tag === 'TS' || tag === 'BO') && i + 1 < items.length) {
-      const nextTag = tags[items[i + 1].s.id] ?? ''
-      if ((tag === 'TS' && nextTag === 'BO') || (tag === 'BO' && nextTag === 'TS')) {
-        result.push({ key: item.s.id, type: 'TSBO', items: [item, items[i + 1]], isGrouped: true })
-        i += 2; continue
-      }
-    }
-    // SS/JS/MR/WD: group consecutive same-tagged sets
-    if (GROUP_TAGS.has(tag)) {
-      const grp = [item]; let j = i + 1
-      while (j < items.length && (tags[items[j].s.id] ?? '') === tag) { grp.push(items[j]); j++ }
-      result.push({ key: item.s.id, type: tag, items: grp, isGrouped: grp.length > 1 })
-      i = j; continue
-    }
-    result.push({ key: item.s.id, type: tag, items: [item], isGrouped: false })
+    result.push({ key: item.s.id, type: '', items: [item], isGrouped: false })
     i++
   }
   return result
@@ -511,6 +487,7 @@ export default function TrainingDiaryPage() {
   const [formWeight,    setFormWeight]    = useState('')
   const [formTag,       setFormTag]       = useState('')
   const [formUnit,      setFormUnit]      = useState<'kg'|'sec'>('kg')
+  const [formSetNum,    setFormSetNum]    = useState(1)
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const [formSaving,    setFormSaving]    = useState(false)
 
@@ -933,12 +910,18 @@ export default function TrainingDiaryPage() {
     ;(async () => {
       try {
         const plans: Plan[] = await fetch(`/api/workout-plans?userId=${userId}`).then(r => r.json())
-        const allTmps: Template[] = (await Promise.all(
-          plans.map(pl => fetch(`/api/workout-templates?planId=${pl.id}`).then(r => r.json()))
-        )).flat()
+        // Find only the plan that contains the current template
+        let planTemplates: Template[] = []
+        for (const pl of plans) {
+          const tmps: Template[] = await fetch(`/api/workout-templates?planId=${pl.id}`).then(r => r.json())
+          if (tmps.some(t => t.id === schedaInfo.id)) {
+            planTemplates = tmps
+            break
+          }
+        }
         const seen = new Set<string>()
         const opts: { id: string; name: string; schedaName: string }[] = []
-        allTmps.forEach(t => {
+        planTemplates.forEach(t => {
           t.exercises.forEach(te => {
             if (te.isAbs && !seen.has(te.exercise.id)) {
               seen.add(te.exercise.id)
@@ -971,7 +954,7 @@ export default function TrainingDiaryPage() {
     setFormSaving(true)
     await fetch('/api/workout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null, isWarmup, unit: formUnit }),
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null, isWarmup, unit: formUnit, setNumber: isWarmup ? undefined : formSetNum }),
     })
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     const w: Workout = await r.json()
@@ -1190,7 +1173,11 @@ export default function TrainingDiaryPage() {
       defaultReps = targetReps?.match(/\d+/)?.[0] ?? ''
     }
     setFormTargetReps(defaultReps)
-    if (!isSame) { setFormReps(defaultReps); setFormWeight(''); setFormTag(''); setTagPickerOpen(false) }
+    if (!isSame) {
+      const loggedNonWarmup = (workout?.sets ?? []).filter(s => s.exerciseId === exId && !warmups.has(s.id)).length
+      setFormSetNum(loggedNonWarmup + 1)
+      setFormReps(defaultReps); setFormWeight(''); setFormTag(''); setTagPickerOpen(false)
+    }
   }
 
   const allSets    = (workout?.sets ?? []).filter(Boolean)
@@ -1919,22 +1906,36 @@ export default function TrainingDiaryPage() {
                 {/* Add set form */}
                 {addOpen && (
                   <div className="border-2 rounded-xl mx-2 mb-2 px-3 py-3 flex flex-col gap-2" style={{ borderColor: CT, backgroundColor: CT + '18' }}>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-1.5">
                       <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                        <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                          onClick={() => setFormSetNum(n => Math.max(1, n - 1))}>–</button>
+                        <span className="flex-1 text-center text-[11px] font-bold text-gray-900 dark:text-gray-100 truncate">S{formSetNum}</span>
+                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                          onClick={() => setFormSetNum(n => n + 1)}>+</button>
+                      </div>
+                      <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                           onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
                         <span className="flex-1 text-center text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{formReps || ''}</span>
-                        <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                           onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
                       </div>
                       <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                        placeholder=""
+                        placeholder="—"
                         className="py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
-                      <button onClick={() => setFormUnit(u => u === 'kg' ? 'sec' : 'kg')}
-                        className="py-2 rounded-lg border text-xs font-bold transition-colors"
-                        style={formUnit === 'sec' ? { borderColor: CT, backgroundColor: CT + '18', color: CT } : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
-                        {formUnit}
-                      </button>
+                      <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <button onClick={() => setFormUnit('kg')}
+                          className="flex-1 py-2 text-xs font-bold transition-colors"
+                          style={formUnit === 'kg' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
+                          kg
+                        </button>
+                        <button onClick={() => setFormUnit('sec')}
+                          className="flex-1 py-2 text-xs font-bold transition-colors border-l border-gray-200 dark:border-gray-700"
+                          style={formUnit === 'sec' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
+                          sec
+                        </button>
+                      </div>
                     </div>
                     {tagPickerOpen && (
                       <div className="flex gap-1 flex-wrap">
@@ -2027,7 +2028,7 @@ export default function TrainingDiaryPage() {
                                   )}
                                   <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                     onClick={() => openEdit(s)}>
-                                    {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
+                                    {s.unit === 'sec' ? `${s.weight ?? 0} sec` : `${s.reps} reps${s.weight ? ` · ${s.weight} kg` : ''}`}
                                   </button>
                                   <button onClick={() => deleteSet(s.id)}
                                     className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -2069,63 +2070,30 @@ export default function TrainingDiaryPage() {
                       return (
                         <div key={group.key} className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                           {group.isGrouped && !anyEditing ? (
-                            // Grouped: CSS grid — [set btn | spanning badge | reps | trash]
-                            <div className="grid" style={{ gridTemplateColumns: 'auto auto 1fr auto', gridTemplateRows: `repeat(${group.items.length}, auto)` }}>
-                              {/* Spanning badge — col 2, all rows */}
-                              <div
-                                style={{ gridColumn: 2, gridRow: `1 / span ${group.items.length}`, color: CT, borderColor: CT + '99', backgroundColor: CT + '18' }}
-                                className="flex flex-col mx-1.5 my-px rounded border shrink-0 w-7">
-                                {group.items.map((item, idx) => (
-                                  <span key={idx} className="flex-1 flex items-center justify-center text-[9px] font-bold leading-none">{setTags[item.s.id] ?? ''}</span>
-                                ))}
+                            // Same setNumber (SN): spanning label + reps + trash
+                            <div className="grid" style={{ gridTemplateColumns: 'auto 1fr auto', gridTemplateRows: `repeat(${group.items.length}, auto)` }}>
+                              <div style={{ gridColumn: 1, gridRow: `1 / span ${group.items.length}`, color: CT, borderColor: CT + '99', backgroundColor: CT + '18' }}
+                                className="flex items-center justify-center mx-4 my-px rounded border shrink-0 w-6 text-[9px] font-bold">
+                                {group.items[0].label}
                               </div>
-                              {group.items.map(({ s, isW, label }, ii) => [
-                                // col 1: set button — h-10 fixed height
-                                <div key={`${s.id}-l`} style={{ gridColumn: 1, gridRow: ii + 1 }}
-                                  className={cn('flex items-center gap-1 pl-4 h-10 pr-0', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
-                                  <button onClick={() => setLabelMenuSetId(id => id === s.id ? null : s.id)}
-                                    className="w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0"
-                                    style={isW ? { backgroundColor: C_WARM + '20', color: C_WARM } : { backgroundColor: CT + '18', color: CT }}>
-                                    {label}
-                                  </button>
-                                  {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
-                                </div>,
-                                // col 3: reps — h-10 fixed height
-                                <button key={`${s.id}-r`} style={{ gridColumn: 3, gridRow: ii + 1 }}
+                              {group.items.map(({ s }, ii) => [
+                                <button key={`${s.id}-r`} style={{ gridColumn: 2, gridRow: ii + 1 }}
                                   className={cn('flex items-center h-10 pl-1 text-left text-sm text-gray-900 dark:text-gray-100', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}
                                   onClick={() => openEdit(s)}>
-                                  {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
+                                  {s.unit === 'sec' ? `${s.weight ?? 0} sec` : `${s.reps} reps${s.weight ? ` · ${s.weight} kg` : ''}`}
                                 </button>,
-                                // col 4: trash — h-10 fixed height
-                                <div key={`${s.id}-t`} style={{ gridColumn: 4, gridRow: ii + 1 }}
+                                <div key={`${s.id}-t`} style={{ gridColumn: 3, gridRow: ii + 1 }}
                                   className={cn('flex items-center h-10 pr-4', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                                   <button onClick={() => deleteSet(s.id)}
                                     className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
                                     <Trash2 size={12} />
                                   </button>
                                 </div>,
-                                // label menu — full width below its row
-                                labelMenuSetId === s.id && (
-                                  <div key={`${s.id}-menu`} style={{ gridColumn: '1 / -1' }}
-                                    className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD', 'PB'].map(opt => {
-                                      const active = setTags[s.id] === opt
-                                      return (
-                                        <button key={opt}
-                                          onClick={() => { setSetTags(prev => { const next = { ...prev }; if (active) delete next[s.id]; else next[s.id] = opt; return next }); setLabelMenuSetId(null) }}
-                                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors"
-                                          style={active ? { backgroundColor: CT, borderColor: CT, color: '#fff' } : { borderColor: CT, color: CT }}>
-                                          {opt}
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-                                ),
                               ])}
                             </div>
                           ) : (
                             // Ungrouped or editing: flat render
-                            group.items.map(item => renderSetRow(item, !group.isGrouped))
+                            group.items.map(item => renderSetRow(item, true))
                           )}
                         </div>
                       )
@@ -2306,22 +2274,36 @@ export default function TrainingDiaryPage() {
                     <div className="border-t border-gray-50 dark:border-gray-800">
                       {addOpen && (
                         <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 flex flex-col gap-2">
-                          <div className="grid grid-cols-3 gap-1.5">
+                          <div className="grid grid-cols-4 gap-1">
                             <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                              <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                              <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                                onClick={() => setFormSetNum(n => Math.max(1, n - 1))}>–</button>
+                              <span className="flex-1 text-center text-[11px] font-bold text-gray-900 dark:text-gray-100 truncate">S{formSetNum}</span>
+                              <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                                onClick={() => setFormSetNum(n => n + 1)}>+</button>
+                            </div>
+                            <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                              <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                                 onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
                               <span className="flex-1 text-center text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{formReps || ''}</span>
-                              <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
+                              <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                                 onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
                             </div>
                             <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                              placeholder=""
+                              placeholder="—"
                               className="py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
-                            <button onClick={() => setFormUnit(u => u === 'kg' ? 'sec' : 'kg')}
-                              className="py-2 rounded-lg border text-xs font-bold transition-colors"
-                              style={formUnit === 'sec' ? { borderColor: CT, backgroundColor: CT + '18', color: CT } : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
-                              {formUnit}
-                            </button>
+                            <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                              <button onClick={() => setFormUnit('kg')}
+                                className="flex-1 py-2 text-xs font-bold transition-colors"
+                                style={formUnit === 'kg' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
+                                kg
+                              </button>
+                              <button onClick={() => setFormUnit('sec')}
+                                className="flex-1 py-2 text-xs font-bold transition-colors border-l border-gray-200 dark:border-gray-700"
+                                style={formUnit === 'sec' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
+                                sec
+                              </button>
+                            </div>
                           </div>
                           {tagPickerOpen && (
                             <div className="flex gap-1 flex-wrap">
@@ -2361,7 +2343,7 @@ export default function TrainingDiaryPage() {
                         <div className="divide-y divide-gray-50 dark:divide-gray-800 border-t border-gray-50 dark:border-gray-800">
                           {exSets.map(s => {
                             const isW = warmups.has(s.id)
-                            const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
+                            const label = isW ? `R${++warmIdx}` : `S${s.setNumber}`
                             const isEditing = editSetId === s.id
                             return (
                               <div key={s.id}>
@@ -2411,7 +2393,7 @@ export default function TrainingDiaryPage() {
                                       )}
                                       <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                         onClick={() => openEdit(s)}>
-                                        {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
+                                        {s.unit === 'sec' ? `${s.weight ?? 0} sec` : `${s.reps} reps${s.weight ? ` · ${s.weight} kg` : ''}`}
                                       </button>
                                       <button onClick={() => deleteSet(s.id)}
                                         className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -2554,7 +2536,7 @@ export default function TrainingDiaryPage() {
               <div className="border-t border-gray-50 dark:border-gray-800 divide-y divide-gray-50 dark:divide-gray-800">
                 {sets.map(s => {
                   const isW  = warmups.has(s.id)
-                  const label = isW ? `R${++warmIdx}` : `S${++workIdx}`
+                  const label = isW ? `R${++warmIdx}` : `S${s.setNumber}`
                   const isEditing = editSetId === s.id
                   return (
                     <div key={s.id}>
@@ -2602,7 +2584,7 @@ export default function TrainingDiaryPage() {
                             {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
                             <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                               onClick={() => openEdit(s)}>
-                              {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
+                              {s.unit === 'sec' ? `${s.weight ?? 0} sec` : `${s.reps} reps${s.weight ? ` · ${s.weight} kg` : ''}`}
                             </button>
                             <button onClick={() => deleteSet(s.id)}
                               className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">

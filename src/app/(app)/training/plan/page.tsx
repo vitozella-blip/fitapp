@@ -909,12 +909,12 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete }: {
 
   const rowRef   = useRef<HTMLDivElement>(null)
   const swStartX = useRef(0); const swStartY = useRef(0)
-  const swCurX   = useRef(0); const swSnapped = useRef<'left'|null>(null)
+  const swCurX   = useRef(0); const swSnapped = useRef<'left'|'right'|null>(null)
   const swDir    = useRef<'h'|'v'|null>(null)
   const SW_SNAP = 72; const SW_THRESH = 28
   function swTranslate(x: number) { swCurX.current = x; if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)` }
-  function swSnap(dir: 'left'|null) {
-    swSnapped.current = dir; const x = dir === 'left' ? -SW_SNAP : 0
+  function swSnap(dir: 'left'|'right'|null) {
+    swSnapped.current = dir; const x = dir === 'left' ? -SW_SNAP : dir === 'right' ? SW_SNAP : 0
     if (rowRef.current) { rowRef.current.style.transition = 'transform 0.2s ease'; rowRef.current.style.transform = `translateX(${x}px)`; setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210) }
     swCurX.current = x
   }
@@ -923,10 +923,14 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete }: {
     const dx = e.touches[0].clientX - swStartX.current; const dy = Math.abs(e.touches[0].clientY - swStartY.current)
     if (swDir.current === null) { if (Math.abs(dx) < 5 && dy < 5) return; swDir.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v' }
     if (swDir.current !== 'h') return
-    const base = swSnapped.current === 'left' ? -SW_SNAP : 0
-    swTranslate(Math.max(-SW_SNAP, Math.min(0, base + dx)))
+    const base = swSnapped.current === 'left' ? -SW_SNAP : swSnapped.current === 'right' ? SW_SNAP : 0
+    swTranslate(Math.max(-SW_SNAP, Math.min(SW_SNAP, base + dx)))
   }
-  function swTouchEnd() { if (swCurX.current < -SW_THRESH) swSnap('left'); else swSnap(null) }
+  function swTouchEnd() {
+    if (swCurX.current < -SW_THRESH) swSnap('left')
+    else if (swCurX.current > SW_THRESH) swSnap('right')
+    else swSnap(null)
+  }
 
   function initVals(p: WeekParam | undefined): string[] {
     const pr = parseRepsTargets(p?.reps ?? '')
@@ -1032,6 +1036,10 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete }: {
 
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 last:border-0 relative overflow-hidden">
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center bg-orange-400" style={{ width: SW_SNAP }}
+        onClick={() => { swSnap(null); setOpen(true) }}>
+        <Pencil size={14} className="text-white" />
+      </div>
       <div className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-500" style={{ width: SW_SNAP }}
         onClick={() => { swSnap(null); onDelete() }}>
         <Trash2 size={14} className="text-white" />
