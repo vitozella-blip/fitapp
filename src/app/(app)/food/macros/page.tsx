@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Search, Target, X, ChevronRight } from 'lucide-react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { Search, Target, X, ChevronRight, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { cn } from '@/lib/utils'
+import { MealIcon } from '@/components/shared/icons'
+import { cn, localToday } from '@/lib/utils'
 
 type Food = { id: string; name: string; brand?: string; calories: number; protein: number; carbs: number; fat: number }
 type Macro = 'protein' | 'carbs' | 'fat'
@@ -19,10 +20,18 @@ const MACROS: { key: Macro; label: string; color: string; hex: string; bg: strin
 type Result = { grams: number; calories: number; protein: number; carbs: number; fat: number }
 
 const KCAL_COLOR = '#6abf6a'
+const MEALS = [
+  { name: 'Colazione',           short: 'Col.' },
+  { name: 'Spuntino mattina',    short: 'Mat.' },
+  { name: 'Pranzo',              short: 'Pra.' },
+  { name: 'Spuntino pomeriggio', short: 'Pom.' },
+  { name: 'Cena',                short: 'Cen.' },
+]
 
 export default function MacrosPage() {
   const userId = useAppStore((s) => s.userId)
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   const [macro, setMacro]         = useState<Macro | null>(null)
   const [activeStep, setActiveStep] = useState<ActiveStep>(1)
@@ -31,11 +40,14 @@ export default function MacrosPage() {
   const [results, setResults]     = useState<Food[]>([])
   const [selected, setSelected]   = useState<Food | null>(null)
   const [result, setResult]       = useState<Result | null>(null)
+  const [savingMeal, setSavingMeal] = useState<string | null>(null)
   const timer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setResults(d) }).catch(() => {})
   }, [userId])
+
+  const diaryDate = searchParams.get('date') ?? localToday()
 
   useEffect(() => {
     const m = searchParams.get('macro') as Macro | null
@@ -107,6 +119,20 @@ export default function MacrosPage() {
   function clearFood() {
     setSelected(null); setQ(''); setResults([]); setResult(null)
     setActiveStep(3)
+  }
+
+  async function addToDiary(meal: string) {
+    if (!selected || !result) return
+    setSavingMeal(meal)
+    try {
+      await fetch('/api/diary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date: diaryDate, meal, foodId: selected.id, quantity: result.grams }),
+      })
+      router.push(`/food/diary`)
+    } catch {}
+    setSavingMeal(null)
   }
 
   const sm = macro ? MACROS.find(m => m.key === macro)! : null
@@ -291,6 +317,26 @@ export default function MacrosPage() {
                 ))}
               </div>
             </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Aggiungi al diario ─────────────────────────────────────────────────── */}
+      {result && selected && amount && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl px-3 py-3 space-y-2 shrink-0">
+          <p className="text-xs font-bold text-gray-500 dark:text-gray-400">Aggiungi a:</p>
+          <div className="grid grid-cols-5 gap-1.5">
+            {MEALS.map(({ name, short }) => (
+              <button key={name} onClick={() => addToDiary(name)} disabled={!!savingMeal}
+                className="flex flex-col items-center gap-1 py-2 px-0.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors disabled:opacity-40">
+                {savingMeal === name
+                  ? <Loader2 size={16} className="animate-spin" style={{ color: '#e8924a' }} />
+                  : <MealIcon name={name} size={16} color="#9ca3af" />
+                }
+                <span className="text-[9px] font-bold text-gray-400">{short}</span>
+              </button>
+            ))}
           </div>
         </div>
       )}

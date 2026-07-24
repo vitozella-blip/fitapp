@@ -8,6 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await Promise.all([
       pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "isWarmup" BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {}),
       pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "tag" TEXT`).catch(() => {}),
+      pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "unit" TEXT DEFAULT 'kg'`).catch(() => {}),
     ])
     const setClauses: string[] = []
     const vals: unknown[] = []
@@ -15,6 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ('weight' in body) { setClauses.push(`weight=$${vals.length + 1}`); vals.push(body.weight ?? null) }
     if (body.isWarmup !== undefined) { setClauses.push(`"isWarmup"=$${vals.length + 1}`); vals.push(body.isWarmup) }
     if ('tag' in body) { setClauses.push(`tag=$${vals.length + 1}`); vals.push(body.tag ?? null) }
+    if ('unit' in body) { setClauses.push(`unit=$${vals.length + 1}`); vals.push(body.unit ?? 'kg') }
     if (setClauses.length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
     vals.push(id)
     const { rows } = await pool.query(

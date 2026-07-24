@@ -1,5 +1,6 @@
 ﻿'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Dumbbell, Check, Minus, Flame, X, Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, StickyNote, Clock, Link2, Play, Pause, RotateCcw, Timer, Pencil, History } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -33,7 +34,7 @@ type ExStatus = 'done' | 'partial' | 'skipped'
 type Exercise   = { id: string; name: string; muscleGroup: string }
 type TemplateEx = { id: string; exercise: Exercise; sets: number; reps: string | null; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null; isAbs: boolean }
 type SchedaInfo = { id: string; name: string; weekId?: string | null; weekName?: string | null; exercises: TemplateEx[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
-type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; isWarmup?: boolean; tag?: string; exercise: Exercise }
+type WorkoutSet = { id: string; setNumber: number; reps: number; weight: number | null; exerciseId: string; isWarmup?: boolean; tag?: string; unit?: string; exercise: Exercise }
 type Workout    = { id: string; sets: WorkoutSet[] }
 type Template   = { id: string; name: string; exercises: TemplateEx[]; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
 type Plan       = { id: string; name: string; isActive?: boolean }
@@ -111,12 +112,13 @@ function parseScore(raw: string | undefined | null): { me: number; opp: number }
 // ── Set grouping helpers ──────────────────────────────────────────────────────
 type SetItem  = { s: WorkoutSet; isW: boolean; label: string }
 type SetGroup = { key: string; type: string; items: SetItem[]; isGrouped: boolean }
-const GROUP_TAGS = new Set(['SS', 'JS', 'MR', 'WD'])
+const GROUP_TAGS = new Set(['SS', 'JS', 'MR', 'WD', 'PB'])
 
 function groupColor(type: string): string {
   if (type === 'JS') return '#9d8fcc'
   if (type === 'MR') return '#7dbf7d'
   if (type === 'WD') return '#e8a0a0'
+  if (type === 'PB') return '#f5c842'
   if (type === 'TSBO') return '#f0aa78'
   return CT
 }
@@ -354,7 +356,7 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
                   <button key={w.id} onClick={() => confirm(w.id, w.name, w.order + 1)}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ backgroundColor: CT }}>
+                      style={{ backgroundColor: picked ? (picked.t.badgeColor ?? SCHEDA_COLORS[picked.idx % SCHEDA_COLORS.length]) : CT }}>
                       {w.order + 1}
                     </div>
                     <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex-1">{w.name}</p>
@@ -484,6 +486,7 @@ export default function TrainingDiaryPage() {
   const [scoreSets, setScoreSets] = useState<{ me: number; opp: number; tbMe?: number; tbOpp?: number }[]>([])
   const [editSetIdx, setEditSetIdx] = useState<number | null>(null)
   const [expandedExId,  setExpandedExId]  = useState<string | null>(null)
+  const router = useRouter()
   const [noteEdit, setNoteEdit] = useState<{ exId: string; teId: string; type: 'scheda' | 'personali'; text: string } | null>(null)
   const [noteSaving, setNoteSaving] = useState(false)
   const [recTimer,  setRecTimer]  = useState<{
@@ -507,6 +510,7 @@ export default function TrainingDiaryPage() {
   const addTargetRepsRef = useRef<string | null>(null)
   const [formWeight,    setFormWeight]    = useState('')
   const [formTag,       setFormTag]       = useState('')
+  const [formUnit,      setFormUnit]      = useState<'kg'|'sec'>('kg')
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const [formSaving,    setFormSaving]    = useState(false)
 
@@ -967,7 +971,7 @@ export default function TrainingDiaryPage() {
     setFormSaving(true)
     await fetch('/api/workout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null, isWarmup }),
+      body: JSON.stringify({ userId, date: selectedDate, exerciseId: exId, sets: 1, reps: Number(formReps), weight: formWeight ? Number(formWeight) : null, weekId: schedaInfo?.weekId ?? null, isWarmup, unit: formUnit }),
     })
     const r = await fetch(`/api/workout?userId=${userId}&date=${selectedDate}`)
     const w: Workout = await r.json()
@@ -1800,58 +1804,44 @@ export default function TrainingDiaryPage() {
             {isOpen && (
               <div className="border-t border-gray-50 dark:border-gray-800">
                 {/* Target table */}
-                <div className="px-4 pt-2.5 pb-0">
-                  {parsedReps.sets.length > 1 ? (
-                    <div className="mb-2">
-                      <div className="grid grid-cols-[20px_1fr_auto] gap-x-3 px-1 mb-1">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">#</p>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Target</p>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
-                      </div>
-                      {parsedReps.sets.map((t, i) => {
-                        const isDoneSet = i < nonWarmupLogged
-                        return (
-                          <div key={i} className="grid grid-cols-[20px_1fr_auto] gap-x-3 items-center py-0.5 px-1">
-                            <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>{i + 1}</p>
-                            <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>
-                              {t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`} reps
-                            </p>
-                            {i === 0 ? (
-                              <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#9ca3af' : CT }}
-                                onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}>
-                                {rest || '—'}
-                              </button>
-                            ) : <span />}
-                          </div>
-                        )
-                      })}
-                      {parsedReps.mods.length > 0 && (
-                        <p className="text-[10px] text-gray-400 italic px-1 mt-1">
-                          {parsedReps.mods.join(' · ')}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 mb-2">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
-                        <p className="text-xs font-bold" style={{ color: CT }}>{te.sets}</p>
-                      </div>
-                      <div className="flex flex-col items-center gap-0.5">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
-                        <p className="text-xs font-bold" style={{ color: CT }}>{te.reps || '—'}</p>
-                      </div>
-                      <div className="flex flex-col items-center gap-0.5">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
-                        <button
-                          className="text-xs font-bold leading-none"
-                          style={{ color: CT }}
-                          onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}
-                        >{rest || '—'}</button>
+                {(() => {
+                  const targetRows = parsedReps.sets.length > 1
+                    ? parsedReps.sets
+                    : Array.from({ length: te.sets ?? 1 }, () => parsedReps.sets[0] ?? null)
+                  return (
+                    <div className="px-4 pt-2.5 pb-0">
+                      <div className="mb-2">
+                        <div className="grid grid-cols-[20px_1fr_auto] gap-x-3 px-1 mb-1">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
+                        </div>
+                        {targetRows.map((t, i) => {
+                          const isDoneSet = i < nonWarmupLogged
+                          return (
+                            <div key={i} className="grid grid-cols-[20px_1fr_auto] gap-x-3 items-center py-0.5 px-1">
+                              <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>{i + 1}</p>
+                              <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>
+                                {t ? (t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}
+                              </p>
+                              {i === 0 ? (
+                                <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#9ca3af' : CT }}
+                                  onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}>
+                                  {rest || '—'}
+                                </button>
+                              ) : <span />}
+                            </div>
+                          )
+                        })}
+                        {parsedReps.mods.length > 0 && (
+                          <p className="text-[10px] text-gray-400 italic px-1 mt-1">
+                            {parsedReps.mods.join(' · ')}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
+                  )
+                })()}
                 {/* Actions row: full-width icon bar */}
                 <div className="grid grid-cols-4 border-t border-gray-100 dark:border-gray-800">
                   <button
@@ -1881,25 +1871,47 @@ export default function TrainingDiaryPage() {
                 </div>
                 {noteEdit?.exId === te.id && (
                   <div className="px-4 pb-2 space-y-1.5">
-                    <textarea
-                      value={noteEdit.text}
-                      onChange={e => setNoteEdit(n => n ? { ...n, text: e.target.value } : null)}
-                      placeholder={noteEdit.type === 'scheda' ? 'Note scheda...' : 'Note personali...'}
-                      rows={2}
-                      className="w-full text-xs px-3 py-2 rounded-xl border bg-gray-50 dark:bg-gray-800 outline-none resize-none placeholder-gray-300"
-                      style={{ borderColor: noteEdit.type === 'scheda' ? '#f0aa7880' : '#9d8fcc80', color: noteEdit.type === 'scheda' ? '#f0aa78' : '#9d8fcc' }}
-                    />
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => setNoteEdit(null)}
-                        className="text-xs text-gray-400 px-3 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-                        Annulla
-                      </button>
-                      <button onClick={() => saveNote(te)} disabled={noteSaving}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
-                        style={{ backgroundColor: noteEdit.type === 'scheda' ? '#f0aa78' : '#9d8fcc' }}>
-                        {noteSaving ? '...' : 'Salva'}
-                      </button>
-                    </div>
+                    {noteEdit.type === 'scheda' ? (
+                      <>
+                        <p className="w-full text-xs px-3 py-2 rounded-xl border bg-gray-50 dark:bg-gray-800 min-h-[3rem] whitespace-pre-wrap"
+                          style={{ borderColor: '#f0aa7880', color: '#f0aa78' }}>
+                          {noteEdit.text || <span className="text-gray-300">Nessuna nota scheda</span>}
+                        </p>
+                        <div className="flex gap-2 justify-end items-center">
+                          <button onClick={() => setNoteEdit(null)}
+                            className="text-xs text-gray-400 px-3 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                            Chiudi
+                          </button>
+                          <button onClick={() => { setNoteEdit(null); router.push('/training/plan') }}
+                            className="p-1.5 rounded-lg text-white flex items-center justify-center"
+                            style={{ backgroundColor: '#f0aa78' }}>
+                            <Pencil size={13} />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <textarea
+                          value={noteEdit.text}
+                          onChange={e => setNoteEdit(n => n ? { ...n, text: e.target.value } : null)}
+                          placeholder="Note personali..."
+                          rows={2}
+                          className="w-full text-xs px-3 py-2 rounded-xl border bg-gray-50 dark:bg-gray-800 outline-none resize-none placeholder-gray-300"
+                          style={{ borderColor: '#9d8fcc80', color: '#9d8fcc' }}
+                        />
+                        <div className="flex gap-2 justify-end items-center">
+                          <button onClick={() => setNoteEdit(null)}
+                            className="text-xs text-gray-400 px-3 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                            Chiudi
+                          </button>
+                          <button onClick={() => saveNote(te)} disabled={noteSaving}
+                            className="p-1.5 rounded-lg text-white flex items-center justify-center disabled:opacity-50"
+                            style={{ backgroundColor: '#9d8fcc' }}>
+                            {noteSaving ? <Loader2 size={13} className="animate-spin" /> : <Pencil size={13} />}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -1907,7 +1919,7 @@ export default function TrainingDiaryPage() {
                 {/* Add set form */}
                 {addOpen && (
                   <div className="border-2 rounded-xl mx-2 mb-2 px-3 py-3 flex flex-col gap-2" style={{ borderColor: CT, backgroundColor: CT + '18' }}>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
                         <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                           onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
@@ -1916,12 +1928,17 @@ export default function TrainingDiaryPage() {
                           onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
                       </div>
                       <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                        placeholder="kg"
+                        placeholder=""
                         className="py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
+                      <button onClick={() => setFormUnit(u => u === 'kg' ? 'sec' : 'kg')}
+                        className="py-2 rounded-lg border text-xs font-bold transition-colors"
+                        style={formUnit === 'sec' ? { borderColor: CT, backgroundColor: CT + '18', color: CT } : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
+                        {formUnit}
+                      </button>
                     </div>
                     {tagPickerOpen && (
                       <div className="flex gap-1 flex-wrap">
-                        {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(tag => (
+                        {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD', 'PB'].map(tag => (
                           <button key={tag} onClick={() => { setFormTag(t => t === tag ? '' : tag); setTagPickerOpen(false) }}
                             className="px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
                             style={formTag === tag
@@ -2010,7 +2027,7 @@ export default function TrainingDiaryPage() {
                                   )}
                                   <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                     onClick={() => openEdit(s)}>
-                                    {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                    {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
                                   </button>
                                   <button onClick={() => deleteSet(s.id)}
                                     className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -2019,7 +2036,7 @@ export default function TrainingDiaryPage() {
                                 </div>
                                 {labelMenuSetId === s.id && (
                                   <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
+                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD', 'PB'].map(opt => {
                                       const active = setTags[s.id] === opt
                                       return (
                                         <button key={opt}
@@ -2077,7 +2094,7 @@ export default function TrainingDiaryPage() {
                                 <button key={`${s.id}-r`} style={{ gridColumn: 3, gridRow: ii + 1 }}
                                   className={cn('flex items-center h-10 pl-1 text-left text-sm text-gray-900 dark:text-gray-100', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}
                                   onClick={() => openEdit(s)}>
-                                  {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                  {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
                                 </button>,
                                 // col 4: trash — h-10 fixed height
                                 <div key={`${s.id}-t`} style={{ gridColumn: 4, gridRow: ii + 1 }}
@@ -2091,7 +2108,7 @@ export default function TrainingDiaryPage() {
                                 labelMenuSetId === s.id && (
                                   <div key={`${s.id}-menu`} style={{ gridColumn: '1 / -1' }}
                                     className="flex flex-wrap gap-1.5 px-4 pb-2">
-                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
+                                    {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD', 'PB'].map(opt => {
                                       const active = setTags[s.id] === opt
                                       return (
                                         <button key={opt}
@@ -2289,7 +2306,7 @@ export default function TrainingDiaryPage() {
                     <div className="border-t border-gray-50 dark:border-gray-800">
                       {addOpen && (
                         <div className="border-t border-gray-100 dark:border-gray-800 px-3 py-2 flex flex-col gap-2">
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <div className="grid grid-cols-3 gap-1.5">
                             <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
                               <button className="px-2 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
                                 onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
@@ -2298,12 +2315,17 @@ export default function TrainingDiaryPage() {
                                 onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
                             </div>
                             <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                              placeholder="kg"
+                              placeholder=""
                               className="py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
+                            <button onClick={() => setFormUnit(u => u === 'kg' ? 'sec' : 'kg')}
+                              className="py-2 rounded-lg border text-xs font-bold transition-colors"
+                              style={formUnit === 'sec' ? { borderColor: CT, backgroundColor: CT + '18', color: CT } : { borderColor: '#e5e7eb', color: '#9ca3af' }}>
+                              {formUnit}
+                            </button>
                           </div>
                           {tagPickerOpen && (
                             <div className="flex gap-1 flex-wrap">
-                              {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(tag => (
+                              {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD', 'PB'].map(tag => (
                                 <button key={tag} onClick={() => { setFormTag(t => t === tag ? '' : tag); setTagPickerOpen(false) }}
                                   className="px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
                                   style={formTag === tag
@@ -2389,7 +2411,7 @@ export default function TrainingDiaryPage() {
                                       )}
                                       <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                                         onClick={() => openEdit(s)}>
-                                        {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                                        {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
                                       </button>
                                       <button onClick={() => deleteSet(s.id)}
                                         className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -2580,7 +2602,7 @@ export default function TrainingDiaryPage() {
                             {isW && <Flame size={10} style={{ color: C_WARM }} className="shrink-0" />}
                             <button className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
                               onClick={() => openEdit(s)}>
-                              {s.reps} reps{s.weight ? ` · ${s.weight} kg` : ''}
+                              {s.reps} reps{s.weight ? ` · ${s.weight} ${s.unit ?? 'kg'}` : ''}
                             </button>
                             <button onClick={() => deleteSet(s.id)}
                               className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -2589,7 +2611,7 @@ export default function TrainingDiaryPage() {
                           </div>
                           {labelMenuSetId === s.id && (
                             <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-                              {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD'].map(opt => {
+                              {['D', 'S', 'DS', 'BO', 'TS', 'PR', 'MR', 'WD', 'PB'].map(opt => {
                                 const active = setTags[s.id] === opt
                                 return (
                                   <button key={opt}

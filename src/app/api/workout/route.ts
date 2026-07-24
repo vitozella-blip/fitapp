@@ -6,6 +6,7 @@ async function ensureSetColumns() {
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "isWarmup" BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "tag" TEXT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "globalIndex" INT`).catch(() => {}),
+    pool.query(`ALTER TABLE "WorkoutSet" ADD COLUMN IF NOT EXISTS "unit" TEXT DEFAULT 'kg'`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "weekId" TEXT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisType" TEXT`).catch(() => {}),
     pool.query(`ALTER TABLE "WorkoutDiary" ADD COLUMN IF NOT EXISTS "tennisHours" TEXT`).catch(() => {}),
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
            json_build_object(
              'id',s.id,'setNumber',s."setNumber",'globalIndex',s."globalIndex",
              'reps',s.reps,'weight',s.weight,'exerciseId',s."exerciseId",
-             'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'exercise',e
+             'isWarmup',COALESCE(s."isWarmup",false),'tag',s.tag,'unit',COALESCE(s.unit,'kg'),'exercise',e
            )
            ORDER BY
              COALESCE(wte."order", ex_ord.min_idx, 99999) ASC,
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, date, exerciseId, sets, reps, weight, weekId, isWarmup } = await req.json()
+  const { userId, date, exerciseId, sets, reps, weight, weekId, isWarmup, unit } = await req.json()
   try {
     await pool.query(
       `INSERT INTO "User" (id, name, "targetCalories", "targetProtein", "targetCarbs", "targetFat", goal, "createdAt") VALUES ($1,'Utente',2000,150,220,65,'maintain',NOW()) ON CONFLICT (id) DO NOTHING`,
@@ -124,8 +125,8 @@ export async function POST(req: NextRequest) {
     const baseGlobalIndex = Number(globalRowsRes.rows[0].gmax)
     for (let i = 0; i < sets; i++) {
       await pool.query(
-        `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight, "isWarmup", "globalIndex") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null, isWarmup ?? false, baseGlobalIndex + i + 1]
+        `INSERT INTO "WorkoutSet" (id, "workoutDiaryId", "exerciseId", "setNumber", reps, weight, "isWarmup", "globalIndex", unit) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [crypto.randomUUID(), workoutId, exerciseId, baseSetNumber + i + 1, reps, weight || null, isWarmup ?? false, baseGlobalIndex + i + 1, unit ?? 'kg']
       )
     }
     return NextResponse.json({ ok: true, workoutId })

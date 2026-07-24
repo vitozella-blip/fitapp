@@ -900,12 +900,33 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
 }
 
 // ── Per-week exercise row ─────────────────────────────────────────────────────
-function WeekExRow({ ex, weekId, param, color, onToggleAbs }: {
-  ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string; onToggleAbs: () => void
+function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete }: {
+  ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string; onToggleAbs: () => void; onDelete: () => void
 }) {
   const [rest, setRest] = useState(String(param?.restSeconds ?? 90))
   const [note, setNote] = useState(param?.notes ?? ex.noteScheda ?? '')
   const [open, setOpen] = useState(false)
+
+  const rowRef   = useRef<HTMLDivElement>(null)
+  const swStartX = useRef(0); const swStartY = useRef(0)
+  const swCurX   = useRef(0); const swSnapped = useRef<'left'|null>(null)
+  const swDir    = useRef<'h'|'v'|null>(null)
+  const SW_SNAP = 72; const SW_THRESH = 28
+  function swTranslate(x: number) { swCurX.current = x; if (rowRef.current) rowRef.current.style.transform = `translateX(${x}px)` }
+  function swSnap(dir: 'left'|null) {
+    swSnapped.current = dir; const x = dir === 'left' ? -SW_SNAP : 0
+    if (rowRef.current) { rowRef.current.style.transition = 'transform 0.2s ease'; rowRef.current.style.transform = `translateX(${x}px)`; setTimeout(() => { if (rowRef.current) rowRef.current.style.transition = '' }, 210) }
+    swCurX.current = x
+  }
+  function swTouchStart(e: React.TouchEvent) { swStartX.current = e.touches[0].clientX; swStartY.current = e.touches[0].clientY; swDir.current = null; if (rowRef.current) rowRef.current.style.transition = '' }
+  function swTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - swStartX.current; const dy = Math.abs(e.touches[0].clientY - swStartY.current)
+    if (swDir.current === null) { if (Math.abs(dx) < 5 && dy < 5) return; swDir.current = Math.abs(dx) >= dy * 3 ? 'h' : 'v' }
+    if (swDir.current !== 'h') return
+    const base = swSnapped.current === 'left' ? -SW_SNAP : 0
+    swTranslate(Math.max(-SW_SNAP, Math.min(0, base + dx)))
+  }
+  function swTouchEnd() { if (swCurX.current < -SW_THRESH) swSnap('left'); else swSnap(null) }
 
   function initVals(p: WeekParam | undefined): string[] {
     const pr = parseRepsTargets(p?.reps ?? '')
@@ -961,15 +982,6 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs }: {
   const inp = 'w-10 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400'
   const inpStatic = inp + ' pointer-events-none'
 
-  const absClass = ex.isAbs
-    ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
-    : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400'
-
-  function handleAbsClick(e: React.MouseEvent) {
-    e.stopPropagation()
-    onToggleAbs()
-  }
-
   const expandedBody = open ? (
     <div className="px-3 pb-2">
       <textarea
@@ -1019,20 +1031,33 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs }: {
   ) : null
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700 last:border-0">
-      <div
-        className="w-full flex items-center px-3 py-2 cursor-pointer gap-2"
-        onClick={() => setOpen(o => !o)}
-      >
-        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate flex-1">{ex.exercise.name}</p>
-        <button
-          onClick={handleAbsClick}
-          className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors', absClass)}
-        >
-          ABS
-        </button>
+    <div className="border-b border-gray-200 dark:border-gray-700 last:border-0 relative overflow-hidden">
+      <div className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-500" style={{ width: SW_SNAP }}
+        onClick={() => { swSnap(null); onDelete() }}>
+        <Trash2 size={14} className="text-white" />
       </div>
-      {expandedBody}
+      <div ref={rowRef} className="relative z-10 bg-white dark:bg-gray-900"
+        onTouchStart={swTouchStart} onTouchMove={swTouchMove} onTouchEnd={swTouchEnd}
+        onClick={() => { if (swSnapped.current) { swSnap(null) } }}>
+        <div
+          className="w-full flex items-center px-3 py-2 cursor-pointer gap-2"
+          onClick={() => { if (!swSnapped.current) setOpen(o => !o) }}
+        >
+          <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate flex-1">{ex.exercise.name}</p>
+          <button
+            onClick={e => { e.stopPropagation(); if (!swSnapped.current) onToggleAbs() }}
+            className={cn(
+              'px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors',
+              ex.isAbs
+                ? 'border-orange-300 bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:border-orange-700 dark:text-orange-400'
+                : 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 hover:border-orange-300 hover:text-orange-400'
+            )}
+          >
+            ABS
+          </button>
+        </div>
+        {expandedBody}
+      </div>
     </div>
   )
 }
@@ -1430,7 +1455,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                 )}
               </div>
               {activeWeekId && exercises.length > 0 ? (
-                <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} onToggleAbs={() => toggleAbsExercise(ex.id)} />)}</div>
+                <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} onToggleAbs={() => toggleAbsExercise(ex.id)} onDelete={async () => { await fetch(`/api/template-exercises/${ex.id}`, { method: 'DELETE' }); onRefresh() }} />)}</div>
               ) : activeWeekId ? null
               : weeks.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-4 px-3">Nessuna week. Clicca + per aggiungerne una.</p>

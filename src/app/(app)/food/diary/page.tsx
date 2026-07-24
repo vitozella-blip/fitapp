@@ -360,15 +360,15 @@ export default function FoodDiaryPage() {
 
           {/* Ti restano */}
           <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ backgroundColor: C.kcal + '1f' }}>
-            <Link href="/food/macros" className="text-xs text-gray-500 dark:text-gray-400 shrink-0 underline-offset-2 hover:underline">Ti restano</Link>
+            <Link href={`/food/macros?date=${selectedDate}`} className="text-xs text-gray-500 dark:text-gray-400 shrink-0 underline-offset-2 hover:underline">Ti restano</Link>
             <span className="flex items-baseline gap-3">
               <span className="text-sm font-extrabold" style={{ color: C.kcal }}>{left.calories}<span className="text-[10px] font-medium text-gray-400"> kcal</span></span>
               <span className="text-gray-300 dark:text-gray-600">·</span>
-              <Link href={`/food/macros?macro=fat&amount=${left.fat}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.fat }}>{left.fat}<span className="text-[9px] text-gray-400">g</span></Link>
+              <Link href={`/food/macros?macro=fat&amount=${left.fat}&date=${selectedDate}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.fat }}>{left.fat}<span className="text-[9px] text-gray-400">g</span></Link>
               <span className="text-gray-300 dark:text-gray-600">/</span>
-              <Link href={`/food/macros?macro=carbs&amount=${left.carbs}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.carbs }}>{left.carbs}<span className="text-[9px] text-gray-400">g</span></Link>
+              <Link href={`/food/macros?macro=carbs&amount=${left.carbs}&date=${selectedDate}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.carbs }}>{left.carbs}<span className="text-[9px] text-gray-400">g</span></Link>
               <span className="text-gray-300 dark:text-gray-600">/</span>
-              <Link href={`/food/macros?macro=protein&amount=${left.protein}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.protein }}>{left.protein}<span className="text-[9px] text-gray-400">g</span></Link>
+              <Link href={`/food/macros?macro=protein&amount=${left.protein}&date=${selectedDate}`} className="text-[13px] font-medium hover:opacity-70 transition-opacity" style={{ color: C.protein }}>{left.protein}<span className="text-[9px] text-gray-400">g</span></Link>
             </span>
           </div>
 

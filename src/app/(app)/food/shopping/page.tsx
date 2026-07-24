@@ -33,13 +33,20 @@ export default function ShoppingListPage() {
   useEffect(() => { fetchItems() }, [fetchItems])
 
   useEffect(() => {
-    fetch(`/api/food?q=&userId=${userId}`).then(r => r.json()).then(d => { if (Array.isArray(d)) { setResults(d); setSearched(true) } }).catch(() => {})
-  }, [userId])
+    if (!q.trim() || selected) { setResults([]); setSearched(false); return }
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/food?q=${encodeURIComponent(q.trim())}&userId=${userId}&limit=50`)
+        const d = await r.json()
+        if (Array.isArray(d)) { setResults(d); setSearched(true) }
+      } catch {}
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [q, userId, selected])
 
   const displayResults = useMemo(() => {
     if (!q.trim() || selected) return []
-    const lower = q.trim().toLowerCase()
-    return results.filter(f => f.name.toLowerCase().includes(lower) || (f.brand?.toLowerCase().includes(lower) ?? false))
+    return results
   }, [results, q, selected])
 
   async function handleAdd() {
