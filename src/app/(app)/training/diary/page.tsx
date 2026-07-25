@@ -920,7 +920,7 @@ export default function TrainingDiaryPage() {
           }
         }
         const seen = new Set<string>()
-        const opts: { id: string; name: string; schedaName: string }[] = []
+        const opts: { id: string; name: string; schedaName: string; reps: string | null; sets: number; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }[] = []
         planTemplates.forEach(t => {
           t.exercises.forEach(te => {
             if (te.isAbs && !seen.has(te.exercise.id)) {
@@ -2132,7 +2132,7 @@ export default function TrainingDiaryPage() {
         // ── ABS exercise groups ───────────────────────────────────────────
         const absTes: TemplateEx[] = absExIds
           .map(x => absOptions.find(o => o.id === x.id))
-          .filter((o): o is { id: string; name: string; schedaName: string } => !!o)
+          .filter((o): o is { id: string; name: string; schedaName: string; reps: string | null; sets: number; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null } => !!o)
           .map(o => ({
             id: `abs_${o.id}`,
             exercise: { id: o.id, name: o.name, muscleGroup: '' },
