@@ -11,10 +11,10 @@ const COLOR = SECTION.training
 
 const DIARY = { label: 'Diario Allenamenti', href: '/training/diary', icon: Dumbbell }
 const SECTIONS = [
+  { label: 'Piano Allenamento', href: '/training/plan',      icon: ClipboardList },
   { label: 'Progressi',         href: '/training/progressi', icon: TrendingUp },
   { label: 'Storico',           href: '/training/history',   icon: History },
   { label: 'Peso',              href: '/training/peso',      icon: Scale },
-  { label: 'Piano Allenamento', href: '/training/plan',      icon: ClipboardList },
 ]
 
 type Period = 'settimana' | 'mese' | 'mese_scorso' | 'custom'

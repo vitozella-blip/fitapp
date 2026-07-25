@@ -900,12 +900,14 @@ function BaseExRow({ ex, onDelete, onToggleAbs, onRename }: {
 }
 
 // ── Per-week exercise row ─────────────────────────────────────────────────────
-function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete }: {
-  ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string; onToggleAbs: () => void; onDelete: () => void
+function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }: {
+  ex: TemplateExercise; weekId: string; param: WeekParam | undefined; color: string; onToggleAbs: () => void; onDelete: () => void; onRename: (name: string) => void
 }) {
   const [rest, setRest] = useState(String(param?.restSeconds ?? 90))
   const [note, setNote] = useState(param?.notes ?? ex.noteScheda ?? '')
   const [open, setOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [editName, setEditName] = useState(ex.exercise.name)
 
   const rowRef   = useRef<HTMLDivElement>(null)
   const swStartX = useRef(0); const swStartY = useRef(0)
@@ -1034,10 +1036,24 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete }: {
     </div>
   ) : null
 
+  if (editingName) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+        <input autoFocus value={editName} onChange={e => setEditName(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { const n = editName.trim(); if (n && n !== ex.exercise.name) onRename(n); setEditingName(false) }
+            if (e.key === 'Escape') setEditingName(false)
+          }}
+          onBlur={() => { const n = editName.trim(); if (n && n !== ex.exercise.name) onRename(n); setEditingName(false) }}
+          className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 last:border-0 relative overflow-hidden">
-      <div className="absolute inset-y-0 left-0 flex items-center justify-center bg-orange-400" style={{ width: SW_SNAP }}
-        onClick={() => { swSnap(null); setOpen(true) }}>
+      <div className="absolute inset-y-0 left-0 flex items-center justify-center" style={{ width: SW_SNAP, backgroundColor: CT }}
+        onClick={() => { swSnap(null); setEditName(ex.exercise.name); setEditingName(true) }}>
         <Pencil size={14} className="text-white" />
       </div>
       <div className="absolute inset-y-0 right-0 flex items-center justify-center bg-red-500" style={{ width: SW_SNAP }}
@@ -1463,7 +1479,7 @@ function WorkoutCard({ tmpl, idx, userId, onRefresh }: {
                 )}
               </div>
               {activeWeekId && exercises.length > 0 ? (
-                <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} onToggleAbs={() => toggleAbsExercise(ex.id)} onDelete={async () => { await fetch(`/api/template-exercises/${ex.id}`, { method: 'DELETE' }); onRefresh() }} />)}</div>
+                <div>{exercises.map(ex => <WeekExRow key={activeWeekId + '-' + ex.id} ex={ex} weekId={activeWeekId} param={weekParams.get(ex.id)} color={color} onToggleAbs={() => toggleAbsExercise(ex.id)} onDelete={async () => { await fetch(`/api/template-exercises/${ex.id}`, { method: 'DELETE' }); onRefresh() }} onRename={async (name) => { await fetch(`/api/exercises/${ex.exercise.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, userId, templateExerciseId: ex.id }) }); onRefresh() }} />)}</div>
               ) : activeWeekId ? null
               : weeks.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-4 px-3">Nessuna week. Clicca + per aggiungerne una.</p>

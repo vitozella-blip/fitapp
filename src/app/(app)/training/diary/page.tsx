@@ -578,7 +578,7 @@ export default function TrainingDiaryPage() {
     })
   }
 
-  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string }[]>([])
+  const [absOptions, setAbsOptions] = useState<{ id: string; name: string; schedaName: string; reps: string | null; sets: number; restSeconds: number | null; noteScheda: string | null; notePersonali: string | null }[]>([])
   const [absExIds,   setAbsExIds]   = useState<AbsSel[]>([])
   const [absPickerOpen, setAbsPickerOpen] = useState(false)
 
@@ -925,7 +925,7 @@ export default function TrainingDiaryPage() {
           t.exercises.forEach(te => {
             if (te.isAbs && !seen.has(te.exercise.id)) {
               seen.add(te.exercise.id)
-              opts.push({ id: te.exercise.id, name: te.exercise.name, schedaName: t.name })
+              opts.push({ id: te.exercise.id, name: te.exercise.name, schedaName: t.name, reps: te.reps, sets: te.sets, restSeconds: te.restSeconds, noteScheda: te.noteScheda, notePersonali: te.notePersonali })
             }
           })
         })
@@ -1995,7 +1995,7 @@ export default function TrainingDiaryPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                                    <label className="text-[10px] text-gray-400 block mb-1">{s.unit === 'sec' ? 'Tempo' : 'Carico'}</label>
                                     <input type="number" step="0.5" min="0" value={editWeight}
                                       onChange={e => setEditWeight(e.target.value)} placeholder=""
                                       className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
@@ -2066,23 +2066,35 @@ export default function TrainingDiaryPage() {
                       }
 
                       const anyEditing = group.isGrouped && group.items.some(i => editSetId === i.s.id)
+                      const hasAnyTag = group.isGrouped && group.items.some(({ s }) => !!setTags[s.id])
 
                       return (
                         <div key={group.key} className={cn(gi > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                           {group.isGrouped && !anyEditing ? (
-                            // Same setNumber (SN): spanning label + reps + trash
-                            <div className="grid" style={{ gridTemplateColumns: 'auto 1fr auto', gridTemplateRows: `repeat(${group.items.length}, auto)` }}>
+                            // Same setNumber (SN): badge | [tag col] | reps | trash
+                            <div className="grid" style={{
+                              gridTemplateColumns: hasAnyTag ? 'auto auto 1fr auto' : 'auto 1fr auto',
+                              gridTemplateRows: `repeat(${group.items.length}, auto)`,
+                            }}>
                               <div style={{ gridColumn: 1, gridRow: `1 / span ${group.items.length}`, color: CT, borderColor: CT + '99', backgroundColor: CT + '18' }}
-                                className="flex items-center justify-center mx-4 my-px rounded border shrink-0 w-6 text-[9px] font-bold">
+                                className="flex items-center justify-center ml-3 mr-1 my-px rounded border shrink-0 w-6 text-[9px] font-bold">
                                 {group.items[0].label}
                               </div>
                               {group.items.map(({ s }, ii) => [
-                                <button key={`${s.id}-r`} style={{ gridColumn: 2, gridRow: ii + 1 }}
+                                hasAnyTag ? (
+                                  <div key={`${s.id}-tag`} style={{ gridColumn: 2, gridRow: ii + 1 }}
+                                    className={cn('flex items-center justify-center px-1 h-10', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
+                                    {setTags[s.id] && (
+                                      <span className="text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded border" style={{ color: CT, borderColor: CT + '99', backgroundColor: CT + '18' }}>{setTags[s.id]}</span>
+                                    )}
+                                  </div>
+                                ) : null,
+                                <button key={`${s.id}-r`} style={{ gridColumn: hasAnyTag ? 3 : 2, gridRow: ii + 1 }}
                                   className={cn('flex items-center h-10 pl-1 text-left text-sm text-gray-900 dark:text-gray-100', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}
                                   onClick={() => openEdit(s)}>
                                   {s.unit === 'sec' ? `${s.weight ?? 0} sec` : `${s.reps} reps${s.weight ? ` · ${s.weight} kg` : ''}`}
                                 </button>,
-                                <div key={`${s.id}-t`} style={{ gridColumn: 3, gridRow: ii + 1 }}
+                                <div key={`${s.id}-t`} style={{ gridColumn: hasAnyTag ? 4 : 3, gridRow: ii + 1 }}
                                   className={cn('flex items-center h-10 pr-4', ii > 0 && 'border-t border-gray-50 dark:border-gray-800')}>
                                   <button onClick={() => deleteSet(s.id)}
                                     className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-300 hover:text-red-400 flex items-center justify-center transition-colors">
@@ -2124,7 +2136,7 @@ export default function TrainingDiaryPage() {
           .map(o => ({
             id: `abs_${o.id}`,
             exercise: { id: o.id, name: o.name, muscleGroup: '' },
-            sets: 0, reps: null, restSeconds: null, noteScheda: null, notePersonali: null, isAbs: true,
+            sets: o.sets, reps: o.reps, restSeconds: o.restSeconds, noteScheda: o.noteScheda, notePersonali: o.notePersonali, isAbs: true,
           }))
         const absCards = absTes.map(te => (
           <div key={te.id} className="rounded-xl overflow-hidden bg-gray-50 dark:bg-black/20" style={{ borderLeft: `3px solid ${statusBorder(te.exercise.id)}` }}>
@@ -2361,7 +2373,7 @@ export default function TrainingDiaryPage() {
                                         </div>
                                       </div>
                                       <div>
-                                        <label className="text-[10px] text-gray-400 block mb-1">Peso (kg)</label>
+                                        <label className="text-[10px] text-gray-400 block mb-1">{s.unit === 'sec' ? 'Tempo' : 'Carico'}</label>
                                         <input type="number" step="0.5" min="0" value={editWeight}
                                           onChange={e => setEditWeight(e.target.value)} placeholder=""
                                           className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
