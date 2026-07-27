@@ -1015,10 +1015,6 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
               <input value={val} onChange={e => { updateVal(i, e.target.value); setDirty(true) }}
                 placeholder="--"
                 className={inp} />
-              <button onClick={() => removeSet(i)}
-                className="text-gray-300 hover:text-red-400 transition-colors text-base leading-none">
-                x
-              </button>
             </div>
           ))}
           <div className="flex items-center gap-1.5">
