@@ -17,13 +17,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.isWarmup !== undefined) { setClauses.push(`"isWarmup"=$${vals.length + 1}`); vals.push(body.isWarmup) }
     if ('tag' in body) { setClauses.push(`tag=$${vals.length + 1}`); vals.push(body.tag ?? null) }
     if ('unit' in body) { setClauses.push(`unit=$${vals.length + 1}`); vals.push(body.unit ?? 'kg') }
+    if (body.setNumber !== undefined) { setClauses.push(`"setNumber"=$${vals.length + 1}`); vals.push(body.setNumber) }
     if (setClauses.length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
     vals.push(id)
-    const { rows } = await pool.query(
-      `UPDATE "WorkoutSet" SET ${setClauses.join(', ')} WHERE id=$${vals.length} RETURNING *`,
+    await pool.query(
+      `UPDATE "WorkoutSet" SET ${setClauses.join(', ')} WHERE id=$${vals.length}`,
       vals
     )
-    return NextResponse.json(rows[0])
+    return NextResponse.json({ ok: true })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: 'Errore' }, { status: 500 })

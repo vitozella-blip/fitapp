@@ -62,7 +62,8 @@ export async function GET(req: NextRequest) {
            ORDER BY
              COALESCE(wte."order", ex_ord.min_idx, 99999) ASC,
              CASE WHEN COALESCE(s."isWarmup",false) THEN 0 ELSE 1 END ASC,
-             s."setNumber" ASC
+             s."setNumber" ASC,
+             COALESCE(s."globalIndex", 0) ASC
          ) AS sets
        FROM "WorkoutDiary" w
        LEFT JOIN "WorkoutSet" s ON s."workoutDiaryId" = w.id
