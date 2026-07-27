@@ -448,6 +448,7 @@ export default function TrainingDiaryPage() {
   const [workout,       setWorkout]       = useState<Workout | null>(null)
   const [schedaInfo,    setSchedaInfo]    = useState<SchedaInfo | null>(null)
   const [schedaLoading, setSchedaLoading] = useState(true)
+  const [schedaRefreshKey, setSchedaRefreshKey] = useState(0)
   const [showPicker, setShowPicker] = useState(false)
   const [showAllenamentoPicker, setShowAllenamentoPicker] = useState(false)
   const [schedaCollapsed, setSchedaCollapsed] = useState(false)
@@ -671,6 +672,7 @@ export default function TrainingDiaryPage() {
 
   useEffect(() => { fetchWorkout() }, [fetchWorkout])
   useRefreshOnFocus(fetchWorkout)
+  useRefreshOnFocus(() => { templateCache.clear(); setSchedaRefreshKey(k => k + 1) })
 
   // Keep ref in sync for visibilitychange handler
   useEffect(() => { recTimerRef.current = recTimer }, [recTimer])
@@ -884,7 +886,7 @@ export default function TrainingDiaryPage() {
         } catch {}
       })
       .finally(() => setSchedaLoading(false))
-  }, [selectedDate, userId])
+  }, [selectedDate, userId, schedaRefreshKey])
 
   useEffect(() => {
     if (!schedaInfo) { setAbsOptions([]); setAbsExIds([]); return }
@@ -1805,11 +1807,13 @@ export default function TrainingDiaryPage() {
                         </div>
                         {targetRows.map((t, i) => {
                           const isDoneSet = i < nonWarmupLogged
+                          const isLast = i === targetRows.length - 1
+                          const modSuffix = isLast && parsedReps.mods.length > 0 ? ` · ${parsedReps.mods.join(' · ')}` : ''
                           return (
                             <div key={i} className="grid grid-cols-[20px_1fr_auto] gap-x-3 items-center py-0.5 px-1">
                               <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>{i + 1}</p>
                               <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>
-                                {t ? (t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}
+                                {t ? (t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}{modSuffix}
                               </p>
                               {i === 0 ? (
                                 <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#9ca3af' : CT }}
@@ -1820,11 +1824,6 @@ export default function TrainingDiaryPage() {
                             </div>
                           )
                         })}
-                        {parsedReps.mods.length > 0 && (
-                          <p className="text-[10px] text-gray-400 italic px-1 mt-1">
-                            {parsedReps.mods.join(' · ')}
-                          </p>
-                        )}
                       </div>
                     </div>
                   )
