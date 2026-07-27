@@ -1008,7 +1008,10 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
           <div className={inpStatic}>{perSetVals.length}</div>
         </div>
         <div className="flex flex-col gap-1 items-start">
-          <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide text-center w-10">Rep</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 shrink-0" />
+            <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide text-center w-10">Rep</span>
+          </div>
           {perSetVals.map((val, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <span className="text-[10px] text-gray-400 w-3 text-right shrink-0">{i + 1}</span>
