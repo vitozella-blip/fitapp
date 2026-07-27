@@ -906,6 +906,8 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
   const [rest, setRest] = useState(String(param?.restSeconds ?? 90))
   const [note, setNote] = useState(param?.notes ?? ex.noteScheda ?? '')
   const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [editName, setEditName] = useState(ex.exercise.name)
 
@@ -955,6 +957,7 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
   }
 
   async function saveAll(vals: string[], restVal?: string, noteVal?: string) {
+    setSaving(true)
     await fetch('/api/week-exercise-params', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -965,6 +968,8 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
         notes: (noteVal ?? note) || null,
       }),
     })
+    setSaving(false)
+    setDirty(false)
   }
 
   function updateVal(idx: number, val: string) {
@@ -992,8 +997,7 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
     <div className="px-3 pb-2">
       <textarea
         value={note}
-        onChange={e => setNote(e.target.value)}
-        onBlur={() => saveAll(perSetVals, rest, note)}
+        onChange={e => { setNote(e.target.value); setDirty(true) }}
         placeholder="Nota..."
         rows={2}
         className="w-full text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1.5 py-1 outline-none resize-none leading-snug focus:border-gray-400 mb-2"
@@ -1008,8 +1012,7 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
           {perSetVals.map((val, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <span className="text-[10px] text-gray-400 w-3 text-right shrink-0">{i + 1}</span>
-              <input value={val} onChange={e => updateVal(i, e.target.value)}
-                onBlur={() => saveAll(perSetVals)}
+              <input value={val} onChange={e => { updateVal(i, e.target.value); setDirty(true) }}
                 placeholder="--"
                 className={inp} />
               <button onClick={() => removeSet(i)}
@@ -1028,11 +1031,17 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
         </div>
         <div className="flex flex-col items-center gap-0.5 w-12">
           <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Rec</span>
-          <input type="number" value={rest} onChange={e => setRest(e.target.value)}
-            onBlur={() => saveAll(perSetVals, rest)} min="0"
+          <input type="number" value={rest} onChange={e => { setRest(e.target.value); setDirty(true) }} min="0"
             className="w-12 px-1 py-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none text-center focus:border-gray-400" />
         </div>
       </div>
+      {dirty && (
+        <button onClick={() => saveAll(perSetVals, rest, note)} disabled={saving}
+          className="mt-2 w-full py-1.5 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50 transition-opacity"
+          style={{ backgroundColor: color }}>
+          {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Salva
+        </button>
+      )}
     </div>
   ) : null
 
