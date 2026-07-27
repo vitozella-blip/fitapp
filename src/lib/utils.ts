@@ -40,6 +40,11 @@ export type SetTarget = { min: number; max: number }
 /** Parse a reps string like "1x5/7 + 1x8/10 + RP" into individual set targets and modifiers. */
 export function parseRepsTargets(reps: string | null): { sets: SetTarget[]; mods: string[] } {
   if (!reps) return { sets: [], mods: [] }
+  // Handle dash-separated format like "7-6-6-4" (all numbers separated by dashes)
+  if (/^\d+(-\d+)+$/.test(reps.trim())) {
+    const parts = reps.trim().split('-').map(Number)
+    return { sets: parts.map(n => ({ min: n, max: n })), mods: [] }
+  }
   const tokens = reps.split(/\s*\+\s*/)
   const sets: SetTarget[] = []
   const mods: string[] = []
