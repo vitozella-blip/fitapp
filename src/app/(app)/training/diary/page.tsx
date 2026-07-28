@@ -352,21 +352,26 @@ function SchedaPickerPanel({ userId, onPick, onClose }: {
   )
 }
 
+function applyWeekParams(exercises: TemplateEx[], params: WeekParamRow[]): TemplateEx[] {
+  if (!params.length) return exercises
+  const map = new Map(params.map(p => [p.templateExId, p]))
+  return exercises.map(ex => {
+    const wp = map.get(ex.id)
+    if (!wp) return ex
+    return {
+      ...ex,
+      sets:        (wp.sets != null && wp.sets > 0) ? wp.sets : ex.sets,
+      reps:        wp.reps        ?? ex.reps,
+      restSeconds: wp.restSeconds ?? ex.restSeconds,
+    }
+  })
+}
+
 async function mergeWeekParams(exercises: TemplateEx[], weekId: string | null): Promise<TemplateEx[]> {
   if (!weekId) return exercises
   try {
     const params: WeekParamRow[] = await fetch(`/api/week-exercise-params?weekId=${weekId}`).then(r => r.json())
-    const map = new Map(params.map(p => [p.templateExId, p]))
-    return exercises.map(ex => {
-      const wp = map.get(ex.id)
-      if (!wp) return ex
-      return {
-        ...ex,
-        sets:        (wp.sets != null && wp.sets > 0) ? wp.sets : ex.sets,
-        reps:        wp.reps        ?? ex.reps,
-        restSeconds: wp.restSeconds ?? ex.restSeconds,
-      }
-    })
+    return applyWeekParams(exercises, params)
   } catch { return exercises }
 }
 
@@ -442,7 +447,9 @@ function DrumPicker({
 export default function TrainingDiaryPage() {
   const { userId, userProfile, bumpWorkoutVersion } = useAppStore()
   const [selectedDate, setSelectedDate] = useState(localToday)
-  const workoutCache = useRef<Map<string, Workout>>(new Map())
+  const workoutCache    = useRef<Map<string, Workout>>(new Map())
+  const templateCache   = useRef<Map<string, Template>>(new Map())
+  const weekParamsCache = useRef<Map<string, WeekParamRow[]>>(new Map())
   const [workout,       setWorkout]       = useState<Workout | null>(null)
   const [schedaInfo,    setSchedaInfo]    = useState<SchedaInfo | null>(null)
   const [schedaLoading, setSchedaLoading] = useState(true)
@@ -818,56 +825,69 @@ export default function TrainingDiaryPage() {
 
 
 
-  // Load scheda + week params — cache first, then DB
+  // Load scheda + week params — localStorage instant → cache → parallel fetch
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    async function loadScheda(info: { templateId: string; weekId?: string | null; weekName?: string | null; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }, instant = false) {
-      const t = await fetch(`/api/workout-templates/${info.templateId}`).then(r => r.json())
+    // On explicit refresh (plan edited), invalidate template/week-params caches
+    if (schedaRefreshKey > 0) {
+      templateCache.current.clear()
+      weekParamsCache.current.clear()
+    }
+
+    type SchedaRef = { templateId: string; weekId?: string | null; weekName?: string | null; badgeColor?: string | null; badgeLabel?: string | null; badgeIcon?: string | null }
+
+    async function loadScheda(info: SchedaRef) {
+      const weekId = info.weekId ?? null
+
+      // Resolve template and week-params in parallel, using caches where possible
+      const tCached = templateCache.current.get(info.templateId)
+      const pCached = weekId ? (weekParamsCache.current.get(weekId) ?? null) : []
+
+      const [t, params] = await Promise.all([
+        tCached
+          ? Promise.resolve(tCached)
+          : fetch(`/api/workout-templates/${info.templateId}`).then(r => r.json()),
+        pCached !== null
+          ? Promise.resolve(pCached)
+          : fetch(`/api/week-exercise-params?weekId=${weekId}`).then(r => r.json()),
+      ])
+
       if (!t?.id) return
-      const merged = await mergeWeekParams(t.exercises, info.weekId ?? null)
-      // Il DB è autoritativo per il badge: aggiorna la cache usata dal calendario
+      if (!tCached) templateCache.current.set(info.templateId, t)
+      if (weekId && pCached === null) weekParamsCache.current.set(weekId, params)
+
+      const merged = applyWeekParams(t.exercises, params)
       const dbColor = t.badgeColor ?? null
       const dbLabel = t.badgeLabel ?? null
       const dbIcon  = t.badgeIcon  ?? null
       if (dbColor || dbLabel || dbIcon) {
         try { localStorage.setItem(`badge_config_${t.id}`, JSON.stringify({ color: dbColor, label: dbLabel, icon: dbIcon })) } catch {}
       }
-      setSchedaInfo({ id: t.id, name: t.name, weekId: info.weekId ?? null, weekName: info.weekName ?? null, exercises: merged, badgeColor: dbColor ?? info.badgeColor ?? null, badgeLabel: dbLabel ?? info.badgeLabel ?? null, badgeIcon: dbIcon ?? info.badgeIcon ?? null })
-      if (instant) setSchedaLoading(false)
+      setSchedaInfo({ id: t.id, name: t.name, weekId, weekName: info.weekName ?? null, exercises: merged, badgeColor: dbColor ?? info.badgeColor ?? null, badgeLabel: dbLabel ?? info.badgeLabel ?? null, badgeIcon: dbIcon ?? info.badgeIcon ?? null })
     }
 
     setSchedaInfo(null)
 
-    // Load from DB (authoritative) in background
+    // 1. Show from localStorage immediately (no wait for DB)
+    const localRaw = (() => { try { return localStorage.getItem(`workout_scheda_${selectedDate}`) } catch { return null } })()
+    const localInfo: SchedaRef | null = (() => { try { return localRaw ? JSON.parse(localRaw) : null } catch { return null } })()
+    if (localInfo?.templateId) {
+      loadScheda(localInfo).catch(() => {})
+    }
+
+    // 2. DB validates in background (authoritative)
     fetch(`/api/workout-scheda?userId=${userId}&date=${selectedDate}`)
       .then(r => r.json())
-      .then(async dbInfo => {
+      .then(async (dbInfo: SchedaRef | null) => {
         if (dbInfo?.templateId) {
-          try {
-            await loadScheda(dbInfo)
-            try { localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify(dbInfo)) } catch {}
-          } catch {}
-        } else {
-          // Fallback to localStorage
-          try {
-            const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
-            if (raw) {
-              const info = JSON.parse(raw)
-              if (info.templateId) await loadScheda(info)
-            }
-          } catch {}
+          await loadScheda(dbInfo)
+          try { localStorage.setItem(`workout_scheda_${selectedDate}`, JSON.stringify(dbInfo)) } catch {}
+        } else if (!localInfo?.templateId) {
+          setSchedaInfo(null)
         }
       })
-      .catch(async () => {
-        try {
-          const raw = localStorage.getItem(`workout_scheda_${selectedDate}`)
-          if (raw) {
-            const info = JSON.parse(raw)
-            if (info.templateId) await loadScheda(info)
-          }
-        } catch {}
-      })
+      .catch(() => {})
       .finally(() => setSchedaLoading(false))
   }, [selectedDate, userId, schedaRefreshKey])
 
