@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
          LEFT JOIN "WorkoutWeek"     ww  ON ww.id = w."weekId"
          LEFT JOIN "WorkoutTemplate" wt2 ON wt2.id = ww."templateId"
          WHERE w."userId"=$1 AND w.date=$2
-         GROUP BY w.id, wt.name, wt."order", wt2.id, wt2.name, wt2."order", ww.name, ww."order"`,
+         GROUP BY w.id, wt.name, wt."order", wt."badgeLabel", wt2.id, wt2.name, wt2."order", wt2."badgeLabel", ww.name, ww."order"`,
         [userId, date]
       ),
       pool.query(

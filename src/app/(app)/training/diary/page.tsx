@@ -955,7 +955,7 @@ export default function TrainingDiaryPage() {
   }
 
   async function addSet(exId: string, isWarmup: boolean) {
-    if (!formReps.trim()) return
+    if (formUnit === 'sec' ? !formWeight.trim() : !formReps.trim()) return
     setFormSaving(true)
     await fetch('/api/workout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1816,25 +1816,25 @@ export default function TrainingDiaryPage() {
                     ? parsedReps.sets
                     : Array.from({ length: te.sets ?? 1 }, () => parsedReps.sets[0] ?? null)
                   return (
-                    <div className="px-4 pt-2.5 pb-0">
-                      <div className="mb-2">
-                        <div className="grid grid-cols-[20px_1fr_auto] gap-x-3 px-1 mb-1">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Set</p>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rep</p>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Rec</p>
+                    <div className="px-3 pt-2 pb-0">
+                      <div className="mb-2 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: CT + '22' }}>
+                        <div className="grid grid-cols-[16px_1fr_auto] gap-x-2 mb-0.5">
+                          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CT }}>Set</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CT }}>Rep</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CT }}>Rec</p>
                         </div>
                         {targetRows.map((t, i) => {
-                          const isDoneSet = i < roundsLogged - 1
+                          const isDoneSet = i < roundsLogged
                           const isLast = i === targetRows.length - 1
                           const modSuffix = isLast && parsedReps.mods.length > 0 ? ` · ${parsedReps.mods.join(' · ')}` : ''
                           return (
-                            <div key={i} className="grid grid-cols-[20px_1fr_auto] gap-x-3 items-center py-0.5 px-1">
-                              <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>{i + 1}</p>
-                              <p className="text-xs font-bold" style={{ color: isDoneSet ? '#9ca3af' : CT }}>
+                            <div key={i} className="grid grid-cols-[16px_1fr_auto] gap-x-2 items-center py-px">
+                              <p className="text-xs font-bold" style={{ color: isDoneSet ? '#94a3b8' : CT }}>{i + 1}</p>
+                              <p className="text-xs font-bold" style={{ color: isDoneSet ? '#94a3b8' : CT }}>
                                 {t ? (t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}{modSuffix}
                               </p>
                               {i === 0 ? (
-                                <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#9ca3af' : CT }}
+                                <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#94a3b8' : CT }}
                                   onClick={() => openTimerSheet(te.id, te.restSeconds ?? null)}>
                                   {rest || '—'}
                                 </button>
@@ -1923,35 +1923,56 @@ export default function TrainingDiaryPage() {
                 {/* Add set form */}
                 {addOpen && (
                   <div className="border-2 rounded-xl mx-2 mb-2 px-3 py-3 flex flex-col gap-2" style={{ borderColor: CT, backgroundColor: CT + '18' }}>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
-                          onClick={() => setFormSetNum(n => Math.max(1, n - 1))}>–</button>
-                        <span className="flex-1 text-center text-[11px] font-bold text-gray-900 dark:text-gray-100 truncate">S{formSetNum}</span>
-                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
-                          onClick={() => setFormSetNum(n => n + 1)}>+</button>
+                    {/* Row 1: Set number | Tipo */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">Set</label>
+                        <div className="flex items-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          <button className="px-1.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+                            onClick={() => setFormSetNum(n => Math.max(1, n - 1))}>–</button>
+                          <span className="flex-1 text-center text-[11px] font-bold text-gray-900 dark:text-gray-100 truncate">{formSetNum}</span>
+                          <button className="px-1.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+                            onClick={() => setFormSetNum(n => n + 1)}>+</button>
+                        </div>
                       </div>
-                      <div className="flex items-center rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
-                          onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
-                        <span className="flex-1 text-center text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{formReps || ''}</span>
-                        <button className="px-1.5 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0"
-                          onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">Tipo</label>
+                        <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                          <button onClick={() => setFormUnit('kg')}
+                            className="flex-1 py-1.5 text-xs font-bold transition-colors"
+                            style={formUnit === 'kg' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
+                            Car.
+                          </button>
+                          <button onClick={() => setFormUnit('sec')}
+                            className="flex-1 py-1.5 text-xs font-bold transition-colors border-l border-gray-200 dark:border-gray-700"
+                            style={formUnit === 'sec' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
+                            Tem.
+                          </button>
+                        </div>
                       </div>
-                      <input type="number" step="0.5" min="0" value={formWeight} onChange={e => setFormWeight(e.target.value)}
-                        placeholder="—"
-                        className="py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
-                      <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <button onClick={() => setFormUnit('kg')}
-                          className="flex-1 py-2 text-xs font-bold transition-colors"
-                          style={formUnit === 'kg' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
-                          kg
-                        </button>
-                        <button onClick={() => setFormUnit('sec')}
-                          className="flex-1 py-2 text-xs font-bold transition-colors border-l border-gray-200 dark:border-gray-700"
-                          style={formUnit === 'sec' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>
-                          sec
-                        </button>
+                    </div>
+                    {/* Row 2: Reps | Kg / Secondi */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">Rep</label>
+                        <div className={cn('flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors', formUnit === 'sec' ? 'bg-gray-100 dark:bg-gray-700 opacity-50' : 'bg-white dark:bg-gray-800')}>
+                          <button className="px-1.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 disabled:pointer-events-none"
+                            disabled={formUnit === 'sec'}
+                            onClick={() => setFormReps(v => String(Math.max(0, (Number(v) || 0) - 1)))}>–</button>
+                          <span className="flex-1 text-center text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                            {formUnit === 'sec' ? '' : (formReps || '')}
+                          </span>
+                          <button className="px-1.5 py-1.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 disabled:pointer-events-none"
+                            disabled={formUnit === 'sec'}
+                            onClick={() => setFormReps(v => String((Number(v) || 0) + 1))}>+</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">{formUnit === 'kg' ? 'Kg' : 'Sec'}</label>
+                        <input type="number" step={formUnit === 'kg' ? '0.5' : '1'} min="0"
+                          value={formWeight} onChange={e => setFormWeight(e.target.value)}
+                          placeholder="—"
+                          className="py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300 w-full" />
                       </div>
                     </div>
                     {tagPickerOpen && (
@@ -1967,6 +1988,7 @@ export default function TrainingDiaryPage() {
                         ))}
                       </div>
                     )}
+                    {/* Row 3: Tag | Risc. | Set */}
                     <div className="grid grid-cols-3 gap-2">
                       <button onClick={() => setTagPickerOpen(o => !o)}
                         className="py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-colors"
@@ -1975,15 +1997,17 @@ export default function TrainingDiaryPage() {
                           : { backgroundColor: CT + '20', color: CT }}>
                         {formTag || 'Tag'}
                       </button>
-                      <button onClick={() => addSet(exId, true)} disabled={formSaving || !formReps.trim()}
-                        className="py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
-                        style={{ backgroundColor: C_WARM + '20', color: C_WARM }}>
-                        <Flame size={11} /> Risc.
+                      <button onClick={() => addSet(exId, true)}
+                        disabled={formSaving}
+                        className="py-2 rounded-lg text-xs font-semibold flex items-center justify-center disabled:opacity-40"
+                        style={{ backgroundColor: C_WARM + '30', color: C_WARM, border: `1.5px solid ${C_WARM}88` }}>
+                        Risc.
                       </button>
-                      <button onClick={() => addSet(exId, false)} disabled={formSaving || !formReps.trim()}
-                        className="py-2 rounded-lg text-white text-xs font-semibold flex items-center justify-center gap-1 disabled:opacity-40"
+                      <button onClick={() => addSet(exId, false)}
+                        disabled={formSaving || (formUnit === 'kg' ? !formReps.trim() : !formWeight.trim())}
+                        className="py-2 rounded-lg text-white text-xs font-semibold flex items-center justify-center disabled:opacity-40"
                         style={{ backgroundColor: CT }}>
-                        {formSaving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Serie
+                        {formSaving ? <Loader2 size={11} className="animate-spin" /> : 'Set'}
                       </button>
                     </div>
                   </div>
@@ -1999,61 +2023,54 @@ export default function TrainingDiaryPage() {
                         return (
                           <div key={s.id}>
                             {isEditing ? (
-                              <div className="px-4 py-1.5 space-y-1.5">
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 block mb-0.5">Set</label>
-                                    <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                                      <button className="px-2 py-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold" onClick={() => setEditSetNum(n => Math.max(1, n - 1))}>–</button>
-                                      <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">S{editSetNum}</span>
-                                      <button className="px-2 py-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold" onClick={() => setEditSetNum(n => n + 1)}>+</button>
-                                    </div>
+                              <div className="px-3 py-2 flex flex-col gap-1.5 bg-gray-50 dark:bg-gray-900/60 border-t border-b border-gray-100 dark:border-gray-800">
+                                {/* Set | Rep | Car./Tem. | Kg/Sec — all on one row */}
+                                <div className="grid grid-cols-4 gap-1">
+                                  <div className="flex items-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <button className="px-1 py-1 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0" onClick={() => setEditSetNum(n => Math.max(1, n - 1))}>–</button>
+                                    <span className="flex-1 text-center text-[10px] font-bold text-gray-900 dark:text-gray-100 truncate">{editSetNum}</span>
+                                    <button className="px-1 py-1 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0" onClick={() => setEditSetNum(n => n + 1)}>+</button>
                                   </div>
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 block mb-0.5">Tipo</label>
-                                    <div className="grid grid-cols-2 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden text-sm font-bold">
-                                      <button onClick={() => setEditUnit('kg')} className="py-1" style={editUnit === 'kg' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>kg</button>
-                                      <button onClick={() => setEditUnit('sec')} className="py-1" style={editUnit === 'sec' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>sec</button>
-                                    </div>
+                                  <div className={cn('flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors', editUnit === 'sec' ? 'bg-gray-100 dark:bg-gray-700 opacity-50' : 'bg-white dark:bg-gray-800')}>
+                                    <button className="px-1 py-1 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 disabled:pointer-events-none"
+                                      disabled={editUnit === 'sec'}
+                                      onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
+                                    <span className="flex-1 text-center text-[10px] font-bold text-gray-900 dark:text-gray-100 truncate">
+                                      {editUnit === 'sec' ? '' : (editReps || '')}
+                                    </span>
+                                    <button className="px-1 py-1 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 disabled:pointer-events-none"
+                                      disabled={editUnit === 'sec'}
+                                      onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
                                   </div>
-                                </div>
-                                <div className={cn('grid gap-1.5', editUnit === 'sec' ? 'grid-cols-1' : 'grid-cols-2')}>
-                                  <div>
-                                    <label className="text-[10px] text-gray-400 block mb-0.5">{editUnit === 'sec' ? 'Secondi' : 'Reps'}</label>
-                                    {editUnit === 'sec' ? (
-                                      <input type="number" step="1" min="0" value={editReps} onChange={e => setEditReps(e.target.value)} placeholder=""
-                                        className="w-full px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
-                                    ) : (
-                                      <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                                        <button className="px-2 py-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold" onClick={() => setEditReps(v => String(Math.max(0, (Number(v)||0) - 1)))}>–</button>
-                                        <span className="flex-1 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{editReps || '—'}</span>
-                                        <button className="px-2 py-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-base font-bold" onClick={() => setEditReps(v => String((Number(v)||0) + 1))}>+</button>
-                                      </div>
-                                    )}
+                                  <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                    <button onClick={() => setEditUnit('kg')} className="flex-1 py-1 text-[10px] font-bold transition-colors" style={editUnit === 'kg' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>Car.</button>
+                                    <button onClick={() => setEditUnit('sec')} className="flex-1 py-1 text-[10px] font-bold transition-colors border-l border-gray-200 dark:border-gray-700" style={editUnit === 'sec' ? { backgroundColor: CT, color: '#fff' } : { color: '#9ca3af' }}>Tem.</button>
                                   </div>
-                                  {editUnit !== 'sec' && (
-                                    <div>
-                                      <label className="text-[10px] text-gray-400 block mb-0.5">Carico</label>
-                                      <input type="number" step="0.5" min="0" value={editWeight} onChange={e => setEditWeight(e.target.value)} placeholder=""
-                                        className="w-full px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
-                                    </div>
+                                  {editUnit === 'sec' ? (
+                                    <input type="number" step="1" min="0" value={editReps} onChange={e => setEditReps(e.target.value)} placeholder="—"
+                                      className="w-full py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[10px] text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
+                                  ) : (
+                                    <input type="number" step="0.5" min="0" value={editWeight} onChange={e => setEditWeight(e.target.value)} placeholder="—"
+                                      className="w-full py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[10px] text-center font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-300" />
                                   )}
                                 </div>
+                                {/* Tags */}
                                 <div className="flex flex-wrap gap-1">
                                   {['D','S','DS','BO','TS','PR','MR','WD','PB'].map(opt => (
                                     <button key={opt} onClick={() => setEditTag(t => t === opt ? '' : opt)}
-                                      className="px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors"
-                                      style={editTag === opt ? { backgroundColor: CT, borderColor: CT, color: '#fff' } : { borderColor: '#d1d5db', color: '#9ca3af' }}>
+                                      className="px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors"
+                                      style={editTag === opt ? { backgroundColor: CT, color: '#fff' } : { backgroundColor: CT + '20', color: CT }}>
                                       {opt}
                                     </button>
                                   ))}
                                 </div>
+                                {/* Annulla | Salva */}
                                 <div className="grid grid-cols-2 gap-1.5">
-                                  <button onClick={() => setEditSetId(null)} className="py-1 rounded-xl text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800">Annulla</button>
+                                  <button onClick={() => setEditSetId(null)} className="py-1 rounded-lg text-xs font-semibold text-gray-500 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">Annulla</button>
                                   <button onClick={updateSet} disabled={editSaving}
-                                    className="py-1 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
+                                    className="py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-1"
                                     style={{ backgroundColor: CT }}>
-                                    {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salva
+                                    {editSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Salva
                                   </button>
                                 </div>
                               </div>
