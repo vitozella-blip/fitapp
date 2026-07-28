@@ -35,7 +35,7 @@ type DashData = {
   targets: { calories: number; protein: number; carbs: number; fat: number }
   meals:   { name: string; isFree?: boolean; calories: number; protein: number; carbs: number; fat: number }[]
   workout: { exists: boolean; exerciseCount?: number; setCount?: number; hasTennis?: boolean; exercises?: Exercise[] }
-  schedaInfo: { templateId: string; name: string; order: number; color?: string; weekId?: string | null; weekName?: string | null; weekOrder?: number | null } | null
+  schedaInfo: { templateId: string; name: string; order: number; color?: string; badgeLabel?: string | null; weekId?: string | null; weekName?: string | null; weekOrder?: number | null } | null
   tennisMeta: { type: string; hours: string } | null
   weekSummary: { date: string; hasGym: boolean; hasTennis: boolean }[]
 }
@@ -69,7 +69,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [data, setData]         = useState<DashData | null>(null)
   const [loading, setLoading]   = useState(true)
-  const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number; color?: string; weekOrder?: number | null } | null>(null)
+  const [schedaInfo, setSchedaInfo] = useState<{ name: string; order: number; color?: string; badgeLabel?: string | null; weekOrder?: number | null } | null>(null)
   type ExStatus = 'done' | 'partial' | 'skipped'
   const [exStatusMap, setExStatusMap] = useState<Record<string, ExStatus>>({})
   const [tennisMeta, setTennisMeta] = useState<{ type: string; hours: string } | null>(null)
@@ -104,7 +104,7 @@ export default function DashboardPage() {
       const d: DashData = await r.json()
       setData(d)
       if (d?.schedaInfo) {
-        setSchedaInfo({ name: d.schedaInfo.name, order: d.schedaInfo.order, color: d.schedaInfo.color, weekOrder: d.schedaInfo.weekOrder ?? null })
+        setSchedaInfo({ name: d.schedaInfo.name, order: d.schedaInfo.order, color: d.schedaInfo.color, badgeLabel: d.schedaInfo.badgeLabel ?? null, weekOrder: d.schedaInfo.weekOrder ?? null })
       } else {
         // Fallback to localStorage for data not yet migrated to DB
         try {
@@ -159,15 +159,21 @@ export default function DashboardPage() {
   const hasWorkout = data?.workout.exists || data?.workout.hasTennis || !!schedaInfo
 
   const abbrevName = (name: string) => {
-    const m = name.match(/(?:workout|wo)\s*\d+\s*[—–\-]+\s*(.+)/i)
-    if (!m) return name.slice(0, 4).toUpperCase()
-    return m[1].trim().split(/[\s+&,]+/).filter(Boolean).map((w: string) => w[0].toUpperCase()).join('')
+    const m = name.match(/(?:workout|wo|scheda)\s*\d+\s*[—–\-]+\s*(.+)/i)
+    const src = m ? m[1].trim() : name
+    const words = src.split(/[\s\-+&,]+/).filter(Boolean)
+    if (words.length === 1) return words[0].slice(0, 4).toUpperCase()
+    return words.map((w: string) => w[0].toUpperCase()).join('+')
   }
+
+  const woLabel = schedaInfo
+    ? (schedaInfo.badgeLabel?.trim() || abbrevName(schedaInfo.name))
+    : null
 
   const gymSubtitle = schedaInfo
     ? (schedaInfo.weekOrder != null
-        ? `WO ${schedaInfo.order} - ${abbrevName(schedaInfo.name)} - W${schedaInfo.weekOrder}`
-        : `WO ${schedaInfo.order} - ${abbrevName(schedaInfo.name)}`)
+        ? `WO ${schedaInfo.order} - ${woLabel} - W${schedaInfo.weekOrder}`
+        : `WO ${schedaInfo.order} - ${woLabel}`)
     : null
 
   const exercisesWithStatus = (data?.workout.exercises ?? [])
