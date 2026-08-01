@@ -1831,7 +1831,7 @@ export default function TrainingDiaryPage() {
                             <div key={i} className="grid grid-cols-[16px_1fr_auto] gap-x-2 items-center py-px">
                               <p className="text-xs font-bold" style={{ color: isDoneSet ? '#94a3b8' : CT }}>{i + 1}</p>
                               <p className="text-xs font-bold" style={{ color: isDoneSet ? '#94a3b8' : CT }}>
-                                {t ? (t.failure ? 'x' : t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}{modSuffix}
+                                {t ? (t.failure ? (t.label ?? 'x') : t.label ? t.label : t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}{modSuffix}
                               </p>
                               {i === 0 ? (
                                 <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#94a3b8' : CT }}
