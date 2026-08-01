@@ -992,7 +992,7 @@ export default function TrainingDiaryPage() {
         const allWarmupIds = new Set([...warmups, ...dbWarmupIds])
         const newNonWarmupCount = (w?.sets ?? []).filter(s => s.exerciseId === exId && !allWarmupIds.has(s.id)).length
         const nextTarget = parsed.sets[newNonWarmupCount] ?? parsed.sets[parsed.sets.length - 1]
-        nextReps = String(nextTarget.min)
+        nextReps = nextTarget.failure ? '' : String(nextTarget.min)
         setFormTargetReps(nextReps)
       }
     }
@@ -1184,7 +1184,7 @@ export default function TrainingDiaryPage() {
     if (parsed.sets.length > 0) {
       const loggedCount = (workout?.sets ?? []).filter(s => s.exerciseId === exId && !warmups.has(s.id)).length
       const nextTarget = parsed.sets[loggedCount] ?? parsed.sets[parsed.sets.length - 1]
-      defaultReps = String(nextTarget.min)
+      defaultReps = nextTarget.failure ? '' : String(nextTarget.min)
     } else {
       defaultReps = targetReps?.match(/\d+/)?.[0] ?? ''
     }
@@ -1831,7 +1831,7 @@ export default function TrainingDiaryPage() {
                             <div key={i} className="grid grid-cols-[16px_1fr_auto] gap-x-2 items-center py-px">
                               <p className="text-xs font-bold" style={{ color: isDoneSet ? '#94a3b8' : CT }}>{i + 1}</p>
                               <p className="text-xs font-bold" style={{ color: isDoneSet ? '#94a3b8' : CT }}>
-                                {t ? (t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}{modSuffix}
+                                {t ? (t.failure ? 'x' : t.min === t.max ? `${t.min}` : `${t.min}–${t.max}`) : '—'}{modSuffix}
                               </p>
                               {i === 0 ? (
                                 <button className="text-xs font-bold leading-none" style={{ color: isDoneSet ? '#94a3b8' : CT }}
