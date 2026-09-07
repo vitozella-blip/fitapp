@@ -116,7 +116,8 @@ function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
     if (skipColHeaders) { skipColHeaders = false; continue }
     if (!current) continue
 
-    const isAbsRow = /\babs\b/i.test(c0)
+    const noteSchedaRaw = String(row[2] ?? '').trim()
+    const isAbsRow = /\babs\b/i.test(c0) || /\babs\b/i.test(noteSchedaRaw)
     const num      = parseFloat(c0)
     const exName   = String(row[1] ?? '').trim()
     if ((!isNaN(num) && num > 0 || isAbsRow) && exName) {
@@ -130,9 +131,11 @@ function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
           rec:  String(row[base + 2] ?? '').trim(),
         })
       }
+      // Rimuovi "abs" dalla nota scheda se era usato solo come tag
+      const noteSchedaClean = noteSchedaRaw.replace(/^\s*abs\s*$/i, '').trim()
       current.exercises.push({
         name: exName,
-        noteScheda:    String(row[2] ?? '').trim(),
+        noteScheda:    noteSchedaClean,
         notePersonali: String(row[3] ?? '').trim(),
         weekParams,
         isAbs: isAbsRow,

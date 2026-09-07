@@ -40,8 +40,8 @@ export type SetTarget = { min: number; max: number; failure?: boolean; label?: s
 /** Parse a reps string like "1x5/7 + 1x8/10 + RP" into individual set targets and modifiers. */
 export function parseRepsTargets(reps: string | null): { sets: SetTarget[]; mods: string[] } {
   if (!reps) return { sets: [], mods: [] }
-  // Handle dash-separated format like "7-6-6-4" or "6-x-x" (numbers/x separated by dashes)
-  if (/^[\dx](-[\dx])+$/i.test(reps.trim())) {
+  // Handle dash-separated format like "7-6-6-4" or "6-6-10-12-12" or "6-x-x" (numbers/x separated by dashes)
+  if (/^(\d+|x)(-(\d+|x))+$/i.test(reps.trim())) {
     const parts = reps.trim().split('-')
     return {
       sets: parts.map(p => /^x$/i.test(p.trim()) ? { min: 0, max: 0, failure: true } : { min: Number(p), max: Number(p) }),
