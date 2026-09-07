@@ -16,6 +16,7 @@ type PlanExercise = {
   name: string
   noteScheda?: string; notePersonali?: string
   weekParams?: WeekParam[]
+  isAbs?: boolean
 }
 type PlanSection  = { name: string; focus: string; weeks?: string[]; exercises: PlanExercise[] }
 type PlanData     = { planName: string; startDate?: string | null; endDate?: string | null; sections: PlanSection[] }
@@ -213,9 +214,9 @@ export async function POST(req: NextRequest) {
 
           const { rows: texRows } = await pool.query(
             `INSERT INTO "WorkoutTemplateExercise"
-               (id, "templateId", "exerciseId", sets, reps, "restSeconds", "noteScheda", "notePersonali", "order")
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-            [templateId, exId, defSets, defReps, defRest, noteScheda, null, i]
+               (id, "templateId", "exerciseId", sets, reps, "restSeconds", "noteScheda", "notePersonali", "order", "isAbs")
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+            [templateId, exId, defSets, defReps, defRest, noteScheda, null, i, ex.isAbs ?? false]
           )
           templateExIds.push(texRows[0].id)
           imported++

@@ -937,10 +937,17 @@ function WeekExRow({ ex, weekId, param, color, onToggleAbs, onDelete, onRename }
   }
 
   function initVals(p: WeekParam | undefined): string[] {
-    const pr = parseRepsTargets(p?.reps ?? '')
-    if (pr.sets.length > 0) return pr.sets.map(t => t.min === t.max ? String(t.min) : `${t.min}/${t.max}`)
     const n = p?.sets ?? 3
-    const fallback = p?.reps?.match(/\d+/)?.[0] ?? ''
+    const pr = parseRepsTargets(p?.reps ?? '')
+    // Se il numero di set parsati coincide con p.sets, usa i valori per-set
+    // (formato "1x10 + 1x10 + 1x10" salvato dal frontend)
+    if (pr.sets.length > 0 && pr.sets.length === n)
+      return pr.sets.map(t => t.min === t.max ? String(t.min) : `${t.min}/${t.max}`)
+    // Altrimenti (es. reps importato come "10" o "10RM"): usa p.sets come conteggio
+    // e il primo valore parsato (o il numero nella stringa) come rep comune
+    const fallback = pr.sets.length > 0
+      ? (pr.sets[0].min === pr.sets[0].max ? String(pr.sets[0].min) : `${pr.sets[0].min}/${pr.sets[0].max}`)
+      : (p?.reps?.match(/\d+/)?.[0] ?? '')
     return Array.from({ length: n }, () => fallback)
   }
 

@@ -5,6 +5,7 @@
       "name": "Next.js Dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "-H", "0.0.0.0"],
+      "cwd": "D:\\Fitapp",
       "port": 3000
     }
   ]

@@ -54,7 +54,7 @@ function findHeaderRow(rows: string[][]): number {
 // ── Piano Allenamento ─────────────────────────────────────────────────────────
 
 type WeekParam    = { sets: string; reps: string; rec: string }
-type PlanExercise = { name: string; noteScheda: string; notePersonali: string; weekParams: WeekParam[] }
+type PlanExercise = { name: string; noteScheda: string; notePersonali: string; weekParams: WeekParam[]; isAbs: boolean }
 type PlanSection  = { name: string; focus: string; weeks: string[]; exercises: PlanExercise[] }
 type PlanData     = { planName: string; startDate: string | null; endDate: string | null; sections: PlanSection[] }
 
@@ -116,9 +116,10 @@ function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
     if (skipColHeaders) { skipColHeaders = false; continue }
     if (!current) continue
 
-    const num    = parseFloat(c0)
-    const exName = String(row[1] ?? '').trim()
-    if (!isNaN(num) && num > 0 && exName) {
+    const isAbsRow = /\babs\b/i.test(c0)
+    const num      = parseFloat(c0)
+    const exName   = String(row[1] ?? '').trim()
+    if ((!isNaN(num) && num > 0 || isAbsRow) && exName) {
       const weekCount = current.weeks.length || 1
       const weekParams: WeekParam[] = []
       for (let w = 0; w < weekCount; w++) {
@@ -134,6 +135,7 @@ function parsePlanWorkbook(wb: XLSX.WorkBook): PlanData {
         noteScheda:    String(row[2] ?? '').trim(),
         notePersonali: String(row[3] ?? '').trim(),
         weekParams,
+        isAbs: isAbsRow,
       })
     }
   }

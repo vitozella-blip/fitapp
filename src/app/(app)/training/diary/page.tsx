@@ -867,13 +867,29 @@ export default function TrainingDiaryPage() {
       setSchedaInfo({ id: t.id, name: t.name, weekId, weekName: info.weekName ?? null, exercises: merged, badgeColor: dbColor ?? info.badgeColor ?? null, badgeLabel: dbLabel ?? info.badgeLabel ?? null, badgeIcon: dbIcon ?? info.badgeIcon ?? null })
     }
 
-    setSchedaInfo(null)
-
     // 1. Show from localStorage immediately (no wait for DB)
     const localRaw = (() => { try { return localStorage.getItem(`workout_scheda_${selectedDate}`) } catch { return null } })()
     const localInfo: SchedaRef | null = (() => { try { return localRaw ? JSON.parse(localRaw) : null } catch { return null } })()
+
     if (localInfo?.templateId) {
-      loadScheda(localInfo).catch(() => {})
+      // Prova render sincrono da cache (zero lag): se template E weekParams sono già in memoria, mostra subito senza azzerare
+      const tCached = templateCache.current.get(localInfo.templateId)
+      const weekId  = localInfo.weekId ?? null
+      const pCached = weekId ? (weekParamsCache.current.get(weekId) ?? null) : []
+      if (tCached && pCached !== null) {
+        const merged   = applyWeekParams(tCached.exercises, pCached)
+        const dbColor  = tCached.badgeColor ?? null
+        const dbLabel  = tCached.badgeLabel ?? null
+        const dbIcon   = tCached.badgeIcon  ?? null
+        setSchedaInfo({ id: tCached.id, name: tCached.name, weekId, weekName: localInfo.weekName ?? null, exercises: merged, badgeColor: dbColor ?? localInfo.badgeColor ?? null, badgeLabel: dbLabel ?? localInfo.badgeLabel ?? null, badgeIcon: dbIcon ?? localInfo.badgeIcon ?? null })
+      } else {
+        // Cache parziale o mancante: azzera e carica async
+        setSchedaInfo(null)
+        loadScheda(localInfo).catch(() => {})
+      }
+    } else {
+      // Nessun dato locale → azzera e aspetta DB
+      setSchedaInfo(null)
     }
 
     // 2. DB validates in background (authoritative)
@@ -2221,9 +2237,9 @@ export default function TrainingDiaryPage() {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm" style={{ borderTopColor: CT, borderTopWidth: 3 }}>
             {/* Scheda header */}
             <SwipeableDeleteRow onDelete={removeScheda} onEdit={() => setShowPicker(true)}>
-            <div className="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
+            <div className="flex items-center gap-2 px-4 py-4 cursor-pointer"
               onClick={() => setSchedaCollapsed(c => !c)}>
-              <WorkoutBadgeDisplay color={schedaColor} label={schedaInfo.badgeLabel || schedaAbbrev(schedaInfo.name)} icon={schedaInfo.badgeIcon ?? null} size={18} />
+              <WorkoutBadgeDisplay color={schedaColor} label={schedaInfo.badgeLabel || schedaAbbrev(schedaInfo.name)} icon={schedaInfo.badgeIcon ?? null} size={22} />
               <span className="text-sm font-bold truncate flex-1 text-left" style={{ color: schedaColor }}>
                 {schedaInfo.name}
               </span>
